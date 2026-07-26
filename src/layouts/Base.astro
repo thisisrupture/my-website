@@ -46,7 +46,7 @@ const { title, description = "Rupture strategy in converged markets. A strategy 
     /* film grain — tactile paper surface */
     .grain {
       position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-      opacity: 0.05; mix-blend-mode: multiply;
+      opacity: 0.045;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
     @media (prefers-reduced-motion: reduce) { .grain { display: none; } }
@@ -91,7 +91,7 @@ const { title, description = "Rupture strategy in converged markets. A strategy 
     window.addEventListener('load', computeSnap);
 
     if (!reduce) {
-      const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+      const lenis = new Lenis({ lerp: 0.1, smoothWheel: true });
       if (!location.hash) lenis.scrollTo(0, { immediate: true });
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add((t) => lenis.raf(t * 1000));
