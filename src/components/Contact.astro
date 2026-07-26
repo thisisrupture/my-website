@@ -1,0 +1,45 @@
+---
+const { heading = "Start with the problem." } = Astro.props;
+---
+<section class="contact" id="contact">
+  <div class="grid">
+    <div>
+      <div class="k">05 — Contact</div>
+      <h2>{heading}</h2>
+      <p>Tell us the problem you are working on. We will come back with a straight answer on whether, and how, we can help.</p>
+      <p class="email">Prefer email? <a href="mailto:hello@thisisrupture.com">hello@thisisrupture.com</a></p>
+    </div>
+    <form name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thanks">
+      <input type="hidden" name="form-name" value="contact" />
+      <p hidden><label>Don't fill this in: <input name="bot-field" /></label></p>
+      <label><span>Name</span>
+        <input type="text" name="name" placeholder="Enter your name" required />
+      </label>
+      <label><span>Email</span>
+        <input type="email" name="email" placeholder="Enter your email" required />
+      </label>
+      <label><span>The problem</span>
+        <textarea name="problem" rows="3" placeholder="What are you working on?"></textarea>
+      </label>
+      <div><button type="submit">Send message</button></div>
+    </form>
+  </div>
+</section>
+
+<style>
+  .contact { border:var(--hairline); background:var(--ink); color:var(--fg-on-dark); padding:56px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; }
+  .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mint); margin-bottom:24px; }
+  h2 { font-family:var(--font-serif); font-weight:700; font-size:clamp(2.2rem,3.4vw,3.2rem); line-height:1.04; letter-spacing:-0.01em; margin:0 0 24px; }
+  p { font-size:1.05rem; line-height:1.6; color:var(--fg-on-dark-muted); margin:0 0 20px; max-width:40ch; }
+  .email { font-family:var(--font-mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--fg-on-dark); }
+  .email a { color:var(--mint); }
+  form { display:flex; flex-direction:column; gap:26px; }
+  label { display:block; }
+  label span { font-family:var(--font-mono); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mint); }
+  input, textarea { font-family:var(--font-sans); font-size:1rem; color:var(--fg-on-dark); background:transparent; border:0; border-bottom:1px solid var(--fg-on-dark-faint); padding:0.6em 0; width:100%; outline:none; transition: border-color var(--dur) var(--ease); }
+  input:focus, textarea:focus { border-color: var(--mint); }
+  button { font-family:var(--font-mono); font-size:12px; letter-spacing:0.1em; text-transform:uppercase; font-weight:500; padding:0.9em 1.6em; border:1.5px solid var(--mint); border-radius:var(--radius-button); background:var(--mint); color:var(--ink); cursor:pointer; transition: background var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  button:hover { background: var(--accent-press); transform: translateY(-1px); }
+  @media (max-width: 820px) { .contact { padding:32px 24px; } .grid { grid-template-columns:1fr; gap:36px; } }
+</style>

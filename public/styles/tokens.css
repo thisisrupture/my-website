@@ -1,0 +1,361 @@
+/* =========================================================================
+   Rupture Design System — colors & type tokens
+   Import once at the root of any document.
+   ========================================================================= */
+
+/* Epilogue + JetBrains Mono load from Google Fonts.
+   Fraunces is locally bundled — see `fonts/`.
+   The brand uses the Soft 72pt cut: the rounded-stem terminal variant.
+   See README "Caveats" for any remaining substitution notes. */
+@import url("https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* ----- Fraunces 72pt Soft (display serif) ------------------------------ */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Thin.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 100;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-ThinItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Light.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-LightItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Italic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-SemiBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-SemiBoldItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Bold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-BoldItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-Black.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/Fraunces_72pt_Soft-BlackItalic.ttf") format("truetype");
+}
+
+:root {
+  /* ----- Color tokens ------------------------------------------------ */
+  --paper:        #efeeea;   /* page background, warm off-white          */
+  --paper-2:      #e6e4dd;   /* slightly darker paper for subtle stripes */
+  --ink:          #303030;   /* default text + dark panel background     */
+  --ink-2:        #1f1f1f;   /* very dark, used inside --ink blocks only */
+  --mint:         #51d4b2;   /* Rupture-positive accent                  */
+  --mint-ink:     #1f5b4a;   /* mint pressed into ink for text-on-mint   */
+  --coral:        #ff686b;   /* Rupture-negative / urgency accent        */
+  --coral-ink:    #7a2326;   /* coral pressed into ink, rarely used      */
+
+  /* Foreground / background semantic aliases */
+  --bg:           var(--paper);
+  --bg-inverted:  var(--ink);
+  --fg:           var(--ink);
+  --fg-muted:     rgba(48, 48, 48, 0.62);
+  --fg-faint:     rgba(48, 48, 48, 0.38);
+  --fg-on-dark:           var(--paper);
+  --fg-on-dark-muted:     rgba(239, 238, 234, 0.72);
+  --fg-on-dark-faint:     rgba(239, 238, 234, 0.48);
+
+  --accent:           var(--mint);
+  --accent-press:     #43b89a;
+  --warn:             var(--coral);
+  --warn-press:       #e85458;
+
+  --border:           var(--ink);
+  --border-faint:     rgba(48, 48, 48, 0.35);
+  --hairline:         1.5px solid var(--border);
+  --hairline-2:       2px solid var(--border);
+  --hairline-faint:   1px solid var(--border-faint);
+
+  /* ----- Type families --------------------------------------------- */
+  --font-serif:   "Fraunces", "Times New Roman", Georgia, serif;
+  --font-sans:    "Epilogue", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ----- Type scale ------------------------------------------------ */
+  --fs-wordmark:  clamp(4rem, 9vw, 7.5rem);   /* Rupture. on hero        */
+  --fs-display:   clamp(2.5rem, 4.2vw, 3.75rem); /* "Three Engagements." */
+  --fs-h1:        2.25rem;
+  --fs-h2:        1.5rem;
+  --fs-h3:        1.125rem;
+  --fs-body:      1rem;       /* 16px essay body                         */
+  --fs-small:     0.875rem;
+  --fs-tiny:      0.75rem;
+  --fs-label:     0.75rem;    /* small-caps mono labels                  */
+  --fs-pull:      clamp(1.25rem, 1.6vw, 1.6rem); /* essay pull-quotes    */
+
+  /* ----- Line heights --------------------------------------------- */
+  --lh-tight:     1.05;
+  --lh-snug:      1.18;
+  --lh-body:      1.55;
+  --lh-loose:     1.7;
+
+  /* ----- Letter spacing ------------------------------------------- */
+  --tracking-display: -0.012em;
+  --tracking-body:    0;
+  --tracking-label:   0.12em;
+  --tracking-label-tight: 0.06em;
+
+  /* ----- Spacing & layout ----------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --gutter: 32px;             /* default gap between hero rectangles    */
+  --content-max: 1180px;      /* outer marketing rectangle max width    */
+  --essay-max: 760px;         /* essay body column max width            */
+
+  /* ----- Radii (kept tight — Rupture is square) ------------------- */
+  --radius-0: 0;
+  --radius-button: 6px;
+  --radius-pill: 999px;
+
+  /* ----- Motion --------------------------------------------------- */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast:  140ms;
+  --dur:       240ms;
+  --dur-slow:  400ms;
+}
+
+/* =========================================================================
+   Semantic element styles
+   These are *defaults*, not utilities. Apply at the document level.
+   ========================================================================= */
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tracking-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ----- Display & headings (Fraunces, sentence case, trailing dot is OK) - */
+.r-wordmark,
+.r-display {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--lh-tight);
+  color: var(--fg);
+}
+.r-wordmark { font-size: var(--fs-wordmark); font-weight: 900; }
+.r-display  { font-size: var(--fs-display); }
+
+h1 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-display);
+}
+h2 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-snug);
+}
+h3 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-snug);
+}
+
+p {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  margin: 0 0 1em 0;
+  text-wrap: pretty;
+}
+
+/* ----- Mono small-caps labels ------------------------------------------ */
+.r-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+.r-label--accent { color: var(--accent); }
+.r-label--on-dark { color: var(--mint); }
+
+/* ----- Highlighter pull spans ----------------------------------------- */
+.r-hl,
+.r-hl--mint {
+  background: var(--mint);
+  color: var(--ink);
+  padding: 0.02em 0.18em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.r-hl--coral {
+  background: var(--coral);
+  color: var(--ink);
+  padding: 0.02em 0.18em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* ----- Pull-quote (justified, serif, framed) -------------------------- */
+.r-pullquote {
+  font-family: var(--font-serif);
+  font-size: var(--fs-pull);
+  line-height: 1.35;
+  text-align: justify;
+  hyphens: none;
+  border: var(--hairline);
+  padding: var(--space-6) var(--space-7);
+  margin: var(--space-7) 0;
+  background: var(--paper);
+}
+
+/* ----- Dark callout block --------------------------------------------- */
+.r-dark {
+  background: var(--ink);
+  color: var(--fg-on-dark);
+  border: var(--hairline);
+  padding: var(--space-6) var(--space-7);
+}
+.r-dark .r-label { color: var(--mint); }
+.r-dark a { color: var(--mint); }
+
+/* ----- Buttons -------------------------------------------------------- */
+.r-btn {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0.7em 1.2em;
+  border: var(--hairline);
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.r-btn:hover  { background: var(--ink); color: var(--paper); }
+.r-btn:active { transform: translateY(1px); }
+.r-btn--primary {
+  background: var(--mint);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.r-btn--primary:hover { background: var(--accent-press); color: var(--ink); }
+
+/* ----- Cards / panels ------------------------------------------------- */
+.r-panel {
+  border: var(--hairline);
+  background: var(--paper);
+  padding: var(--space-6) var(--space-7);
+}
+.r-panel--dark { background: var(--ink); color: var(--fg-on-dark); }
+.r-panel--mint { background: var(--mint); color: var(--ink); }
+
+/* ----- Form fields (underline-only) ---------------------------------- */
+.r-input {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  padding: 0.6em 0;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--dur) var(--ease), border-width var(--dur) var(--ease);
+}
+.r-input:focus {
+  border-bottom-color: var(--mint);
+  border-bottom-width: 2px;
+}
+
+/* ----- Misc ----------------------------------------------------------- */
+::selection {
+  background: var(--mint);
+  color: var(--ink);
+}
+hr.r-rule {
+  border: 0;
+  border-top: var(--hairline-faint);
+  margin: var(--space-7) 0;
+}
+.r-dot {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.18em;
+  border-radius: 50%;
+  background: var(--coral);
+  vertical-align: 0.15em;
+}

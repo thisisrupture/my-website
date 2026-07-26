@@ -1,0 +1,114 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "Rupture strategy in converged markets. A strategy company like no other." } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles/tokens.css" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta name="theme-color" content="#efeeea" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <slot />
+
+  <style is:global>
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: var(--snap-offset, 100px); }
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+    .lenis.lenis-stopped { overflow: hidden; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: var(--fs-body);
+      line-height: var(--lh-body);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+    a { color: var(--ink); text-decoration: none; }
+    img, video, svg { max-width: 100%; }
+    ::selection { background: var(--mint); color: var(--ink); }
+
+    /* film grain — tactile paper surface */
+    .grain {
+      position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+      opacity: 0.05; mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    @media (prefers-reduced-motion: reduce) { .grain { display: none; } }
+
+    .wrap {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      padding: 0 var(--gutter);
+      display: flex; flex-direction: column; gap: var(--gutter);
+    }
+    @media (max-width: 720px) { .wrap { --gutter: 16px; } }
+  </style>
+
+  <script>
+    import Lenis from 'lenis';
+    import { gsap } from 'gsap';
+    import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Kill the cross-page scroll bounce: stop the browser restoring the previous
+    // page's scroll position and force the top before Lenis can animate to it.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    if (!location.hash) window.scrollTo(0, 0);
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Snap offset = sticky header height + one gutter gap.
+    // Reproduces the top-of-page rhythm on every anchor jump: the bar's bottom
+    // edge lands on the previous block's outline, then a gutter, then the target.
+    function computeSnap() {
+      const header = document.querySelector('header.site') as HTMLElement | null;
+      const wrap = document.querySelector('.wrap') as HTMLElement | null;
+      const headerH = header ? header.getBoundingClientRect().height : 60;
+      const gutter = wrap ? parseFloat(getComputedStyle(wrap).rowGap) || 32 : 32;
+      const snap = Math.round(headerH + gutter);
+      document.documentElement.style.setProperty('--snap-offset', snap + 'px');
+      return snap;
+    }
+    computeSnap();
+    window.addEventListener('resize', computeSnap);
+    window.addEventListener('load', computeSnap);
+
+    if (!reduce) {
+      const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+      if (!location.hash) lenis.scrollTo(0, { immediate: true });
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((t) => lenis.raf(t * 1000));
+      gsap.ticker.lagSmoothing(0);
+      // expose for anchor handling
+      (window as any).__lenis = lenis;
+
+      // smooth anchor jumps
+      document.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          const id = a.getAttribute('href');
+          if (!id || id === '#') return;
+          const el = document.querySelector(id);
+          if (el) { e.preventDefault(); lenis.scrollTo(el as HTMLElement, { offset: -computeSnap() }); }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

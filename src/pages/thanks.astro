@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base title="Thank you — Rupture">
+  <div class="wrap">
+    <Header />
+    <section class="thanks">
+      <div class="k">Message received</div>
+      <h1>Thank you.</h1>
+      <p>We have your note and will come back with a straight answer on whether, and how, we can help. In the meantime, the thinking behind the company is here.</p>
+      <a href="/essay" class="btn">Read the essay →</a>
+    </section>
+    <Footer />
+  </div>
+  <style>
+    .thanks { border:var(--hairline-2); padding:clamp(48px,9vw,120px) 56px; min-height:52vh; display:flex; flex-direction:column; justify-content:center; }
+    .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:22px; }
+    h1 { font-family:var(--font-serif); font-weight:900; font-size:clamp(2.6rem,6vw,4.6rem); line-height:1; letter-spacing:-0.02em; margin:0 0 24px; }
+    p { font-size:1.15rem; line-height:1.6; max-width:46ch; margin:0 0 32px; }
+    .btn { align-self:flex-start; font-family:var(--font-sans); font-weight:600; padding:0.85em 1.4em; border:var(--hairline); border-radius:var(--radius-button); background:var(--mint); color:var(--ink); }
+    @media (max-width:860px){ .thanks { padding:56px 24px; } }
+  </style>
+</Base>

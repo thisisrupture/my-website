@@ -1,0 +1,261 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Contact from '../components/Contact.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base title="Rupture — a strategy company like no other" description="Rupture strategy in converged markets. We help organisations find a new basis for advantage where every competitor has the same tools, the same data, and the same ideas.">
+  <div class="wrap">
+    <Header />
+
+    <!-- HERO -->
+    <section id="top" class="home-hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="dot"></span>EST. 2026 — LONDON</div>
+        <div>
+          <h1>A strategy company<br/>like no other.</h1>
+          <p class="sub">We help organisations find a new basis for advantage in markets where every competitor has the same tools, the same data, and the same ideas.</p>
+          <div class="cta-row">
+            <a href="#contact" class="btn btn-mint">Start with the problem</a>
+            <a href="/essay" class="btn btn-line">Read the essay →</a>
+          </div>
+        </div>
+        <div class="stats">
+          <div><span>Practice</span>Commercial strategy</div>
+          <div><span>For</span>Zero-margin markets</div>
+          <div><span>Also</span>Go-to-market · AI capability</div>
+          <div><span>Location</span>London / Remote</div>
+        </div>
+      </div>
+      <div class="hero-img">
+        <div class="hero-img-inner"><img src="/assets/hero-jumper.png" alt="A high jumper clearing the bar back-first — the Fosbury flop." /></div>
+      </div>
+    </section>
+
+    <!-- 01 WORK -->
+    <section id="work" class="work">
+      <div class="work-head">
+        <div>
+          <div class="mono-label">01 — Where we help</div>
+          <h2 class="serif-h narrow">Most of the organisations we work with are dealing with one of three situations.</h2>
+        </div>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <div class="cn">01</div>
+          <div class="cart">
+            <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="square">
+              <path d="M8,80 H36 V64 H64 V48 H92 V32 H120"/>
+              <path d="M120,32 V8 H152" stroke="var(--mint)" stroke-width="2.5"/>
+              <line x1="120" y1="32" x2="120" y2="80" stroke="var(--border-faint)" stroke-width="1" stroke-dasharray="3 3"/>
+            </svg>
+          </div>
+          <h3>You need a step change, not an increment.</h3>
+          <p>Growth has become incremental and the next optimisation will not change that. We examine the assumptions your market runs on and find the one worth challenging: the big idea hiding in what everyone else takes as given. You get a clear answer to where your next advantage lies.</p>
+          <div class="tag"><span>Rupture strategy</span></div>
+        </article>
+        <article class="card">
+          <div class="cn">02</div>
+          <div class="cart">
+            <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="round">
+              <line x1="8" y1="34" x2="128" y2="34"/><path d="M120,29 L130,34 L120,39"/>
+              <line x1="8" y1="52" x2="128" y2="52"/><path d="M120,47 L130,52 L120,57"/>
+              <line x1="8" y1="70" x2="128" y2="70"/><path d="M120,65 L130,70 L120,75"/>
+              <line x1="8" y1="34" x2="132" y2="10" stroke="var(--mint)" stroke-width="2.5"/><path d="M123,9 L134,9 L130,19" stroke="var(--mint)" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <h3>You are taking something to market.</h3>
+          <p>Launching, entering, or repositioning. The risk is doing it the way the category always does. We build the go-to-market around what makes you different, not what makes you comparable, and stay involved until it is working.</p>
+          <div class="tag"><span>Go-to-market strategy</span></div>
+        </article>
+        <article class="card">
+          <div class="cn">03</div>
+          <div class="cart">
+            <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5">
+              <line x1="18" y1="18" x2="112" y2="44"/><line x1="14" y1="44" x2="112" y2="44"/><line x1="18" y1="70" x2="112" y2="44"/>
+              <circle cx="18" cy="18" r="4" fill="var(--paper-2)"/><circle cx="14" cy="44" r="4" fill="var(--paper-2)"/><circle cx="18" cy="70" r="4" fill="var(--paper-2)"/>
+              <circle cx="120" cy="44" r="10" fill="var(--mint)" stroke="var(--ink)" stroke-width="2"/><circle cx="120" cy="44" r="3.5" fill="var(--ink)" stroke="none"/>
+            </svg>
+          </div>
+          <h3>Your AI efforts are under-delivering, or you worry you are behind.</h3>
+          <p>Catching up by adopting what everyone else has adopted only buys you parity. The issue is rarely the technology; it is what it is pointed at. AI built around a position only you hold compounds your advantage, and it is hard to copy.</p>
+          <div class="tag"><span>AI capability</span></div>
+        </article>
+      </div>
+      <div class="work-foot">Most engagements start with one of these. In practice, organisations often face more than one at the same time.</div>
+    </section>
+
+    <!-- 02→03  CONVERGENCE → DAYLIGHT  (pinned scroll build) -->
+    <section id="problem" class="scrolly">
+      <div class="scrolly-grid">
+        <div class="scrolly-steps">
+          <div class="step">
+            <div class="mono-label">02 — The problem</div>
+            <h2 class="serif-h">Convergence.</h2>
+            <p>Most organisations are using AI and data to optimise what they already do. That is sensible, and it works. But every competitor is doing the same thing with the same tools, and the result is convergence: strategies, products and messaging that look increasingly alike.</p>
+            <p class="statement">Optimisation improves performance. It rarely creates <span class="coral">competitive advantage.</span></p>
+            <figure class="fig-m" data-role="conv" aria-label="Lines run left to right and squeeze together to a single point, with tension where they meet."></figure>
+          </div>
+          <div id="how" class="step">
+            <div class="mono-label">03 — How we work</div>
+            <h2 class="serif-h narrow">We are there to do one thing: put <span class="mint-hl">daylight</span> between you and the competition.</h2>
+            <p>Our methods are designed to find you a new basis for advantage, not simply to make you better at what you already do. That philosophy is in the company's DNA, and everyone we deploy is aligned to it, from graduates to our network of senior experts.</p>
+            <figure class="fig-m" data-role="day" aria-label="One line breaks away from the converged point and rises, opening the daylight gap measured on the vertical axis."></figure>
+          </div>
+        </div>
+        <div class="scrolly-figure">
+          <figure class="daylight-figure" aria-label="A converged pack of lines plateaus while one line breaks away upward; the vertical gap between them is the daylight."></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 ESSAY TEASER -->
+    <section id="essay" class="essay-teaser">
+      <div class="et-copy">
+        <div class="k">04 — The idea</div>
+        <h2>The thinking behind the company, set out in full in the founder's essay.</h2>
+        <p>The problem in modern markets isn't noise; it's sameness. The escape is not a better optimisation — it is a non-linear leap from a frame that has quietly stopped serving the people inside it.</p>
+        <div><a href="/essay" class="btn btn-mint">Read the essay →</a></div>
+      </div>
+      <div class="et-img"><div class="et-img-inner"><img src="/assets/essay-staircase.png" alt="The Progress Staircase." /></div></div>
+    </section>
+
+    <Contact />
+    <Footer />
+  </div>
+</Base>
+
+<style>
+  .btn { font-family:var(--font-sans); font-size:0.95rem; font-weight:600; padding:0.85em 1.4em; border-radius:var(--radius-button); display:inline-block; transition: transform var(--dur) var(--ease), background var(--dur) var(--ease); }
+  .btn-mint { border:var(--hairline); background:var(--mint); color:var(--ink); }
+  .btn-mint:hover { transform: translateY(-2px); background: var(--accent-press); }
+  .btn-line { border:var(--hairline); background:var(--paper); color:var(--ink); }
+  .btn-line:hover { transform: translateY(-2px); background: var(--paper-2); }
+  .mono-label { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); }
+  .serif-h { font-family:var(--font-serif); font-weight:700; font-size:clamp(2rem,3.2vw,3rem); line-height:1.05; letter-spacing:-0.01em; margin:0 0 22px; }
+  .serif-h.narrow { max-width: 20ch; }
+  .mint-hl { background:var(--mint); padding:0.02em 0.18em; }
+  .coral { background:var(--coral); color:var(--ink); padding:0.02em 0.18em; }
+
+  .home-hero { border:var(--hairline-2); display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,0.95fr); min-height:560px; }
+  .hero-copy { padding:48px 56px; display:flex; flex-direction:column; justify-content:space-between; gap:32px; }
+  .eyebrow { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); }
+  .eyebrow .dot { width:7px; height:7px; border-radius:50%; background:var(--coral); display:inline-block; }
+  .home-hero h1 { font-family:var(--font-serif); font-weight:900; font-size:clamp(2.6rem,4.6vw,4.2rem); line-height:1.02; letter-spacing:-0.015em; margin:0 0 24px; }
+  .home-hero .sub { font-size:1.18rem; line-height:1.5; max-width:32ch; margin:0 0 32px; }
+  .cta-row { display:flex; gap:12px; flex-wrap:wrap; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:20px 40px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg-muted); border-top:var(--hairline-faint); padding-top:20px; }
+  .stats span { display:block; color:var(--fg-faint); margin-bottom:5px; }
+  .hero-img { position:relative; border-left:var(--hairline-2); background:var(--paper); padding:28px; min-width:0; }
+  .hero-img-inner { position:absolute; inset:28px; border:var(--hairline); overflow:hidden; }
+  .hero-img-inner img { width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.03); }
+
+  .block { border:var(--hairline); padding:48px 56px; }
+
+  /* 02→03  pinned convergence → daylight build — dark gallery */
+  .scrolly {
+    border:var(--hairline);
+    background:var(--ink-2);
+    color:var(--fg-on-dark);
+    /* figure colours, tuned for the dark panel */
+    --fig-line:rgba(239,238,234,0.80);
+    --fig-measure:var(--mint);
+    --fig-faint:rgba(239,238,234,0.22);
+  }
+  .scrolly-grid { display:grid; grid-template-columns:1fr 1fr; }
+  .step { min-height:44vh; display:flex; flex-direction:column; justify-content:flex-start; padding:60px 60px; }
+  #how.step { min-height:61vh; }   /* extra scroll room so daylight breaks later and still completes */
+  .step .mono-label { color:var(--fg-on-dark-faint); }
+  .step .serif-h { margin:16px 0 22px; }
+  .step p { font-size:1.05rem; line-height:1.68; margin:0 0 18px; max-width:44ch; color:var(--fg-on-dark-muted); }
+  .step .statement { font-family:var(--font-serif) !important; font-size:1.55rem !important; line-height:1.32 !important; font-weight:600; margin-top:10px !important; color:var(--fg-on-dark) !important; }
+  .step .mint-hl { color:var(--ink); }
+  .scrolly-figure { position:relative; }
+  .daylight-figure {
+    position:sticky; top:calc(var(--snap-offset, 100px) + 48px);
+    margin:48px 44px; border:0; background:transparent; overflow:visible;
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
+            mask-image:linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
+  }
+  .daylight-figure svg, .fig-m svg { width:100%; display:block; overflow:visible; }
+  .fig-m { display:none; margin:20px 0 6px; border:0; background:transparent; }
+
+  .work { border:var(--hairline); }
+  .work-head { padding:48px 56px 36px; border-bottom:var(--hairline); }
+  .cards { display:grid; grid-template-columns:repeat(3,1fr); }
+  .card { padding:40px 36px; border-right:var(--hairline); display:flex; flex-direction:column; gap:20px; }
+  .card:last-child { border-right:0; }
+  .cn { font-family:var(--font-mono); font-size:11px; letter-spacing:0.1em; color:var(--fg-faint); }
+  .cart { height:120px; border:var(--hairline-faint); background:var(--paper-2); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .cart svg { width:100%; height:100%; }
+  .card h3 { font-family:var(--font-serif); font-weight:700; font-size:1.35rem; line-height:1.2; margin:0; }
+  .card p { font-size:0.98rem; line-height:1.6; margin:0; }
+  .card .tag { margin-top:auto; font-family:var(--font-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; }
+  .card .tag span { background:var(--mint); padding:4px 8px; }
+  .work-foot { padding:28px 56px; border-top:var(--hairline); font-family:var(--font-serif); font-size:1.15rem; line-height:1.4; font-style:italic; }
+
+  .essay-teaser { border:var(--hairline); background:var(--paper); color:var(--ink); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,0.85fr); min-height:340px; }
+  .et-copy { padding:48px 56px; display:flex; flex-direction:column; justify-content:center; }
+  .et-copy .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:24px; }
+  .et-copy h2 { font-family:var(--font-serif); font-weight:700; font-size:clamp(1.8rem,2.8vw,2.6rem); line-height:1.15; margin:0 0 20px; max-width:24ch; }
+  .et-copy p { font-size:1.02rem; line-height:1.6; color:var(--fg-muted); margin:0 0 32px; max-width:44ch; }
+  .et-img { position:relative; border-left:var(--hairline); background:var(--paper-2); padding:24px; min-width:0; }
+  .et-img-inner { position:absolute; inset:24px; border:var(--hairline-faint); overflow:hidden; }
+  .et-img-inner img { width:100%; height:100%; object-fit:cover; }
+
+  @media (max-width: 860px) {
+    .home-hero, .essay-teaser, .cards, .scrolly-grid { grid-template-columns: 1fr; }
+    .hero-img { border-left:0; border-top:var(--hairline-2); min-height:360px; }
+    .card { border-right:0; border-bottom:var(--hairline); }
+    .block, .hero-copy, .work-head, .et-copy { padding:32px 24px; }
+    .home-hero .sub { max-width:none; }
+    .scrolly-figure { display:none; }
+    .fig-m { display:block; }
+    .step, #how.step { min-height:auto; padding:32px 24px; }
+  }
+</style>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import { mountFigure, playOnce, onEnter } from '../scripts/rupture-figure';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const steps = document.querySelector('.scrolly-steps') as HTMLElement | null;
+
+  // Mount all three unconditionally; CSS decides which is visible at any width.
+  // Desktop = one pinned figure scrubbed to scroll. Mobile = two figures, each
+  // animating as its section scrolls into view.
+
+  // desktop pinned figure
+  const dMount = document.querySelector('.daylight-figure');
+  if (dMount && steps) {
+    const render = mountFigure(dMount, 'd');
+    if (reduce) { render(1); }
+    else {
+      render(0);
+      ScrollTrigger.create({
+        trigger: steps, start: 'top 85%', end: 'bottom bottom',
+        scrub: true, invalidateOnRefresh: true,
+        onUpdate: (self) => render(self.progress),
+      });
+    }
+  }
+
+  // mobile figure 1 — convergence + coral tension
+  const convEl = document.querySelector('.fig-m[data-role="conv"]');
+  if (convEl) {
+    const render = mountFigure(convEl, 'c');
+    if (reduce) render(0.72);                         // converged + coral, static
+    else { render(0); onEnter(convEl, () => playOnce(render, 0, 0.72, 1500)); }
+  }
+
+  // mobile figure 2 — the break into daylight (starts from held tension)
+  const dayEl = document.querySelector('.fig-m[data-role="day"]');
+  if (dayEl) {
+    const render = mountFigure(dayEl, 'm');
+    if (reduce) render(1);                            // full daylight, static
+    else { render(0.68); onEnter(dayEl, () => playOnce(render, 0.68, 1, 1500)); }
+  }
+</script>

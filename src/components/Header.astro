@@ -1,0 +1,38 @@
+---
+const { active = "" } = Astro.props;
+---
+<header class="site">
+  <a href="/#top" class="mark" aria-label="Rupture home">RUPTURE<span class="dot"></span></a>
+  <nav>
+    <a href="/#work" class:list={[{ on: active === "work" }]}>Where we add value</a>
+    <a href="/#problem" class:list={[{ on: active === "problem" }]}>The problem</a>
+    <a href="/#how" class:list={[{ on: active === "how" }]}>How we work</a>
+    <a href="/essay" class:list={[{ on: active === "essay" }]}>The essay</a>
+    <a href="/#contact" class="cta">Start with the problem</a>
+  </nav>
+</header>
+
+<style>
+  header.site {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between;
+    background: color-mix(in srgb, var(--paper) 82%, transparent);
+    backdrop-filter: saturate(1.1) blur(8px);
+    border: var(--hairline); padding: 16px 26px;
+  }
+  .mark { display:flex; align-items:baseline; gap:2px; font-family:var(--font-mono); font-size:15px; letter-spacing:0.14em; font-weight:600; text-transform:uppercase; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--coral); display:inline-block; margin-left:5px; transform:translateY(-1px); transition: transform var(--dur) var(--ease); }
+  .mark:hover .dot { transform: translateY(-1px) scale(1.5); }
+  nav { display:flex; align-items:center; gap:26px; font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); }
+  nav a { color:var(--fg-muted); position:relative; transition: color var(--dur) var(--ease); }
+  nav a:not(.cta)::after { content:""; position:absolute; left:0; right:100%; bottom:-5px; height:1.5px; background:var(--ink); transition: right var(--dur) var(--ease); }
+  nav a:not(.cta):hover { color:var(--ink); }
+  nav a:not(.cta):hover::after, nav a.on::after { right:0; }
+  nav a.cta { border:var(--hairline); border-radius:var(--radius-button); padding:9px 16px; color:var(--ink); letter-spacing:0.1em; background:var(--mint); transition: background var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  nav a.cta:hover { background:var(--accent-press); transform: translateY(-1px); }
+  nav a.cta::after { display:none; }
+  @media (max-width: 820px) {
+    nav a:not(.cta) { display:none; }
+    header.site { padding: 14px 18px; }
+  }
+</style>

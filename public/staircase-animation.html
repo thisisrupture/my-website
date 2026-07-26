@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staircase of Progress</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600;1,9..144,700&family=Epilogue:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #eaf0ea;
+  --paper: #efeeea;
+  --ink: #0a0a09;
+  --mid: #6b6b63;
+  --faint: #d6d4cd;
+  --accent: #5fd9b6;
+  --serif: 'Fraunces', serif;
+  --sans: 'Epilogue', sans-serif;
+  --loop: 40s;
+}
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  height: 100%;
+  width: 100%;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--paper);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+svg.staircase {
+  display: block;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+}
+
+.domain-heading {
+  position: absolute;
+  top: clamp(14px, 3vw, 30px);
+  left: clamp(14px, 3vw, 30px);
+  z-index: 3;
+  pointer-events: none;
+}
+.domain-eyebrow {
+  font-family: var(--sans);
+  font-size: clamp(10px, 1.2vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 6px;
+}
+.domain-name {
+  position: relative;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(24px, 5vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.05;
+  height: 1.05em;
+  min-width: 200px;
+}
+.domain-name span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.legend {
+  position: absolute;
+  top: clamp(18px, 3vw, 34px);
+  right: clamp(14px, 3vw, 30px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  font-family: var(--sans);
+  font-size: clamp(9px, 1.1vw, 11px);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mid);
+}
+.legend-item { display: inline-flex; gap: 8px; align-items: center; }
+.swatch { width: 22px; height: 2px; background: var(--ink); }
+.swatch.rup {
+  background: transparent;
+  border-top: 2px dashed var(--accent);
+  height: 0;
+}
+
+.curve {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+}
+
+.lift {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 8 9;
+  fill: none;
+  opacity: 0;
+}
+
+.step-group { opacity: 0; }
+.step-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 44px;
+  font-weight: 500;
+  fill: var(--ink);
+  letter-spacing: -0.01em;
+}
+.step-detail {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--mid);
+}
+.step-dot { fill: var(--ink); }
+
+/* Visibility */
+@keyframes domain1Visible { 0%, 24.5% { opacity: 1; } 24.9%, 100% { opacity: 0; } }
+@keyframes domain2Visible { 0%, 24.9% { opacity: 0; } 25%, 49.5% { opacity: 1; } 49.9%, 100% { opacity: 0; } }
+@keyframes domain3Visible { 0%, 49.9% { opacity: 0; } 50%, 74.5% { opacity: 1; } 74.9%, 100% { opacity: 0; } }
+@keyframes domain4Visible { 0%, 74.9% { opacity: 0; } 75%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
+
+@keyframes heading1 { 0%, 0.5% { opacity: 0; transform: translateY(4px); } 1.5%, 24.5% { opacity: 1; transform: translateY(0); } 24.9%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes heading2 { 0%, 25% { opacity: 0; transform: translateY(4px); } 26%, 49.5% { opacity: 1; transform: translateY(0); } 49.9%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes heading3 { 0%, 50% { opacity: 0; transform: translateY(4px); } 51%, 74.5% { opacity: 1; transform: translateY(0); } 74.9%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes heading4 { 0%, 75% { opacity: 0; transform: translateY(4px); } 76%, 99.5% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-4px); } }
+
+/* DOMAIN 1 */
+@keyframes d1_c1 { 0%, 0.5%  { stroke-dashoffset: 1200; } 4.5%, 100%  { stroke-dashoffset: 0; } }
+@keyframes d1_c2 { 0%, 6.5%  { stroke-dashoffset: 1200; } 10.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d1_c3 { 0%, 12.5% { stroke-dashoffset: 1200; } 16.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d1_c4 { 0%, 18.5% { stroke-dashoffset: 1200; } 23.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d1_s1 { 0%, 4.5%  { opacity: 0; } 5.5%, 24.5% { opacity: 1; } 24.9%, 100% { opacity: 0; } }
+@keyframes d1_s2 { 0%, 10.5% { opacity: 0; } 11.5%, 24.5% { opacity: 1; } 24.9%, 100% { opacity: 0; } }
+@keyframes d1_s3 { 0%, 16.5% { opacity: 0; } 17.5%, 24.5% { opacity: 1; } 24.9%, 100% { opacity: 0; } }
+@keyframes d1_l1 { 0%, 5.5%  { opacity: 0; stroke-dashoffset: 200; } 6.5%, 24.5% { opacity: 1; stroke-dashoffset: 0; } 24.9%, 100% { opacity: 0; } }
+@keyframes d1_l2 { 0%, 11.5% { opacity: 0; stroke-dashoffset: 200; } 12.5%, 24.5% { opacity: 1; stroke-dashoffset: 0; } 24.9%, 100% { opacity: 0; } }
+@keyframes d1_l3 { 0%, 17.5% { opacity: 0; stroke-dashoffset: 200; } 18.5%, 24.5% { opacity: 1; stroke-dashoffset: 0; } 24.9%, 100% { opacity: 0; } }
+
+/* DOMAIN 2 */
+@keyframes d2_c1 { 0%, 25.5% { stroke-dashoffset: 1200; } 29.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d2_c2 { 0%, 31.5% { stroke-dashoffset: 1200; } 35.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d2_c3 { 0%, 37.5% { stroke-dashoffset: 1200; } 41.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d2_c4 { 0%, 43.5% { stroke-dashoffset: 1200; } 48.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d2_s1 { 0%, 29.5% { opacity: 0; } 30.5%, 49.5% { opacity: 1; } 49.9%, 100% { opacity: 0; } }
+@keyframes d2_s2 { 0%, 35.5% { opacity: 0; } 36.5%, 49.5% { opacity: 1; } 49.9%, 100% { opacity: 0; } }
+@keyframes d2_s3 { 0%, 41.5% { opacity: 0; } 42.5%, 49.5% { opacity: 1; } 49.9%, 100% { opacity: 0; } }
+@keyframes d2_l1 { 0%, 30.5% { opacity: 0; stroke-dashoffset: 200; } 31.5%, 49.5% { opacity: 1; stroke-dashoffset: 0; } 49.9%, 100% { opacity: 0; } }
+@keyframes d2_l2 { 0%, 36.5% { opacity: 0; stroke-dashoffset: 200; } 37.5%, 49.5% { opacity: 1; stroke-dashoffset: 0; } 49.9%, 100% { opacity: 0; } }
+@keyframes d2_l3 { 0%, 42.5% { opacity: 0; stroke-dashoffset: 200; } 43.5%, 49.5% { opacity: 1; stroke-dashoffset: 0; } 49.9%, 100% { opacity: 0; } }
+
+/* DOMAIN 3 */
+@keyframes d3_c1 { 0%, 50.5% { stroke-dashoffset: 1200; } 54.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d3_c2 { 0%, 56.5% { stroke-dashoffset: 1200; } 60.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d3_c3 { 0%, 62.5% { stroke-dashoffset: 1200; } 66.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d3_c4 { 0%, 68.5% { stroke-dashoffset: 1200; } 73.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d3_s1 { 0%, 54.5% { opacity: 0; } 55.5%, 74.5% { opacity: 1; } 74.9%, 100% { opacity: 0; } }
+@keyframes d3_s2 { 0%, 60.5% { opacity: 0; } 61.5%, 74.5% { opacity: 1; } 74.9%, 100% { opacity: 0; } }
+@keyframes d3_s3 { 0%, 66.5% { opacity: 0; } 67.5%, 74.5% { opacity: 1; } 74.9%, 100% { opacity: 0; } }
+@keyframes d3_l1 { 0%, 55.5% { opacity: 0; stroke-dashoffset: 200; } 56.5%, 74.5% { opacity: 1; stroke-dashoffset: 0; } 74.9%, 100% { opacity: 0; } }
+@keyframes d3_l2 { 0%, 61.5% { opacity: 0; stroke-dashoffset: 200; } 62.5%, 74.5% { opacity: 1; stroke-dashoffset: 0; } 74.9%, 100% { opacity: 0; } }
+@keyframes d3_l3 { 0%, 67.5% { opacity: 0; stroke-dashoffset: 200; } 68.5%, 74.5% { opacity: 1; stroke-dashoffset: 0; } 74.9%, 100% { opacity: 0; } }
+
+/* DOMAIN 4 */
+@keyframes d4_c1 { 0%, 75.5% { stroke-dashoffset: 1200; } 79.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d4_c2 { 0%, 81.5% { stroke-dashoffset: 1200; } 85.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d4_c3 { 0%, 87.5% { stroke-dashoffset: 1200; } 91.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d4_c4 { 0%, 93.5% { stroke-dashoffset: 1200; } 98.5%, 100% { stroke-dashoffset: 0; } }
+@keyframes d4_s1 { 0%, 79.5% { opacity: 0; } 80.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes d4_s2 { 0%, 85.5% { opacity: 0; } 86.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes d4_s3 { 0%, 91.5% { opacity: 0; } 92.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes d4_l1 { 0%, 80.5% { opacity: 0; stroke-dashoffset: 200; } 81.5%, 99.5% { opacity: 1; stroke-dashoffset: 0; } 100% { opacity: 0; } }
+@keyframes d4_l2 { 0%, 86.5% { opacity: 0; stroke-dashoffset: 200; } 87.5%, 99.5% { opacity: 1; stroke-dashoffset: 0; } 100% { opacity: 0; } }
+@keyframes d4_l3 { 0%, 92.5% { opacity: 0; stroke-dashoffset: 200; } 93.5%, 99.5% { opacity: 1; stroke-dashoffset: 0; } 100% { opacity: 0; } }
+
+#domain1 { animation: domain1Visible var(--loop) linear infinite; }
+#domain2 { animation: domain2Visible var(--loop) linear infinite; }
+#domain3 { animation: domain3Visible var(--loop) linear infinite; }
+#domain4 { animation: domain4Visible var(--loop) linear infinite; }
+
+#heading1 { animation: heading1 var(--loop) ease-out infinite; }
+#heading2 { animation: heading2 var(--loop) ease-out infinite; }
+#heading3 { animation: heading3 var(--loop) ease-out infinite; }
+#heading4 { animation: heading4 var(--loop) ease-out infinite; }
+
+#domain1 .curve.c1 { animation: d1_c1 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain1 .curve.c2 { animation: d1_c2 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain1 .curve.c3 { animation: d1_c3 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain1 .curve.c4 { animation: d1_c4 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain1 .step.s1  { animation: d1_s1 var(--loop) ease-out infinite; }
+#domain1 .step.s2  { animation: d1_s2 var(--loop) ease-out infinite; }
+#domain1 .step.s3  { animation: d1_s3 var(--loop) ease-out infinite; }
+#domain1 .lift.l1  { animation: d1_l1 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain1 .lift.l2  { animation: d1_l2 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain1 .lift.l3  { animation: d1_l3 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+
+#domain2 .curve.c1 { animation: d2_c1 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain2 .curve.c2 { animation: d2_c2 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain2 .curve.c3 { animation: d2_c3 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain2 .curve.c4 { animation: d2_c4 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain2 .step.s1  { animation: d2_s1 var(--loop) ease-out infinite; }
+#domain2 .step.s2  { animation: d2_s2 var(--loop) ease-out infinite; }
+#domain2 .step.s3  { animation: d2_s3 var(--loop) ease-out infinite; }
+#domain2 .lift.l1  { animation: d2_l1 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain2 .lift.l2  { animation: d2_l2 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain2 .lift.l3  { animation: d2_l3 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+
+#domain3 .curve.c1 { animation: d3_c1 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain3 .curve.c2 { animation: d3_c2 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain3 .curve.c3 { animation: d3_c3 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain3 .curve.c4 { animation: d3_c4 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain3 .step.s1  { animation: d3_s1 var(--loop) ease-out infinite; }
+#domain3 .step.s2  { animation: d3_s2 var(--loop) ease-out infinite; }
+#domain3 .step.s3  { animation: d3_s3 var(--loop) ease-out infinite; }
+#domain3 .lift.l1  { animation: d3_l1 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain3 .lift.l2  { animation: d3_l2 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain3 .lift.l3  { animation: d3_l3 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+
+#domain4 .curve.c1 { animation: d4_c1 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain4 .curve.c2 { animation: d4_c2 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain4 .curve.c3 { animation: d4_c3 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain4 .curve.c4 { animation: d4_c4 var(--loop) cubic-bezier(0.5,0,0.5,1) infinite; }
+#domain4 .step.s1  { animation: d4_s1 var(--loop) ease-out infinite; }
+#domain4 .step.s2  { animation: d4_s2 var(--loop) ease-out infinite; }
+#domain4 .step.s3  { animation: d4_s3 var(--loop) ease-out infinite; }
+#domain4 .lift.l1  { animation: d4_l1 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain4 .lift.l2  { animation: d4_l2 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+#domain4 .lift.l3  { animation: d4_l3 var(--loop) ease-out infinite; stroke-dasharray: 200; }
+
+@media (max-width: 720px) {
+  .step-name { font-size: 36px; }
+  .step-detail { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div class="stage" aria-label="Animated staircase across four domains">
+
+  <div class="domain-heading">
+    <div class="domain-eyebrow">Domain</div>
+    <div class="domain-name">
+      <span id="heading1">Infection medicine</span>
+      <span id="heading2">High jump</span>
+      <span id="heading3">Retail</span>
+      <span id="heading4">Flight</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="swatch"></span>Optimisation</span>
+    <span class="legend-item"><span class="swatch rup"></span>Rupture</span>
+  </div>
+
+  <!--
+    ─── GEOMETRY ────────────────────────────────────────
+    Aspect: 4:5 (slightly taller than wide).
+    Camera viewBox: 800 × 1000 — anchored at bottom-left of action at the start.
+
+    Geometry: each optimisation segment dx = 380, dy = -220.
+    Lift: dx = 60, dy = -160.
+
+    Step 1 plateau: ends at (520, 1380)
+    Lift 1:         (520, 1380) → (580, 1220)
+    Step 2 plateau: ends at (960, 1000)
+    Lift 2:         (960, 1000) → (1020, 840)
+    Step 3 plateau: ends at (1400, 620)   ← named protagonist
+    Lift 3:         (1400, 620) → (1460, 460)
+    Step 4 climb:   ends at (1840, 240)
+
+    Camera path (4:5 viewBox 800 × 1000):
+      Frame 1 (bottom-left origin):  x=100,  y=580   shows curve 1 + bit of curve 2
+      Frame 2 (mid):                 x=420,  y=420   shows curves 2-3 + step 2
+      Frame 3 (top-right):           x=860,  y=200   shows curves 3-4 + steps 3 + start of 4
+
+    Between domains: SNAP back to frame 1 (very fast, ~0.5% of loop).
+  -->
+
+  <svg class="staircase" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+
+    <animate
+      attributeName="viewBox"
+      dur="40s"
+      repeatCount="indefinite"
+      calcMode="linear"
+      values="
+        100 580 800 1000;
+        100 580 800 1000;
+        180 540 800 1000;
+        260 480 800 1000;
+        360 420 800 1000;
+        460 360 800 1000;
+        580 300 800 1000;
+        700 240 800 1000;
+        860 200 800 1000;
+
+        100 580 800 1000;
+        100 580 800 1000;
+        180 540 800 1000;
+        260 480 800 1000;
+        360 420 800 1000;
+        460 360 800 1000;
+        580 300 800 1000;
+        700 240 800 1000;
+        860 200 800 1000;
+
+        100 580 800 1000;
+        100 580 800 1000;
+        180 540 800 1000;
+        260 480 800 1000;
+        360 420 800 1000;
+        460 360 800 1000;
+        580 300 800 1000;
+        700 240 800 1000;
+        860 200 800 1000;
+
+        100 580 800 1000;
+        100 580 800 1000;
+        180 540 800 1000;
+        260 480 800 1000;
+        360 420 800 1000;
+        460 360 800 1000;
+        580 300 800 1000;
+        700 240 800 1000;
+        860 200 800 1000;
+
+        860 200 800 1000"
+      keyTimes="
+        0;
+        0.015;
+        0.05;
+        0.08;
+        0.115;
+        0.14;
+        0.175;
+        0.20;
+        0.245;
+
+        0.25;
+        0.265;
+        0.30;
+        0.33;
+        0.365;
+        0.39;
+        0.425;
+        0.45;
+        0.495;
+
+        0.50;
+        0.515;
+        0.55;
+        0.58;
+        0.615;
+        0.64;
+        0.675;
+        0.70;
+        0.745;
+
+        0.75;
+        0.765;
+        0.80;
+        0.83;
+        0.865;
+        0.89;
+        0.925;
+        0.95;
+        0.995;
+
+        1"
+    />
+
+    <!-- ───────── DOMAIN 1 — INFECTION MEDICINE ───────── -->
+    <g id="domain1">
+      <path class="curve c1" d="M 140 1600 C 220 1596, 320 1420, 400 1390 C 460 1383, 500 1380, 520 1380" pathLength="1200" />
+      <path class="lift  l1" d="M 520 1380 L 580 1220" pathLength="200" />
+      <path class="curve c2" d="M 580 1220 C 660 1216, 760 1040, 840 1010 C 900 1003, 940 1000, 960 1000" pathLength="1200" />
+      <path class="lift  l2" d="M 960 1000 L 1020 840" pathLength="200" />
+      <path class="curve c3" d="M 1020 840 C 1100 836, 1200 660, 1280 630 C 1340 623, 1380 620, 1400 620" pathLength="1200" />
+      <path class="lift  l3" d="M 1400 620 L 1460 460" pathLength="200" />
+      <path class="curve c4" d="M 1460 460 C 1540 456, 1640 280, 1720 250 C 1780 243, 1820 240, 1840 240" pathLength="1200" />
+
+      <g class="step-group step s1">
+        <circle class="step-dot" cx="520" cy="1380" r="10"></circle>
+        <line x1="520" y1="1380" x2="520" y2="1310" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="540" y="1293">Semmelweis</text>
+        <text class="step-detail" x="540" y="1326">Handwashing · 1847</text>
+      </g>
+      <g class="step-group step s2">
+        <circle class="step-dot" cx="960" cy="1000" r="10"></circle>
+        <line x1="960" y1="1000" x2="960" y2="930" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="980" y="913">Lister</text>
+        <text class="step-detail" x="980" y="946">Antiseptic surgery · 1867</text>
+      </g>
+      <g class="step-group step s3">
+        <circle class="step-dot" cx="1400" cy="620" r="10"></circle>
+        <line x1="1400" y1="620" x2="1400" y2="550" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="1420" y="533">Fleming</text>
+        <text class="step-detail" x="1420" y="566">Penicillin · 1928</text>
+      </g>
+    </g>
+
+    <!-- ───────── DOMAIN 2 — HIGH JUMP ───────── -->
+    <g id="domain2">
+      <path class="curve c1" d="M 140 1600 C 220 1596, 320 1420, 400 1390 C 460 1383, 500 1380, 520 1380" pathLength="1200" />
+      <path class="lift  l1" d="M 520 1380 L 580 1220" pathLength="200" />
+      <path class="curve c2" d="M 580 1220 C 660 1216, 760 1040, 840 1010 C 900 1003, 940 1000, 960 1000" pathLength="1200" />
+      <path class="lift  l2" d="M 960 1000 L 1020 840" pathLength="200" />
+      <path class="curve c3" d="M 1020 840 C 1100 836, 1200 660, 1280 630 C 1340 623, 1380 620, 1400 620" pathLength="1200" />
+      <path class="lift  l3" d="M 1400 620 L 1460 460" pathLength="200" />
+      <path class="curve c4" d="M 1460 460 C 1540 456, 1640 280, 1720 250 C 1780 243, 1820 240, 1840 240" pathLength="1200" />
+
+      <g class="step-group step s1">
+        <circle class="step-dot" cx="520" cy="1380" r="10"></circle>
+        <line x1="520" y1="1380" x2="520" y2="1310" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="540" y="1293">Horine</text>
+        <text class="step-detail" x="540" y="1326">Western Roll · 1912</text>
+      </g>
+      <g class="step-group step s2">
+        <circle class="step-dot" cx="960" cy="1000" r="10"></circle>
+        <line x1="960" y1="1000" x2="960" y2="930" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="980" y="913">Davis</text>
+        <text class="step-detail" x="980" y="946">Straddle · 1936</text>
+      </g>
+      <g class="step-group step s3">
+        <circle class="step-dot" cx="1400" cy="620" r="10"></circle>
+        <line x1="1400" y1="620" x2="1400" y2="550" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="1420" y="533">Fosbury</text>
+        <text class="step-detail" x="1420" y="566">The Flop · 1968</text>
+      </g>
+    </g>
+
+    <!-- ───────── DOMAIN 3 — RETAIL ───────── -->
+    <g id="domain3">
+      <path class="curve c1" d="M 140 1600 C 220 1596, 320 1420, 400 1390 C 460 1383, 500 1380, 520 1380" pathLength="1200" />
+      <path class="lift  l1" d="M 520 1380 L 580 1220" pathLength="200" />
+      <path class="curve c2" d="M 580 1220 C 660 1216, 760 1040, 840 1010 C 900 1003, 940 1000, 960 1000" pathLength="1200" />
+      <path class="lift  l2" d="M 960 1000 L 1020 840" pathLength="200" />
+      <path class="curve c3" d="M 1020 840 C 1100 836, 1200 660, 1280 630 C 1340 623, 1380 620, 1400 620" pathLength="1200" />
+      <path class="lift  l3" d="M 1400 620 L 1460 460" pathLength="200" />
+      <path class="curve c4" d="M 1460 460 C 1540 456, 1640 280, 1720 250 C 1780 243, 1820 240, 1840 240" pathLength="1200" />
+
+      <g class="step-group step s1">
+        <circle class="step-dot" cx="520" cy="1380" r="10"></circle>
+        <line x1="520" y1="1380" x2="520" y2="1310" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="540" y="1293">Woolworth</text>
+        <text class="step-detail" x="540" y="1326">Fixed-price store · 1879</text>
+      </g>
+      <g class="step-group step s2">
+        <circle class="step-dot" cx="960" cy="1000" r="10"></circle>
+        <line x1="960" y1="1000" x2="960" y2="930" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="980" y="913">Sears</text>
+        <text class="step-detail" x="980" y="946">Mail-order catalogue · 1893</text>
+      </g>
+      <g class="step-group step s3">
+        <circle class="step-dot" cx="1400" cy="620" r="10"></circle>
+        <line x1="1400" y1="620" x2="1400" y2="550" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="1420" y="533">Bezos</text>
+        <text class="step-detail" x="1420" y="566">E-commerce · 1995</text>
+      </g>
+    </g>
+
+    <!-- ───────── DOMAIN 4 — FLIGHT ───────── -->
+    <g id="domain4">
+      <path class="curve c1" d="M 140 1600 C 220 1596, 320 1420, 400 1390 C 460 1383, 500 1380, 520 1380" pathLength="1200" />
+      <path class="lift  l1" d="M 520 1380 L 580 1220" pathLength="200" />
+      <path class="curve c2" d="M 580 1220 C 660 1216, 760 1040, 840 1010 C 900 1003, 940 1000, 960 1000" pathLength="1200" />
+      <path class="lift  l2" d="M 960 1000 L 1020 840" pathLength="200" />
+      <path class="curve c3" d="M 1020 840 C 1100 836, 1200 660, 1280 630 C 1340 623, 1380 620, 1400 620" pathLength="1200" />
+      <path class="lift  l3" d="M 1400 620 L 1460 460" pathLength="200" />
+      <path class="curve c4" d="M 1460 460 C 1540 456, 1640 280, 1720 250 C 1780 243, 1820 240, 1840 240" pathLength="1200" />
+
+      <g class="step-group step s1">
+        <circle class="step-dot" cx="520" cy="1380" r="10"></circle>
+        <line x1="520" y1="1380" x2="520" y2="1310" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="540" y="1293">Montgolfier</text>
+        <text class="step-detail" x="540" y="1326">Hot-air balloon · 1783</text>
+      </g>
+      <g class="step-group step s2">
+        <circle class="step-dot" cx="960" cy="1000" r="10"></circle>
+        <line x1="960" y1="1000" x2="960" y2="930" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="980" y="913">Wright</text>
+        <text class="step-detail" x="980" y="946">Powered flight · 1903</text>
+      </g>
+      <g class="step-group step s3">
+        <circle class="step-dot" cx="1400" cy="620" r="10"></circle>
+        <line x1="1400" y1="620" x2="1400" y2="550" stroke="#0a0a09" stroke-width="2.5"></line>
+        <text class="step-name" x="1420" y="533">Yeager</text>
+        <text class="step-detail" x="1420" y="566">Supersonic flight · 1947</text>
+      </g>
+    </g>
+
+  </svg>
+
+</div>
+
+</body>
+</html>
