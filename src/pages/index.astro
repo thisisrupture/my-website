@@ -236,7 +236,7 @@ import Footer from '../components/Footer.astro';
     else {
       render(0);
       ScrollTrigger.create({
-        trigger: steps, start: 'top 85%', end: 'bottom bottom',
+        trigger: steps, start: 'top 85%', end: 'bottom center',
         scrub: true, invalidateOnRefresh: true,
         onUpdate: (self) => render(self.progress),
       });
