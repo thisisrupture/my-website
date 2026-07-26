@@ -198,13 +198,14 @@ import Footer from '../components/Footer.astro';
   .et-copy .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:24px; }
   .et-copy h2 { font-family:var(--font-serif); font-weight:700; font-size:clamp(1.8rem,2.8vw,2.6rem); line-height:1.15; margin:0 0 20px; max-width:24ch; }
   .et-copy p { font-size:1.02rem; line-height:1.6; color:var(--fg-muted); margin:0 0 32px; max-width:44ch; }
-  .et-img { position:relative; border-left:var(--hairline); background:var(--paper); padding:24px; min-width:0; }
-  .et-img-inner { position:absolute; inset:24px; border:var(--hairline); overflow:hidden; }
+  .et-img { position:relative; border-left:var(--hairline); background:var(--paper); padding:0; min-width:0; overflow:hidden; }
+  .et-img-inner { position:absolute; inset:0; border:0; overflow:hidden; }
   .et-img-inner img { width:100%; height:100%; object-fit:cover; }
 
   @media (max-width: 860px) {
     .home-hero, .essay-teaser, .cards, .scrolly-grid { grid-template-columns: 1fr; }
     .hero-img { border-left:0; border-top:var(--hairline); min-height:360px; }
+    .et-img { border-left:0; border-top:var(--hairline); min-height:360px; }
     .card { border-right:0; border-bottom:var(--hairline); }
     .block, .hero-copy, .work-head, .et-copy { padding:32px 24px; }
     .home-hero .sub { max-width:none; }
