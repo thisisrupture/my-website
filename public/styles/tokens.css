@@ -103,7 +103,7 @@
   --ink-2:        #1f1f1f;   /* very dark, used inside --ink blocks only */
   --mint:         #51d4b2;   /* Rupture-positive accent                  */
   --mint-ink:     #1f5b4a;   /* mint pressed into ink for text-on-mint   */
-  --coral:        #ff686b;   /* Rupture-negative / urgency accent        */
+  --coral:        #FE1849;   /* Rupture-negative / urgency accent        */
   --coral-ink:    #7a2326;   /* coral pressed into ink, rarely used      */
 
   /* Foreground / background semantic aliases */
