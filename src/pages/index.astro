@@ -137,7 +137,7 @@ import Footer from '../components/Footer.astro';
   .mint-hl { background:var(--mint); padding:0.02em 0.18em; }
   .coral { background:var(--coral); color:var(--ink); padding:0.02em 0.18em; }
 
-  .home-hero { border:var(--hairline-2); display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,0.95fr); min-height:560px; }
+  .home-hero { border:var(--hairline); display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,0.95fr); min-height:560px; }
   .hero-copy { padding:48px 56px; display:flex; flex-direction:column; justify-content:space-between; gap:32px; }
   .eyebrow { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); }
   .eyebrow .dot { width:7px; height:7px; border-radius:50%; background:var(--coral); display:inline-block; }
@@ -146,7 +146,7 @@ import Footer from '../components/Footer.astro';
   .cta-row { display:flex; gap:12px; flex-wrap:wrap; }
   .stats { display:grid; grid-template-columns:1fr 1fr; gap:20px 40px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg-muted); border-top:var(--hairline-faint); padding-top:20px; }
   .stats span { display:block; color:var(--fg-faint); margin-bottom:5px; }
-  .hero-img { position:relative; border-left:var(--hairline-2); background:var(--paper); padding:28px; min-width:0; }
+  .hero-img { position:relative; border-left:var(--hairline); background:var(--paper); padding:28px; min-width:0; }
   .hero-img-inner { position:absolute; inset:28px; border:var(--hairline); overflow:hidden; }
   .hero-img-inner img { width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.03); }
 
@@ -205,7 +205,7 @@ import Footer from '../components/Footer.astro';
 
   @media (max-width: 860px) {
     .home-hero, .essay-teaser, .cards, .scrolly-grid { grid-template-columns: 1fr; }
-    .hero-img { border-left:0; border-top:var(--hairline-2); min-height:360px; }
+    .hero-img { border-left:0; border-top:var(--hairline); min-height:360px; }
     .card { border-right:0; border-bottom:var(--hairline); }
     .block, .hero-copy, .work-head, .et-copy { padding:32px 24px; }
     .home-hero .sub { max-width:none; }

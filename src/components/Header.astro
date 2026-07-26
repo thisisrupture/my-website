@@ -97,6 +97,12 @@ const { active = "" } = Astro.props;
 
   @media (max-width: 820px) {
     header.site { padding: 14px 18px; margin-top: 12px; top: 12px; }
+    /* opaque cap over the gap above the sticky bar, so content scrolls out of sight behind it */
+    header.site::before {
+      content:""; position:fixed; top:0; left:0; right:0;
+      height: calc(env(safe-area-inset-top, 0px) + 12px);
+      background: var(--paper); z-index:1;
+    }
     nav.nav-desktop { display:none; }
     .burger { display:flex; }
     .nav-mobile { display:flex; }
