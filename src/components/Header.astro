@@ -24,10 +24,16 @@ const { active = "" } = Astro.props;
 
 <style>
   header.site {
-    position: sticky; top: 0; z-index: 40;
+    position: sticky; top: 12px; z-index: 40; margin-top: 12px;
     display: flex; align-items: center; justify-content: space-between;
     background: color-mix(in srgb, var(--paper) 97%, transparent);
     border: var(--hairline); padding: 16px 26px;
+  }
+  /* opaque cap over the gap above the sticky bar, so content scrolls out of sight behind it */
+  header.site::before {
+    content:""; position:fixed; top:0; left:0; right:0;
+    height: calc(env(safe-area-inset-top, 0px) + 12px);
+    background: var(--paper); z-index:1;
   }
   .mark { display:flex; align-items:baseline; gap:2px; font-family:var(--font-mono); font-size:15px; letter-spacing:0.14em; font-weight:600; text-transform:uppercase; position:relative; z-index:2; }
   .dot { width:7px; height:7px; border-radius:50%; background:var(--coral); display:inline-block; margin-left:5px; transform:translateY(-1px); transition: transform var(--dur) var(--ease); }
@@ -96,13 +102,7 @@ const { active = "" } = Astro.props;
   .nav-mobile[data-open] a:nth-child(5){ transition-delay:.26s; }
 
   @media (max-width: 820px) {
-    header.site { padding: 14px 18px; margin-top: 12px; top: 12px; }
-    /* opaque cap over the gap above the sticky bar, so content scrolls out of sight behind it */
-    header.site::before {
-      content:""; position:fixed; top:0; left:0; right:0;
-      height: calc(env(safe-area-inset-top, 0px) + 12px);
-      background: var(--paper); z-index:1;
-    }
+    header.site { padding: 14px 18px; }
     nav.nav-desktop { display:none; }
     .burger { display:flex; }
     .nav-mobile { display:flex; }
