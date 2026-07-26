@@ -116,7 +116,7 @@ import Footer from '../components/Footer.astro';
         <p>The problem in modern markets isn't noise; it's sameness. The escape is not a better optimisation — it is a non-linear leap from a frame that has quietly stopped serving the people inside it.</p>
         <div><a href="/essay" class="btn btn-mint">Read the essay →</a></div>
       </div>
-      <div class="et-img"><div class="et-img-inner"><img src="/assets/staircase-diagram.webp" width="1400" height="859" loading="lazy" decoding="async" alt="The Progress Staircase — optimisation climbs and plateaus within a model; rupture is the vertical step to a new one." /></div></div>
+      <div class="et-img"><div class="et-img-inner"><img src="/assets/london.webp" width="896" height="1200" loading="lazy" decoding="async" alt="London." /></div></div>
     </section>
 
     <Contact />
@@ -193,15 +193,14 @@ import Footer from '../components/Footer.astro';
   .card .tag span { background:var(--mint); padding:4px 8px; }
   .work-foot { padding:28px 56px; border-top:var(--hairline); font-family:var(--font-serif); font-size:1.15rem; line-height:1.4; font-style:italic; }
 
-  .essay-teaser { border:var(--hairline); background:var(--paper); color:var(--ink); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:340px; }
+  .essay-teaser { border:var(--hairline); background:var(--paper); color:var(--ink); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,0.85fr); min-height:340px; }
   .et-copy { padding:48px 56px; display:flex; flex-direction:column; justify-content:center; }
   .et-copy .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:24px; }
   .et-copy h2 { font-family:var(--font-serif); font-weight:700; font-size:clamp(1.8rem,2.8vw,2.6rem); line-height:1.15; margin:0 0 20px; max-width:24ch; }
   .et-copy p { font-size:1.02rem; line-height:1.6; color:var(--fg-muted); margin:0 0 32px; max-width:44ch; }
   .et-img { position:relative; border-left:var(--hairline); background:var(--paper); padding:24px; min-width:0; }
   .et-img-inner { position:absolute; inset:24px; border:var(--hairline); overflow:hidden; }
-  .et-img-inner { display:flex; align-items:center; justify-content:center; }
-  .et-img-inner img { width:100%; height:100%; object-fit:contain; padding:18px; }
+  .et-img-inner img { width:100%; height:100%; object-fit:cover; }
 
   @media (max-width: 860px) {
     .home-hero, .essay-teaser, .cards, .scrolly-grid { grid-template-columns: 1fr; }
