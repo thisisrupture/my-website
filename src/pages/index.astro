@@ -108,6 +108,19 @@ import Footer from '../components/Footer.astro';
       </div>
     </section>
 
+    <!-- REPORTING WITH CONFIDENCE -->
+    <section id="reporting" class="board-band">
+      <div class="board-l">
+        <div class="k">Reporting with confidence</div>
+        <h2>&ldquo;We&rsquo;re using AI&rdquo; is not a direction. Everyone can say it.</h2>
+      </div>
+      <div class="board-r">
+        <div class="three"><span>A plan</span><span>A clear view</span><span>Visible progress</span></div>
+        <p>Boards and investors want three things: a plan, a clear view, and visible progress. Underneath them, evidence of direction rather than activity.</p>
+        <p>We give you a plan built around <strong>a basis for competitive advantage</strong>. AI shouldn&rsquo;t be about the tech itself, but about building a unique edge and using AI to speed toward it. That&rsquo;s how you create real separation, and a plan that holds up.</p>
+      </div>
+    </section>
+
     <!-- 04 ESSAY TEASER -->
     <section id="essay" class="essay-teaser">
       <div class="et-copy">
@@ -179,6 +192,17 @@ import Footer from '../components/Footer.astro';
   .daylight-figure svg, .fig-m svg { width:100%; display:block; overflow:visible; }
   .fig-m { display:none; margin:20px 0 6px; border:0; background:transparent; }
 
+  .board-band { border:var(--hairline); background:var(--ink); color:var(--fg-on-dark); display:grid; grid-template-columns:0.95fr 1.05fr; }
+  .board-l { padding:44px 48px; border-right:var(--hairline); }
+  .board-l .k { font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mint); margin-bottom:20px; }
+  .board-l h2 { font-family:var(--font-serif); font-weight:700; font-size:clamp(1.7rem,2.6vw,2.3rem); line-height:1.12; margin:0; max-width:18ch; }
+  .board-r { padding:44px 48px; display:flex; flex-direction:column; justify-content:center; }
+  .board-r p { font-size:1.02rem; line-height:1.6; color:var(--fg-on-dark-muted); margin:0 0 18px; }
+  .board-r p:last-child { margin:0; }
+  .board-r strong { color:var(--fg-on-dark); font-weight:700; }
+  .three { display:flex; gap:10px; margin:0 0 22px; flex-wrap:wrap; }
+  .three span { font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; border:1px solid var(--fg-on-dark-faint); color:var(--mint); padding:5px 10px; }
+
   .work { border:var(--hairline); }
   .work-head { padding:48px 56px 36px; border-bottom:var(--hairline); }
   .cards { display:grid; grid-template-columns:repeat(3,1fr); }
@@ -203,7 +227,9 @@ import Footer from '../components/Footer.astro';
   .et-img-inner img { width:100%; height:100%; object-fit:cover; }
 
   @media (max-width: 860px) {
-    .home-hero, .essay-teaser, .cards, .scrolly-grid { grid-template-columns: 1fr; }
+    .home-hero, .essay-teaser, .cards, .scrolly-grid, .board-band { grid-template-columns: 1fr; }
+    .board-l { border-right:0; border-bottom:var(--hairline); }
+    .board-l, .board-r { padding:32px 24px; }
     .hero-img { border-left:0; border-top:var(--hairline); min-height:360px; }
     .et-img { border-left:0; border-top:var(--hairline); min-height:360px; }
     .card { border-right:0; border-bottom:var(--hairline); }
