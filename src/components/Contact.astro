@@ -9,9 +9,12 @@ const { heading = "Start with the problem." } = Astro.props;
       <p>Tell us the problem you are working on. We will come back with a straight answer on whether, and how, we can help.</p>
       <p class="email">Prefer email? <a href="mailto:hello@thisisrupture.com">hello@thisisrupture.com</a></p>
     </div>
-    <form name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thanks">
-      <input type="hidden" name="form-name" value="contact" />
-      <p hidden><label>Don't fill this in: <input name="bot-field" /></label></p>
+    <form name="contact" method="POST" action="https://api.web3forms.com/submit">
+      <input type="hidden" name="access_key" value="a1c47d7f-da1d-4642-845e-841bac266acc" />
+      <input type="hidden" name="subject" value="New enquiry from thisisrupture.com" />
+      <input type="hidden" name="from_name" value="Rupture website" />
+      <input type="hidden" name="redirect" value="https://thisisrupture.com/thanks" />
+      <input type="checkbox" name="botcheck" class="botcheck" tabindex="-1" autocomplete="off" />
       <label><span>Name</span>
         <input type="text" name="name" placeholder="Enter your name" required />
       </label>
@@ -35,6 +38,7 @@ const { heading = "Start with the problem." } = Astro.props;
   .email { font-family:var(--font-mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--fg-on-dark); }
   .email a { color:var(--mint); }
   form { display:flex; flex-direction:column; gap:26px; }
+  .botcheck { position:absolute; left:-9999px; opacity:0; }
   label { display:block; }
   label span { font-family:var(--font-mono); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--mint); }
   input, textarea { font-family:var(--font-sans); font-size:1rem; color:var(--fg-on-dark); background:transparent; border:0; border-bottom:1px solid var(--fg-on-dark-faint); padding:0.6em 0; width:100%; outline:none; transition: border-color var(--dur) var(--ease); }
