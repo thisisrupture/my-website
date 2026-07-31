@@ -1,0 +1,454 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Contact from '../components/Contact.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base
+  title="The Focused Acceleration Model — Rupture"
+  description="Rupture's framework for building a real edge with AI: a clear order for building an AI capability, and a way to check whether work already underway is being built on the right foundations."
+>
+  <div class="wrap">
+    <Header active="model" />
+
+    <main class="fam-page">
+      <div class="fam-root">
+
+        <section class="fam-head">
+          <div class="fam-eyebrow"><span class="fam-eyebrow-dot" aria-hidden="true"></span>The framework</div>
+          <h1 class="fam-title">The Focused Acceleration Model<sup>&trade;</sup><span class="fam-stop">.</span></h1>
+          <p class="fam-lede">
+            This isn&rsquo;t about doing AI. It&rsquo;s about building a real edge and using AI to reach it
+            faster &mdash; executed with the discipline boards take confidence in.
+          </p>
+        </section>
+
+        <!-- ===== INTERACTIVE FIGURE ===== -->
+        <figure class="fam-figure">
+          <div class="fam-stage">
+            <svg class="fam-svg" id="famSvg" viewBox="0 0 1120 640" role="group"
+                 aria-label="The Focused Acceleration Model: five stages climbing from a converged-market baseline to competitive daylight."
+                 data-selection="false">
+
+              <!-- Baseline -->
+              <line class="fam-baseline" x1="60" y1="540" x2="1060" y2="540"></line>
+              <g id="famTicks"></g>
+              <text class="fam-axis-label" x="60" y="574">THE CONVERGED MARKET &mdash; EVERYONE OPTIMISING THE SAME WAY</text>
+
+              <!-- Climbing line -->
+              <path class="fam-climb" id="famClimb"></path>
+              <polygon class="fam-arrowhead" id="famArrow"></polygon>
+
+              <!-- Iterate loop between stage 04 and 05 -->
+              <g id="famLoop" aria-hidden="true">
+                <path class="fam-loop-path" id="famLoopPath"></path>
+                <polygon class="fam-loop-arrow" id="famLoopArrow"></polygon>
+                <text class="fam-loop-text" id="famLoopText1"></text>
+                <text class="fam-loop-text" id="famLoopText2"></text>
+              </g>
+
+              <!-- Daylight drop near stage 05 -->
+              <g id="famDaylight" aria-hidden="true">
+                <line class="fam-daylight-line" id="famDaylightLine"></line>
+                <text class="fam-daylight-text" id="famDaylightText">DAYLIGHT</text>
+              </g>
+
+              <!-- Nodes injected by JS -->
+              <g id="famNodes"></g>
+            </svg>
+          </div>
+
+          <!-- Detail panel -->
+          <div class="fam-panel" id="famPanel" data-accent="false" data-coral="false" aria-live="polite">
+            <div class="fam-panel-num" id="famPanelNum">01</div>
+            <div>
+              <h2 class="fam-panel-name" id="famPanelName">Define the destination</h2>
+              <p class="fam-panel-sub" id="famPanelSub">The ambition</p>
+            </div>
+            <p class="fam-panel-desc" id="famPanelDesc">
+              Agree what the organisation is actually trying to achieve, before any technology decision.
+              The outcome, not the tool.
+            </p>
+            <p class="fam-panel-hint" id="famPanelHint">Hover, click or arrow-key through the nodes to move along the climb.</p>
+          </div>
+
+          <figcaption class="fam-figcap">
+            The Focused Acceleration Model gives a clear order for building an AI capability, and a way to
+            check whether work already underway is being built on the right foundations.
+          </figcaption>
+        </figure>
+
+      </div>
+    </main>
+
+    <Contact heading="Build the edge first. Then accelerate." />
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  /* ------------------------------------------------------------------
+     The Focused Acceleration Model — interactive figure.
+     Themed entirely with Rupture design tokens (tokens.css), so it
+     inherits the site's paper, ink, mint, coral and type automatically.
+     All selectors are scoped under .fam-root to avoid leaking.
+     ------------------------------------------------------------------ */
+
+  .fam-page { min-width: 0; }
+  .fam-root { padding: clamp(20px, 4vw, 40px) 0 0; }
+
+  /* ---- Header block ---- */
+  .fam-root .fam-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--fg-muted);
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 22px;
+  }
+  .fam-root .fam-eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); display: inline-block; }
+
+  .fam-root .fam-title {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: clamp(2.2rem, 5.4vw, 4rem);
+    line-height: 1.0; letter-spacing: -0.02em;
+    margin: 0 0 22px; max-width: 18ch;
+  }
+  .fam-root .fam-title sup { font-size: 0.34em; top: -1em; font-weight: 400; }
+  .fam-root .fam-title .fam-stop { color: var(--coral); }
+
+  .fam-root .fam-lede {
+    font-family: var(--font-serif); font-weight: 400;
+    font-size: clamp(1.15rem, 1.8vw, 1.5rem); line-height: 1.4;
+    max-width: 44ch; margin: 0 0 clamp(30px, 5vw, 52px);
+  }
+
+  /* ---- Figure frame ---- */
+  .fam-root .fam-figure { margin: 0; border: var(--hairline); background: var(--paper); }
+  .fam-root .fam-stage { padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) 8px; }
+  .fam-root .fam-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+  .fam-root .fam-svg text { fill: var(--ink); }
+  .fam-root .fam-axis-label {
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em;
+    fill: var(--fg-muted); text-transform: uppercase;
+  }
+
+  /* Climbing line */
+  .fam-root .fam-climb { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .fam-root .fam-arrowhead { fill: var(--coral); }
+
+  /* Baseline */
+  .fam-root .fam-baseline { stroke: var(--fg-faint); stroke-width: 1.5; }
+  .fam-root .fam-tick { stroke: var(--fg-faint); stroke-width: 1; }
+
+  /* Daylight drop */
+  .fam-root .fam-daylight-line { stroke: var(--mint-ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
+  .fam-root .fam-daylight-text {
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.16em;
+    fill: var(--mint-ink); text-transform: uppercase;
+  }
+
+  /* Iterate loop */
+  .fam-root .fam-loop-path { fill: none; stroke: var(--fg-muted); stroke-width: 1.4; }
+  .fam-root .fam-loop-arrow { fill: var(--fg-muted); }
+  .fam-root .fam-loop-text { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; fill: var(--fg-muted); }
+
+  /* Nodes */
+  .fam-root .fam-node { cursor: pointer; outline: none; }
+  .fam-root .fam-node-dot {
+    fill: var(--paper); stroke: var(--ink); stroke-width: 2.5;
+    transition: fill 0.2s var(--ease, ease), stroke 0.2s var(--ease, ease), r 0.2s var(--ease, ease);
+  }
+  .fam-root .fam-node[data-accent="true"] .fam-node-dot { fill: var(--mint); stroke: var(--mint); }
+  .fam-root .fam-node[data-coral="true"]  .fam-node-dot { fill: var(--coral); stroke: var(--coral); }
+
+  .fam-root .fam-node-num {
+    font-family: var(--font-mono); font-size: 16px; font-weight: 600; letter-spacing: 0.02em;
+    fill: var(--ink); transition: fill 0.2s var(--ease, ease);
+  }
+  .fam-root .fam-node[data-accent="true"] .fam-node-num { fill: var(--ink); }
+  .fam-root .fam-node[data-coral="true"]  .fam-node-num { fill: var(--paper); }
+
+  .fam-root .fam-node-name {
+    font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    fill: var(--ink); transition: fill 0.2s var(--ease, ease), opacity 0.2s var(--ease, ease);
+  }
+
+  /* Hover / focus */
+  .fam-root .fam-node:hover .fam-node-dot,
+  .fam-root .fam-node:focus-visible .fam-node-dot { r: 27; }
+  .fam-root .fam-node:focus-visible .fam-node-dot { stroke: var(--mint-ink); }
+
+  /* Active (selected) */
+  .fam-root .fam-node[data-active="true"] .fam-node-dot { fill: var(--ink); stroke: var(--ink); }
+  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-dot { fill: var(--mint-ink); stroke: var(--mint-ink); }
+  .fam-root .fam-node[data-active="true"][data-coral="true"]  .fam-node-dot { fill: var(--coral-ink); stroke: var(--coral-ink); }
+  .fam-root .fam-node[data-active="true"] .fam-node-num { fill: var(--paper); }
+  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-num { fill: var(--paper); }
+
+  /* Dimming when a node is selected */
+  .fam-root .fam-svg[data-selection="true"] .fam-node[data-active="false"] { opacity: 0.34; }
+  .fam-root .fam-svg[data-selection="true"] .fam-node[data-active="false"] .fam-node-name { opacity: 0.5; }
+
+  /* ---- Detail panel ---- */
+  .fam-root .fam-panel {
+    margin: 0; border-top: var(--hairline);
+    padding: clamp(20px, 3vw, 30px) clamp(16px, 3vw, 40px);
+    min-height: 132px;
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 28px; align-items: start;
+  }
+  .fam-root .fam-panel-num {
+    font-family: var(--font-mono); font-size: clamp(30px, 5vw, 44px); font-weight: 600;
+    color: var(--fg-faint); line-height: 1; grid-row: 1 / span 3;
+  }
+  .fam-root .fam-panel[data-accent="true"] .fam-panel-num { color: var(--mint-ink); }
+  .fam-root .fam-panel[data-coral="true"]  .fam-panel-num { color: var(--coral); }
+  .fam-root .fam-panel-name {
+    font-family: var(--font-sans); font-weight: 700; font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    line-height: 1.15; margin: 0;
+  }
+  .fam-root .fam-panel-sub {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-muted); margin: 6px 0 12px;
+  }
+  .fam-root .fam-panel-desc { font-size: clamp(1rem, 1.7vw, 1.075rem); line-height: 1.6; max-width: 62ch; margin: 0; }
+  .fam-root .fam-panel-hint {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--fg-faint);
+    grid-column: 2; margin-top: 14px;
+  }
+
+  /* ---- Figcaption ---- */
+  .fam-root .fam-figcap {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); background: var(--paper);
+    border-top: var(--hairline-faint); padding: 12px 14px; line-height: 1.5;
+  }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 720px) {
+    .fam-root .fam-node-name { font-size: 17px; }
+    .fam-root .fam-axis-label { font-size: 15px; }
+    .fam-root .fam-daylight-text { font-size: 15px; }
+    .fam-root .fam-loop-text { font-size: 13px; }
+    .fam-root .fam-panel { grid-template-columns: 1fr; }
+    .fam-root .fam-panel-num { grid-row: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fam-root .fam-climb, .fam-root .fam-node-dot, .fam-root .fam-node-name, .fam-root .fam-node-num { transition: none !important; }
+  }
+</style>
+
+<script>
+  // The Focused Acceleration Model — figure logic.
+  // Pure attribute toggling; all colour lives in CSS tokens above.
+  const STAGES = [
+    { num: "01", line: ["Define the", "destination"], name: "Define the destination", sub: "The ambition",
+      desc: "Agree what the organisation is actually trying to achieve, before any technology decision. The outcome, not the tool.",
+      accent: false, coral: false },
+    { num: "02", line: ["Name the", "frame"], name: "Name the frame", sub: "Surfacing assumptions",
+      desc: "Surface the assumptions the current approach is built on. Most are inherited from how the whole market already operates.",
+      accent: false, coral: false },
+    { num: "03", line: ["Design the", "advantage"], name: "Design the advantage", sub: "The strategic choice",
+      desc: "Decide where the real, ownable advantage lies — the deliberate choice not to optimise along the same axis as everyone else.",
+      accent: true, coral: false },
+    { num: "04", line: ["Build the", "capability"], name: "Build the capability", sub: "The proprietary build",
+      desc: "Build the owned capability that embodies the advantage. Not the off-the-shelf AI model — the encoded, proprietary asset.",
+      accent: false, coral: false },
+    { num: "05", line: ["Accelerate the", "advantage"], name: "Accelerate the advantage", sub: "Where AI creates separation",
+      desc: "Use AI to reach the advantage faster than competitors can, opening daylight between you and the market.",
+      accent: false, coral: true }
+  ];
+
+  const NS = "http://www.w3.org/2000/svg";
+  const BASE_Y = 540;
+  const X = [170, 380, 575, 770, 950];
+  const Y = [450, 380, 300, 215, 130];
+  const ARROW_X = 1055, ARROW_Y = 84;
+
+  const svg    = document.getElementById("famSvg");
+  const nodesG = document.getElementById("famNodes");
+  const climb  = document.getElementById("famClimb") as unknown as SVGPathElement;
+  const arrow  = document.getElementById("famArrow");
+
+  if (svg && nodesG && climb && arrow) {
+
+    // Baseline ticks
+    const ticks = document.getElementById("famTicks");
+    for (let i = 0; i <= 20; i++) {
+      const tx = 60 + (1000 / 20) * i;
+      const t = document.createElementNS(NS, "line");
+      t.setAttribute("class", "fam-tick");
+      t.setAttribute("x1", String(tx)); t.setAttribute("y1", String(BASE_Y));
+      t.setAttribute("x2", String(tx)); t.setAttribute("y2", String(BASE_Y + 8));
+      ticks?.appendChild(t);
+    }
+
+    // Climbing line path
+    let d = "M " + X[0] + " " + BASE_Y;
+    for (let i = 0; i < X.length; i++) d += " L " + X[i] + " " + Y[i];
+    d += " L " + ARROW_X + " " + ARROW_Y;
+    climb.setAttribute("d", d);
+
+    // Arrowhead
+    (function () {
+      const x1 = X[4], y1 = Y[4], x2 = ARROW_X, y2 = ARROW_Y;
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const L = 16, w = 7.5;
+      const bx = x2 - L * Math.cos(ang), by = y2 - L * Math.sin(ang);
+      arrow.setAttribute("points",
+        x2 + "," + y2 + " " +
+        (bx - w * Math.sin(ang)) + "," + (by + w * Math.cos(ang)) + " " +
+        (bx + w * Math.sin(ang)) + "," + (by - w * Math.cos(ang)));
+    })();
+
+    // Iterate loop
+    (function () {
+      const mx = (X[3] + X[4]) / 2, my = (Y[3] + Y[4]) / 2;
+      const cx = mx + 20, cy = my + 44, r = 22;
+      const loop = document.getElementById("famLoopPath");
+      const start = 0.35, end = start + Math.PI * 1.75;
+      const sx = cx + r * Math.cos(start), sy = cy + r * Math.sin(start);
+      const ex = cx + r * Math.cos(end),   ey = cy + r * Math.sin(end);
+      loop?.setAttribute("d", "M " + sx + " " + sy + " A " + r + " " + r + " 0 1 1 " + ex + " " + ey);
+      const la = document.getElementById("famLoopArrow");
+      const tang = end + Math.PI / 2;
+      const L = 8.5, w = 5;
+      const tipx = ex + 3 * Math.cos(tang), tipy = ey + 3 * Math.sin(tang);
+      const bx = tipx - L * Math.cos(tang), by = tipy - L * Math.sin(tang);
+      la?.setAttribute("points",
+        tipx + "," + tipy + " " +
+        (bx - w * Math.sin(tang)) + "," + (by + w * Math.cos(tang)) + " " +
+        (bx + w * Math.sin(tang)) + "," + (by - w * Math.cos(tang)));
+      const t1 = document.getElementById("famLoopText1");
+      t1?.setAttribute("x", String(cx + r + 14)); t1?.setAttribute("y", String(cy - 2));
+      if (t1) t1.textContent = "ITERATE";
+      const t2 = document.getElementById("famLoopText2");
+      t2?.setAttribute("x", String(cx + r + 14)); t2?.setAttribute("y", String(cy + 15));
+      if (t2) t2.textContent = "test · feedback · refine";
+    })();
+
+    // Daylight drop
+    (function () {
+      const dx = X[4] + 78;
+      const line = document.getElementById("famDaylightLine");
+      line?.setAttribute("x1", String(dx)); line?.setAttribute("y1", String(Y[4] + 6));
+      line?.setAttribute("x2", String(dx)); line?.setAttribute("y2", String(BASE_Y));
+      const txt = document.getElementById("famDaylightText");
+      const mid = (Y[4] + BASE_Y) / 2;
+      txt?.setAttribute("x", String(dx + 8));
+      txt?.setAttribute("y", String(mid));
+      txt?.setAttribute("transform", "rotate(90 " + (dx + 8) + " " + mid + ")");
+      txt?.setAttribute("text-anchor", "middle");
+    })();
+
+    // Build nodes
+    const nodeEls: SVGGElement[] = [];
+    STAGES.forEach((s, i) => {
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "fam-node");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("role", "button");
+      g.setAttribute("aria-label", "Stage " + s.num + ": " + s.name + ". " + s.sub + ".");
+      g.setAttribute("data-accent", s.accent ? "true" : "false");
+      if (s.coral) g.setAttribute("data-coral", "true");
+      g.setAttribute("data-active", "false");
+
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("class", "fam-node-dot");
+      dot.setAttribute("cx", String(X[i])); dot.setAttribute("cy", String(Y[i])); dot.setAttribute("r", "22");
+      g.appendChild(dot);
+
+      const num = document.createElementNS(NS, "text");
+      num.setAttribute("class", "fam-node-num");
+      num.setAttribute("x", String(X[i])); num.setAttribute("y", String(Y[i] + 5.5));
+      num.setAttribute("text-anchor", "middle");
+      num.textContent = s.num;
+      g.appendChild(num);
+
+      const name = document.createElementNS(NS, "text");
+      name.setAttribute("class", "fam-node-name");
+      name.setAttribute("x", String(X[i])); name.setAttribute("y", String(Y[i] - 60));
+      name.setAttribute("text-anchor", "middle");
+      s.line.forEach((ln, k) => {
+        const ts = document.createElementNS(NS, "tspan");
+        ts.setAttribute("x", String(X[i]));
+        ts.setAttribute("dy", k === 0 ? "0" : "17");
+        ts.textContent = ln;
+        name.appendChild(ts);
+      });
+      g.appendChild(name);
+
+      nodesG.appendChild(g);
+      nodeEls.push(g);
+
+      g.addEventListener("mouseenter", () => select(i));
+      g.addEventListener("focus", () => select(i));
+      g.addEventListener("click", () => select(i));
+      g.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(i); }
+        else if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); focusNode(i + 1); }
+        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); focusNode(i - 1); }
+      });
+    });
+
+    function focusNode(i: number) {
+      i = Math.max(0, Math.min(nodeEls.length - 1, i));
+      nodeEls[i].focus();
+    }
+
+    const panel = document.getElementById("famPanel");
+    const pNum  = document.getElementById("famPanelNum");
+    const pName = document.getElementById("famPanelName");
+    const pSub  = document.getElementById("famPanelSub");
+    const pDesc = document.getElementById("famPanelDesc");
+
+    function select(i: number) {
+      const s = STAGES[i];
+      svg!.setAttribute("data-selection", "true");
+      nodeEls.forEach((n, j) => n.setAttribute("data-active", j === i ? "true" : "false"));
+      if (pNum)  pNum.textContent = s.num;
+      if (pName) pName.textContent = s.name;
+      if (pSub)  pSub.textContent = s.sub;
+      if (pDesc) pDesc.textContent = s.desc;
+      panel?.setAttribute("data-accent", s.accent ? "true" : "false");
+      panel?.setAttribute("data-coral", s.coral ? "true" : "false");
+    }
+
+    // Line-draw animation
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function animateLine() {
+      const len = climb.getTotalLength();
+      climb.style.strokeDasharray = String(len);
+      climb.style.strokeDashoffset = String(len);
+      (arrow as HTMLElement).style.opacity = "0";
+      nodeEls.forEach((n) => ((n as unknown as HTMLElement).style.opacity = "0"));
+
+      const DUR = 1500;
+      let start: number | null = null;
+      function step(ts: number) {
+        if (start === null) start = ts;
+        const p = Math.min((ts - start) / DUR, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        climb.style.strokeDashoffset = String(len * (1 - eased));
+        nodeEls.forEach((n, j) => {
+          if (eased >= (j + 0.5) / nodeEls.length) (n as unknown as HTMLElement).style.opacity = "1";
+        });
+        if (p >= 1) { (arrow as HTMLElement).style.transition = "opacity 0.3s"; (arrow as HTMLElement).style.opacity = "1"; }
+        else requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Init
+    select(0);
+    if (reduce) {
+      (arrow as HTMLElement).style.opacity = "1";
+      nodeEls.forEach((n) => ((n as unknown as HTMLElement).style.opacity = "1"));
+    } else {
+      requestAnimationFrame(animateLine);
+    }
+  }
+</script>
