@@ -192,9 +192,7 @@ import Footer from '../components/Footer.astro';
     transition: fill 0.2s var(--ease, ease), opacity 0.2s var(--ease, ease);
   }
 
-  /* Hover / focus */
-  .fam-root .fam-node:hover .fam-node-dot,
-  .fam-root .fam-node:focus-visible .fam-node-dot { r: 27; }
+  /* Focus ring (node radius is set per layout in JS, so we don't override it here) */
   .fam-root .fam-node:focus-visible .fam-node-dot { stroke: var(--mint-ink); }
 
   /* Active (selected) — bright ink / mint / coral fills */
@@ -251,23 +249,19 @@ import Footer from '../components/Footer.astro';
 
   /* ---- Responsive: on mobile the nodes grow, labels drop away, and the
          detail content sits underneath the chart ---- */
+  /* Mobile: portrait figure (sized in JS) with the detail copy stacked full-width beneath it. */
   @media (max-width: 900px) {
-    .fam-root .fam-node-name { display: none; }
-    .fam-root .fam-node-dot { r: 42; }
-    .fam-root .fam-node:hover .fam-node-dot,
-    .fam-root .fam-node:focus-visible .fam-node-dot { r: 42; }
-    .fam-root .fam-node-num { font-size: 34px; }
-    .fam-root .fam-axis-label { font-size: 17px; }
-    .fam-root .fam-daylight-text { font-size: 17px; }
-    .fam-root .fam-loop-text { font-size: 15px; }
+    .fam-root .fam-stage { padding: clamp(16px, 4vw, 24px) clamp(12px, 3vw, 20px) 4px; }
 
-    .fam-root .fam-panel { grid-template-columns: 60px 1fr; gap: 14px 18px; min-height: 0; }
-    .fam-root .fam-panel-name { font-size: 1.35rem; }
-    .fam-root .fam-panel-desc { font-size: 1.12rem; line-height: 1.6; }
+    .fam-root .fam-panel { display: block; min-height: 0; padding: 22px clamp(16px, 4vw, 22px); }
+    .fam-root .fam-panel-num { font-size: 34px; margin-bottom: 6px; }
+    .fam-root .fam-panel-name { font-size: 1.4rem; margin-bottom: 10px; }
+    .fam-root .fam-panel-desc { font-size: 1.14rem; line-height: 1.62; max-width: none; }
     .fam-root .fam-panel-ctrl {
-      grid-column: 1 / -1; flex-direction: row; align-items: center; justify-self: stretch;
-      justify-content: space-between; border-top: var(--hairline-faint); padding-top: 16px; margin-top: 4px;
+      flex-direction: row; align-items: center; justify-content: space-between;
+      border-top: var(--hairline-faint); padding-top: 16px; margin-top: 18px;
     }
+    .fam-root .fam-nav-btn { width: 52px; height: 52px; font-size: 18px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -300,53 +294,76 @@ import Footer from '../components/Footer.astro';
   ];
 
   const NS = "http://www.w3.org/2000/svg";
-  const BASE_Y = 540;
-  const X = [150, 360, 565, 770, 955];
-  const Y = [540, 480, 390, 275, 140];
-  const CLIMB_D = "M 150 540 C 220 540 290.8 505 360 480 C 429.2 455 496.7 424.2 565 390 C 633.3 355.8 705 316.7 770 275 C 835 233.3 910 174.5 955 140 C 1000 105.5 1020 84 1032 74";
-  const ARROW_POINTS = "1040,68 1032.6,84 1023,72.6";
+  const N = STAGES.length;
+
+  // Two layouts. Desktop is a wide, shallow climb. Mobile is a tall portrait
+  // climb so phones get real vertical space, big legible nodes (no labels) and
+  // the detail copy full-width underneath — not a shrunk-down desktop chart.
+  const DESKTOP = {
+    viewBox: "0 0 1120 630",
+    base: [60, 540, 1060, 540], axis: [60, 596], axisFs: 13,
+    nodes: [[150, 540], [360, 480], [565, 390], [770, 275], [955, 140]],
+    r: 22, numFs: 16, labels: true, labelGap: 60, labelFs: 14, labelLead: 17,
+    climb: "M 150 540 C 220 540 290.8 505 360 480 C 429.2 455 496.7 424.2 565 390 C 633.3 355.8 705 316.7 770 275 C 835 233.3 910 174.5 955 140 C 1000 105.5 1020 84 1032 74",
+    loop: { d: "M 972 127 A 45 45 0 1 1 938 153", arrow: "938,153 939.1,165.5 928.1,160.7", t: [979, 245, 261], anchor: "middle", fs: 12 },
+    day: { line: [1058, 102, 1058, 540], arrow: "1058,88 1052.5,102 1063.5,102", tx: 1066, ty: 318, fs: 13 }
+  };
+  const MOBILE = {
+    viewBox: "0 0 500 900",
+    base: [36, 812, 476, 812], axis: [36, 858], axisFs: 21,
+    nodes: [[96, 800], [170, 648], [252, 480], [336, 306], [414, 140]],
+    r: 42, numFs: 34, labels: false, labelGap: 0, labelFs: 0, labelLead: 0,
+    climb: "M 96 800 C 126 744 150 712 170 648 C 200 566 226 542 252 480 C 286 412 308 368 336 306 C 368 240 396 198 414 140 C 428 106 440 88 449 72",
+    loop: { d: "M 392 104 A 38 38 0 1 1 372 162", arrow: "372,162 373,177 359,169", t: [300, 150, 176], anchor: "middle", fs: 21 },
+    day: { line: [468, 140, 468, 812], arrow: "468,124 459,140 477,140", tx: 486, ty: 476, fs: 21 }
+  };
 
   const svg    = document.getElementById("famSvg");
   const nodesG = document.getElementById("famNodes");
   const climb  = document.getElementById("famClimb") as unknown as SVGPathElement;
   const arrow  = document.getElementById("famArrow");
+  const baseline = document.querySelector(".fam-baseline");
+  const axisText = document.querySelector(".fam-axis-label");
+  const loopG    = document.getElementById("famLoop");
+  const loopPath = document.getElementById("famLoopPath") as unknown as SVGPathElement | null;
+  const loopArrow = document.getElementById("famLoopArrow");
+  const loopT1   = document.getElementById("famLoopText1");
+  const loopT2   = document.getElementById("famLoopText2");
+  const dayG     = document.getElementById("famDaylight");
+  const dayLine  = document.getElementById("famDaylightLine");
+  const dayText  = document.getElementById("famDaylightText");
+  const dayArrow = document.createElementNS(NS, "polygon");
+  dayArrow.setAttribute("class", "fam-daylight-arrow");
+  dayG?.insertBefore(dayArrow, dayG.firstChild);
 
   if (svg && nodesG && climb && arrow) {
-
-    // Climbing curve (accelerating)
-    climb.setAttribute("d", CLIMB_D);
-    arrow.setAttribute("points", ARROW_POINTS);
-
-    // Performance feedback loop — leaves the curve just after stage 05 and reconnects just before it.
-    // Hidden by default; revealed and drawn only when stage 05 is selected.
-    const loopG    = document.getElementById("famLoop");
-    const loopPath = document.getElementById("famLoopPath") as unknown as SVGPathElement | null;
-    const loopArrow = document.getElementById("famLoopArrow");
-    const loopT1   = document.getElementById("famLoopText1");
-    const loopT2   = document.getElementById("famLoopText2");
-    let loopLen = 0;
-    (function () {
-      loopPath?.setAttribute("d", "M 972 127 A 45 45 0 1 1 938 153");
-      loopArrow?.setAttribute("points", "938,153 939.1,165.5 928.1,160.7");
-      loopT1?.setAttribute("x", "979"); loopT1?.setAttribute("y", "245"); loopT1?.setAttribute("text-anchor", "middle");
-      if (loopT1) loopT1.textContent = "PERFORMANCE";
-      loopT2?.setAttribute("x", "979"); loopT2?.setAttribute("y", "261"); loopT2?.setAttribute("text-anchor", "middle");
-      if (loopT2) loopT2.textContent = "FEEDBACK";
-      if (loopPath) {
-        loopLen = loopPath.getTotalLength();
-        loopPath.style.strokeDasharray = String(loopLen);
-        loopPath.style.strokeDashoffset = String(loopLen);
-      }
-    })();
-
+    const panel = document.getElementById("famPanel");
+    const pNum  = document.getElementById("famPanelNum");
+    const pName = document.getElementById("famPanelName");
+    const pDesc = document.getElementById("famPanelDesc");
+    const pPos  = document.getElementById("famPanelPos");
+    const prevBtn = document.getElementById("famPrev") as HTMLButtonElement | null;
+    const nextBtn = document.getElementById("famNext") as HTMLButtonElement | null;
+    const root = document.querySelector(".fam-root") as HTMLElement | null;
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const mq = window.matchMedia("(max-width: 900px)");
 
-    // Reveal (or hide) the feedback loop for stage 05, redrawing it each time.
-    function setLoop(on: boolean) {
-      if (!loopG) return;
-      loopG.style.opacity = on ? "1" : "0";
+    let nodeEls: SVGGElement[] = [];
+    let loopLen = 0;
+    let current = 0;
+
+    function arrowPoly(tx: number, ty: number, ang: number, L: number, w: number) {
+      const bx = tx - L * Math.cos(ang), by = ty - L * Math.sin(ang);
+      return tx + "," + ty + " " +
+        (bx - w * Math.sin(ang)) + "," + (by + w * Math.cos(ang)) + " " +
+        (bx + w * Math.sin(ang)) + "," + (by - w * Math.cos(ang));
+    }
+
+    // Reveal (or hide) the feedback loop for stage 05.
+    function setLoop(on: boolean, animate: boolean) {
+      if (loopG) loopG.style.opacity = on ? "1" : "0";
       if (!on || !loopPath) return;
-      if (reduceMotion) { loopPath.style.strokeDashoffset = "0"; return; }
+      if (!animate || reduceMotion) { loopPath.style.strokeDashoffset = "0"; return; }
       loopPath.style.strokeDashoffset = String(loopLen);
       loopPath.style.animation = "none";
       loopArrow && (loopArrow.style.animation = "none");
@@ -359,133 +376,133 @@ import Footer from '../components/Footer.astro';
       loopT2 && (loopT2.style.animation = "fam-fade 0.4s 0.55s backwards");
     }
 
-    // Daylight drop
-    (function () {
-      const dx = 1058;
-      const line = document.getElementById("famDaylightLine");
-      line?.setAttribute("x1", String(dx)); line?.setAttribute("y1", "102");
-      line?.setAttribute("x2", String(dx)); line?.setAttribute("y2", String(BASE_Y));
-      const g = document.getElementById("famDaylight");
-      const head = document.createElementNS(NS, "polygon");
-      head.setAttribute("class", "fam-daylight-arrow");
-      head.setAttribute("points", (dx) + ",88 " + (dx - 5.5) + ",102 " + (dx + 5.5) + ",102");
-      g?.insertBefore(head, g.firstChild);
-      const txt = document.getElementById("famDaylightText");
-      txt?.setAttribute("x", "1066");
-      txt?.setAttribute("y", "318");
-      txt?.setAttribute("transform", "rotate(90 1066 318)");
-      txt?.setAttribute("text-anchor", "middle");
-    })();
-
-    // Build nodes
-    const nodeEls: SVGGElement[] = [];
-    STAGES.forEach((s, i) => {
-      const g = document.createElementNS(NS, "g");
-      g.setAttribute("class", "fam-node");
-      g.setAttribute("tabindex", "0");
-      g.setAttribute("role", "button");
-      g.setAttribute("aria-label", "Stage " + s.num + ": " + s.name + ".");
-      g.setAttribute("data-accent", s.accent ? "true" : "false");
-      if (s.coral) g.setAttribute("data-coral", "true");
-      g.setAttribute("data-active", "false");
-      (g as unknown as SVGGElement).style.setProperty("--fam-delay", (0.4 + i * 0.3) + "s");
-
-      const dot = document.createElementNS(NS, "circle");
-      dot.setAttribute("class", "fam-node-dot");
-      dot.setAttribute("cx", String(X[i])); dot.setAttribute("cy", String(Y[i])); dot.setAttribute("r", "22");
-      g.appendChild(dot);
-
-      const num = document.createElementNS(NS, "text");
-      num.setAttribute("class", "fam-node-num");
-      num.setAttribute("x", String(X[i])); num.setAttribute("y", String(Y[i]));
-      num.setAttribute("text-anchor", "middle");
-      num.textContent = s.num;
-      g.appendChild(num);
-
-      const name = document.createElementNS(NS, "text");
-      name.setAttribute("class", "fam-node-name");
-      name.setAttribute("x", String(X[i])); name.setAttribute("y", String(Y[i] - 60));
-      name.setAttribute("text-anchor", "middle");
-      s.line.forEach((ln, k) => {
-        const ts = document.createElementNS(NS, "tspan");
-        ts.setAttribute("x", String(X[i]));
-        ts.setAttribute("dy", k === 0 ? "0" : "17");
-        ts.textContent = ln;
-        name.appendChild(ts);
-      });
-      g.appendChild(name);
-
-      nodesG.appendChild(g);
-      nodeEls.push(g);
-
-      g.addEventListener("focus", () => select(i));
-      g.addEventListener("click", () => select(i));
-      g.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(i); }
-        else if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); focusNode(i + 1); }
-        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); focusNode(i - 1); }
-      });
-    });
-
     function focusNode(i: number) {
       const n = nodeEls.length;
       nodeEls[((i % n) + n) % n].focus();
     }
 
-    const panel = document.getElementById("famPanel");
-    const pNum  = document.getElementById("famPanelNum");
-    const pName = document.getElementById("famPanelName");
-    const pDesc = document.getElementById("famPanelDesc");
-    const pPos  = document.getElementById("famPanelPos");
-    const prevBtn = document.getElementById("famPrev") as HTMLButtonElement | null;
-    const nextBtn = document.getElementById("famNext") as HTMLButtonElement | null;
-    const N = STAGES.length;
-
-    let current = 0;
-
-    // Wrap-around so the stepper runs continuously in both directions (05 → 01, 01 → 05).
-    function select(i: number) {
-      i = ((i % N) + N) % N;
-      current = i;
-      const s = STAGES[i];
+    // Update the active node, the detail copy and the loop for the current stage.
+    function refresh() {
+      const s = STAGES[current];
       svg!.setAttribute("data-selection", "true");
-      nodeEls.forEach((n, j) => n.setAttribute("data-active", j === i ? "true" : "false"));
+      nodeEls.forEach((n, j) => n.setAttribute("data-active", j === current ? "true" : "false"));
       if (pNum)  pNum.textContent = s.num;
       if (pName) pName.textContent = s.name;
       if (pDesc) pDesc.textContent = s.desc;
       if (pPos)  pPos.textContent = s.num + " / 0" + N;
       panel?.setAttribute("data-accent", s.accent ? "true" : "false");
       panel?.setAttribute("data-coral", s.coral ? "true" : "false");
-      setLoop(i === N - 1);
+    }
+
+    // Wrap-around so the stepper runs continuously in both directions (05 → 01, 01 → 05).
+    function select(i: number) {
+      current = ((i % N) + N) % N;
+      refresh();
+      setLoop(current === N - 1, true);
+    }
+
+    // (Re)build the whole figure for a given layout, preserving the selection.
+    function build(cfg: any) {
+      svg!.setAttribute("viewBox", cfg.viewBox);
+      baseline?.setAttribute("x1", cfg.base[0]); baseline?.setAttribute("y1", cfg.base[1]);
+      baseline?.setAttribute("x2", cfg.base[2]); baseline?.setAttribute("y2", cfg.base[3]);
+      if (axisText) { axisText.setAttribute("x", cfg.axis[0]); axisText.setAttribute("y", cfg.axis[1]); (axisText as unknown as SVGElement).style.fontSize = cfg.axisFs + "px"; }
+
+      climb.style.animation = "none";
+      climb.style.strokeDasharray = "";
+      climb.style.strokeDashoffset = "";
+      climb.setAttribute("d", cfg.climb);
+      const cl = climb.getTotalLength();
+      const p2 = climb.getPointAtLength(cl), p1 = climb.getPointAtLength(Math.max(0, cl - 14));
+      arrow.setAttribute("points", arrowPoly(p2.x, p2.y, Math.atan2(p2.y - p1.y, p2.x - p1.x), 16, 7.5));
+
+      loopPath?.setAttribute("d", cfg.loop.d);
+      loopArrow?.setAttribute("points", cfg.loop.arrow);
+      [[loopT1, cfg.loop.t[1], "PERFORMANCE"], [loopT2, cfg.loop.t[2], "FEEDBACK"]].forEach(([el, y, txt]: any) => {
+        if (!el) return;
+        el.setAttribute("x", cfg.loop.t[0]); el.setAttribute("y", y); el.setAttribute("text-anchor", cfg.loop.anchor);
+        el.style.fontSize = cfg.loop.fs + "px"; el.textContent = txt;
+      });
+      if (loopPath) { loopLen = loopPath.getTotalLength(); loopPath.style.strokeDasharray = String(loopLen); loopPath.style.strokeDashoffset = String(loopLen); }
+
+      dayLine?.setAttribute("x1", cfg.day.line[0]); dayLine?.setAttribute("y1", cfg.day.line[1]);
+      dayLine?.setAttribute("x2", cfg.day.line[2]); dayLine?.setAttribute("y2", cfg.day.line[3]);
+      dayArrow.setAttribute("points", cfg.day.arrow);
+      if (dayText) { dayText.setAttribute("x", cfg.day.tx); dayText.setAttribute("y", cfg.day.ty); dayText.setAttribute("transform", "rotate(90 " + cfg.day.tx + " " + cfg.day.ty + ")"); dayText.setAttribute("text-anchor", "middle"); (dayText as unknown as SVGElement).style.fontSize = cfg.day.fs + "px"; }
+
+      nodesG!.textContent = "";
+      nodeEls = [];
+      STAGES.forEach((s, i) => {
+        const [nx, ny] = cfg.nodes[i];
+        const g = document.createElementNS(NS, "g");
+        g.setAttribute("class", "fam-node");
+        g.setAttribute("tabindex", "0");
+        g.setAttribute("role", "button");
+        g.setAttribute("aria-label", "Stage " + s.num + ": " + s.name + ".");
+        g.setAttribute("data-accent", s.accent ? "true" : "false");
+        if (s.coral) g.setAttribute("data-coral", "true");
+        g.setAttribute("data-active", "false");
+        (g as unknown as SVGGElement).style.setProperty("--fam-delay", (0.4 + i * 0.3) + "s");
+
+        const dot = document.createElementNS(NS, "circle");
+        dot.setAttribute("class", "fam-node-dot");
+        dot.setAttribute("cx", String(nx)); dot.setAttribute("cy", String(ny)); dot.setAttribute("r", String(cfg.r));
+        g.appendChild(dot);
+
+        const num = document.createElementNS(NS, "text");
+        num.setAttribute("class", "fam-node-num");
+        num.setAttribute("x", String(nx)); num.setAttribute("y", String(ny)); num.setAttribute("text-anchor", "middle");
+        (num as unknown as SVGElement).style.fontSize = cfg.numFs + "px";
+        num.textContent = s.num;
+        g.appendChild(num);
+
+        if (cfg.labels) {
+          const name = document.createElementNS(NS, "text");
+          name.setAttribute("class", "fam-node-name");
+          name.setAttribute("x", String(nx)); name.setAttribute("y", String(ny - cfg.labelGap)); name.setAttribute("text-anchor", "middle");
+          (name as unknown as SVGElement).style.fontSize = cfg.labelFs + "px";
+          s.line.forEach((ln, k) => {
+            const ts = document.createElementNS(NS, "tspan");
+            ts.setAttribute("x", String(nx)); ts.setAttribute("dy", k === 0 ? "0" : String(cfg.labelLead));
+            ts.textContent = ln;
+            name.appendChild(ts);
+          });
+          g.appendChild(name);
+        }
+
+        nodesG!.appendChild(g);
+        nodeEls.push(g);
+
+        g.addEventListener("focus", () => select(i));
+        g.addEventListener("click", () => select(i));
+        g.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(i); }
+          else if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); focusNode(i + 1); }
+          else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); focusNode(i - 1); }
+        });
+      });
+
+      refresh();
+      setLoop(current === N - 1, false);
     }
 
     prevBtn?.addEventListener("click", () => select(current - 1));
     nextBtn?.addEventListener("click", () => select(current + 1));
 
-    // Entrance: draw the curve, then stagger the nodes in. Driven by CSS
-    // keyframes (gated on the root's data-anim flag) so the figure always
-    // settles crisply into its final state and can never be left half-hidden.
-    const root = document.querySelector(".fam-root") as HTMLElement | null;
+    // Initial build + entrance animation, then rebuild on layout change.
+    build(mq.matches ? MOBILE : DESKTOP);
 
-    // Init
-    select(0);
-
-    if (reduceMotion || document.hidden) {
-      // Show the finished figure with no entrance animation.
-      climb.style.strokeDashoffset = "0";
-    } else {
+    if (!reduceMotion && !document.hidden) {
       const len = climb.getTotalLength();
       climb.style.strokeDasharray = String(len);
       climb.style.strokeDashoffset = String(len);
       climb.style.animation = "fam-draw 1.6s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards";
       root?.setAttribute("data-anim", "on");
-      // Once the entrance has played, drop the flag so node opacity is no longer
-      // pinned by the fade animation — this lets the inactive-node dimming take over.
-      // Also guarantees the final drawn state if the animation was interrupted.
-      window.setTimeout(() => {
-        climb.style.strokeDashoffset = "0";
-        root?.removeAttribute("data-anim");
-      }, 2600);
+      window.setTimeout(() => { climb.style.strokeDashoffset = "0"; root?.removeAttribute("data-anim"); }, 2600);
     }
+
+    const onLayoutChange = () => build(mq.matches ? MOBILE : DESKTOP);
+    if (mq.addEventListener) mq.addEventListener("change", onLayoutChange);
+    else mq.addListener(onLayoutChange);
   }
 </script>
