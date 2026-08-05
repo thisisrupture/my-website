@@ -129,7 +129,13 @@ import Footer from '../components/Footer.astro';
   }
 
   /* ---- Figure frame ---- */
-  .fam-root .fam-figure { margin: 0; border: var(--hairline); background: var(--paper); }
+  /* Proximity scroll-snap: scrolling near the figure settles it crisply into
+     view with the chart and copy held on screen, without trapping the scroll. */
+  html { scroll-snap-type: y proximity; }
+  .fam-root .fam-figure {
+    margin: 0; border: var(--hairline); background: var(--paper);
+    scroll-snap-align: start; scroll-margin-top: 14px;
+  }
   .fam-root .fam-stage { padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) 8px; }
   .fam-root .fam-svg { width: 100%; height: auto; display: block; overflow: visible; }
 
@@ -256,7 +262,8 @@ import Footer from '../components/Footer.astro';
      out of the frame, and the axis caption becomes an HTML strip that wraps. */
   @media (max-width: 900px) {
     .fam-root .fam-stage { padding: clamp(14px, 3.5vw, 20px) clamp(12px, 3vw, 18px) 0; }
-    .fam-root .fam-svg { overflow: hidden; }
+    .fam-root .fam-svg { overflow: hidden; touch-action: pan-y; cursor: grab; }
+    .fam-root .fam-svg:active { cursor: grabbing; }
     .fam-root .fam-axis-label { display: none; }
     .fam-root .fam-axis-mobile {
       display: block; margin: 10px 2px 12px;
@@ -264,13 +271,16 @@ import Footer from '../components/Footer.astro';
       text-transform: uppercase; color: var(--fg-muted); line-height: 1.5;
     }
 
-    .fam-root .fam-panel { display: block; min-height: 0; padding: 20px clamp(16px, 4vw, 22px) 18px; }
+    .fam-root .fam-panel { display: flex; flex-direction: column; min-height: 0; padding: 16px clamp(16px, 4vw, 22px) 20px; }
     .fam-root .fam-panel-num { font-size: 30px; margin-bottom: 4px; }
     .fam-root .fam-panel-name { font-size: 1.35rem; margin-bottom: 8px; }
     .fam-root .fam-panel-desc { font-size: 1.1rem; line-height: 1.6; max-width: none; }
+    /* Arrows above the copy: a fixed, thumb-friendly position that doesn't
+       move as the description length changes between stages. */
     .fam-root .fam-panel-ctrl {
-      flex-direction: row; align-items: center; justify-content: space-between;
-      border-top: var(--hairline-faint); padding-top: 14px; margin-top: 16px;
+      order: -1; flex-direction: row; align-items: center; justify-content: space-between;
+      border-top: 0; border-bottom: var(--hairline-faint);
+      padding: 0 0 14px; margin: 0 0 16px;
     }
     .fam-root .fam-nav-btn { width: 52px; height: 52px; font-size: 18px; }
   }
@@ -548,6 +558,41 @@ import Footer from '../components/Footer.astro';
 
     prevBtn?.addEventListener("click", () => select(current - 1));
     nextBtn?.addEventListener("click", () => select(current + 1));
+
+    // Touch/drag panning (mobile): horizontal swipes pan the camera and snap to
+    // the nearest stage on release. touch-action: pan-y in CSS keeps vertical
+    // swipes scrolling the page, so the chart never traps the scroll.
+    let dragging = false, dragMoved = false, dragStartPx = 0, dragStartCam = 0;
+    svg.addEventListener("pointerdown", (e: PointerEvent) => {
+      if (!camActive) return;
+      dragging = true; dragMoved = false;
+      dragStartPx = e.clientX; dragStartCam = camX;
+      (svg as unknown as Element).setPointerCapture?.(e.pointerId);
+    });
+    svg.addEventListener("pointermove", (e: PointerEvent) => {
+      if (!dragging || !camActive) return;
+      const dxPx = e.clientX - dragStartPx;
+      if (Math.abs(dxPx) > 8) dragMoved = true;
+      const scale = cam.w / (svg as unknown as HTMLElement).clientWidth;
+      camX = Math.max(cam.x0, Math.min(cam.x1, dragStartCam - dxPx * scale));
+      setViewBox(camX, camY);
+    });
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (!dragMoved || !camActive) return;
+      // Snap to the stage nearest the window centre (and let select re-frame both axes).
+      const centre = camX + cam.w / 2;
+      let best = 0, bd = Infinity;
+      camNodes.forEach((n, i) => { const d = Math.abs(n[0] - centre); if (d < bd) { bd = d; best = i; } });
+      select(best);
+    };
+    svg.addEventListener("pointerup", endDrag);
+    svg.addEventListener("pointercancel", endDrag);
+    // A drag shouldn't also fire a node tap on release.
+    svg.addEventListener("click", (e) => {
+      if (dragMoved) { e.stopPropagation(); e.preventDefault(); dragMoved = false; }
+    }, true);
 
     // Initial build + entrance animation, then rebuild on layout change.
     build(mq.matches ? MOBILE : DESKTOP);
