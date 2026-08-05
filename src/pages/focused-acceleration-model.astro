@@ -308,14 +308,17 @@ import Footer from '../components/Footer.astro';
     loop: { d: "M 972 127 A 45 45 0 1 1 938 153", arrow: "938,153 939.1,165.5 928.1,160.7", t: [979, 245, 261], anchor: "middle", fs: 12 },
     day: { line: [1058, 102, 1058, 540], arrow: "1058,88 1052.5,102 1063.5,102", tx: 1066, ty: 318, fs: 13 }
   };
+  // Mobile reuses the exact desktop curve, but with larger nodes and no labels,
+  // and is viewed through a camera: a window over the graph that pans to centre
+  // the active stage. Same geometry, same semantics — just seen a slice at a time.
   const MOBILE = {
-    viewBox: "0 0 500 900",
-    base: [36, 812, 476, 812], axis: [36, 858], axisFs: 21,
-    nodes: [[96, 800], [170, 648], [252, 480], [336, 306], [414, 140]],
-    r: 42, numFs: 34, labels: false, labelGap: 0, labelFs: 0, labelLead: 0,
-    climb: "M 96 800 C 126 744 150 712 170 648 C 200 566 226 542 252 480 C 286 412 308 368 336 306 C 368 240 396 198 414 140 C 428 106 440 88 449 72",
-    loop: { d: "M 392 104 A 38 38 0 1 1 372 162", arrow: "372,162 373,177 359,169", t: [300, 150, 176], anchor: "middle", fs: 21 },
-    day: { line: [468, 140, 468, 812], arrow: "468,124 459,140 477,140", tx: 486, ty: 476, fs: 21 }
+    ...DESKTOP,
+    r: 40, numFs: 30, labels: false,
+    axisFs: 16,
+    loop: { ...DESKTOP.loop, fs: 16 },
+    day: { ...DESKTOP.day, fs: 16 },
+    camera: true,
+    cam: { y: 58, w: 470, h: 542, x0: 40, x1: 620 }
   };
 
   const svg    = document.getElementById("famSvg");
@@ -351,6 +354,32 @@ import Footer from '../components/Footer.astro';
     let nodeEls: SVGGElement[] = [];
     let loopLen = 0;
     let current = 0;
+
+    // Camera (mobile only): a window over the graph that pans to centre the active stage.
+    let camActive = false;
+    let cam: any = null;
+    let nodesX: number[] = [];
+    let camX = 0;
+
+    function setViewBox(x: number) {
+      svg!.setAttribute("viewBox", x + " " + cam.y + " " + cam.w + " " + cam.h);
+    }
+
+    function panTo(i: number, animate: boolean) {
+      if (!camActive || !cam) return;
+      const target = Math.max(cam.x0, Math.min(cam.x1, nodesX[i] - cam.w / 2));
+      if (!animate || reduceMotion) { camX = target; setViewBox(camX); return; }
+      const from = camX, dist = target - from, dur = 420;
+      let start: number | null = null;
+      function step(ts: number) {
+        if (start === null) start = ts;
+        const p = Math.min((ts - start) / dur, 1);
+        camX = from + dist * (1 - Math.pow(1 - p, 3));
+        setViewBox(camX);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
 
     function arrowPoly(tx: number, ty: number, ang: number, L: number, w: number) {
       const bx = tx - L * Math.cos(ang), by = ty - L * Math.sin(ang);
@@ -399,11 +428,11 @@ import Footer from '../components/Footer.astro';
       current = ((i % N) + N) % N;
       refresh();
       setLoop(current === N - 1, true);
+      panTo(current, true);
     }
 
     // (Re)build the whole figure for a given layout, preserving the selection.
     function build(cfg: any) {
-      svg!.setAttribute("viewBox", cfg.viewBox);
       baseline?.setAttribute("x1", cfg.base[0]); baseline?.setAttribute("y1", cfg.base[1]);
       baseline?.setAttribute("x2", cfg.base[2]); baseline?.setAttribute("y2", cfg.base[3]);
       if (axisText) { axisText.setAttribute("x", cfg.axis[0]); axisText.setAttribute("y", cfg.axis[1]); (axisText as unknown as SVGElement).style.fontSize = cfg.axisFs + "px"; }
@@ -481,6 +510,17 @@ import Footer from '../components/Footer.astro';
           else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); focusNode(i - 1); }
         });
       });
+
+      // View: full frame on desktop, or the camera window on mobile.
+      if (cfg.camera) {
+        camActive = true;
+        cam = cfg.cam;
+        nodesX = cfg.nodes.map((n: number[]) => n[0]);
+        panTo(current, false);
+      } else {
+        camActive = false;
+        svg!.setAttribute("viewBox", cfg.viewBox);
+      }
 
       refresh();
       setLoop(current === N - 1, false);
