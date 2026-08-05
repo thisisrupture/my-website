@@ -56,6 +56,7 @@ import Footer from '../components/Footer.astro';
               <!-- Nodes injected by JS -->
               <g id="famNodes"></g>
             </svg>
+            <p class="fam-axis-mobile" aria-hidden="true">The converged market &mdash; everyone optimising the same way</p>
           </div>
 
           <!-- Detail panel -->
@@ -137,6 +138,7 @@ import Footer from '../components/Footer.astro';
     font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em;
     fill: var(--fg-muted); text-transform: uppercase;
   }
+  .fam-root .fam-axis-mobile { display: none; }
 
   /* Entrance animation keyframes */
   @keyframes fam-draw { to { stroke-dashoffset: 0; } }
@@ -249,17 +251,26 @@ import Footer from '../components/Footer.astro';
 
   /* ---- Responsive: on mobile the nodes grow, labels drop away, and the
          detail content sits underneath the chart ---- */
-  /* Mobile: portrait figure (sized in JS) with the detail copy stacked full-width beneath it. */
+  /* Mobile: the camera viewport over the desktop curve, with the copy stacked
+     full-width beneath. The SVG is clipped so off-camera artwork never bleeds
+     out of the frame, and the axis caption becomes an HTML strip that wraps. */
   @media (max-width: 900px) {
-    .fam-root .fam-stage { padding: clamp(16px, 4vw, 24px) clamp(12px, 3vw, 20px) 4px; }
+    .fam-root .fam-stage { padding: clamp(14px, 3.5vw, 20px) clamp(12px, 3vw, 18px) 0; }
+    .fam-root .fam-svg { overflow: hidden; }
+    .fam-root .fam-axis-label { display: none; }
+    .fam-root .fam-axis-mobile {
+      display: block; margin: 10px 2px 12px;
+      font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--fg-muted); line-height: 1.5;
+    }
 
-    .fam-root .fam-panel { display: block; min-height: 0; padding: 22px clamp(16px, 4vw, 22px); }
-    .fam-root .fam-panel-num { font-size: 34px; margin-bottom: 6px; }
-    .fam-root .fam-panel-name { font-size: 1.4rem; margin-bottom: 10px; }
-    .fam-root .fam-panel-desc { font-size: 1.14rem; line-height: 1.62; max-width: none; }
+    .fam-root .fam-panel { display: block; min-height: 0; padding: 20px clamp(16px, 4vw, 22px) 18px; }
+    .fam-root .fam-panel-num { font-size: 30px; margin-bottom: 4px; }
+    .fam-root .fam-panel-name { font-size: 1.35rem; margin-bottom: 8px; }
+    .fam-root .fam-panel-desc { font-size: 1.1rem; line-height: 1.6; max-width: none; }
     .fam-root .fam-panel-ctrl {
       flex-direction: row; align-items: center; justify-content: space-between;
-      border-top: var(--hairline-faint); padding-top: 16px; margin-top: 18px;
+      border-top: var(--hairline-faint); padding-top: 14px; margin-top: 16px;
     }
     .fam-root .fam-nav-btn { width: 52px; height: 52px; font-size: 18px; }
   }
@@ -318,7 +329,7 @@ import Footer from '../components/Footer.astro';
     loop: { ...DESKTOP.loop, fs: 16 },
     day: { ...DESKTOP.day, fs: 16 },
     camera: true,
-    cam: { y: 58, w: 470, h: 542, x0: 40, x1: 620 }
+    cam: { w: 470, h: 400, x0: 40, x1: 650, y0: 40, y1: 230 }
   };
 
   const svg    = document.getElementById("famSvg");
@@ -355,27 +366,36 @@ import Footer from '../components/Footer.astro';
     let loopLen = 0;
     let current = 0;
 
-    // Camera (mobile only): a window over the graph that pans to centre the active stage.
+    // Camera (mobile only): a window over the graph that pans in both axes to
+    // frame the active stage — following the climb up as well as across.
     let camActive = false;
     let cam: any = null;
-    let nodesX: number[] = [];
-    let camX = 0;
+    let camNodes: number[][] = [];
+    let camX = 0, camY = 0;
 
-    function setViewBox(x: number) {
-      svg!.setAttribute("viewBox", x + " " + cam.y + " " + cam.w + " " + cam.h);
+    function setViewBox(x: number, y: number) {
+      svg!.setAttribute("viewBox", x + " " + y + " " + cam.w + " " + cam.h);
+    }
+
+    function camTarget(i: number) {
+      const tx = Math.max(cam.x0, Math.min(cam.x1, camNodes[i][0] - cam.w / 2));
+      const ty = Math.max(cam.y0, Math.min(cam.y1, camNodes[i][1] - cam.h / 2));
+      return [tx, ty];
     }
 
     function panTo(i: number, animate: boolean) {
       if (!camActive || !cam) return;
-      const target = Math.max(cam.x0, Math.min(cam.x1, nodesX[i] - cam.w / 2));
-      if (!animate || reduceMotion) { camX = target; setViewBox(camX); return; }
-      const from = camX, dist = target - from, dur = 420;
+      const [tx, ty] = camTarget(i);
+      if (!animate || reduceMotion) { camX = tx; camY = ty; setViewBox(camX, camY); return; }
+      const fx = camX, fy = camY, dur = 480;
       let start: number | null = null;
       function step(ts: number) {
         if (start === null) start = ts;
         const p = Math.min((ts - start) / dur, 1);
-        camX = from + dist * (1 - Math.pow(1 - p, 3));
-        setViewBox(camX);
+        const e = 1 - Math.pow(1 - p, 3);
+        camX = fx + (tx - fx) * e;
+        camY = fy + (ty - fy) * e;
+        setViewBox(camX, camY);
         if (p < 1) requestAnimationFrame(step);
       }
       requestAnimationFrame(step);
@@ -515,7 +535,7 @@ import Footer from '../components/Footer.astro';
       if (cfg.camera) {
         camActive = true;
         cam = cfg.cam;
-        nodesX = cfg.nodes.map((n: number[]) => n[0]);
+        camNodes = cfg.nodes;
         panTo(current, false);
       } else {
         camActive = false;
