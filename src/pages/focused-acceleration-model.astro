@@ -588,19 +588,34 @@ import Footer from '../components/Footer.astro';
     // Touch/drag panning (mobile): horizontal swipes pan the camera and snap to
     // the nearest stage on release. touch-action: pan-y in CSS keeps vertical
     // swipes scrolling the page, so the chart never traps the scroll.
-    let dragging = false, dragMoved = false, dragStartPx = 0, dragStartCam = 0;
+    // Gesture axis-lock: the chart only pans once the finger is clearly moving
+    // horizontally. A mostly-vertical swipe is handed to the page scroll
+    // untouched, so scrolling never twitches the chart. Ambiguous diagonals
+    // lean horizontal (the chart is the thing being explored); a definite
+    // vertical swipe always wins for scrolling.
+    let dragging = false, axis = "", dragMoved = false;
+    let dragStartX = 0, dragStartY = 0, dragStartCam = 0;
     let lastPx = 0, lastT = 0, vel = 0; // px/ms, smoothed
     svg.addEventListener("pointerdown", (e: PointerEvent) => {
       if (!camActive) return;
-      dragging = true; dragMoved = false;
-      dragStartPx = e.clientX; dragStartCam = camX;
+      dragging = true; axis = ""; dragMoved = false;
+      dragStartX = e.clientX; dragStartY = e.clientY; dragStartCam = camX;
       lastPx = e.clientX; lastT = performance.now(); vel = 0;
-      (svg as unknown as Element).setPointerCapture?.(e.pointerId);
     });
     svg.addEventListener("pointermove", (e: PointerEvent) => {
       if (!dragging || !camActive) return;
-      const dxPx = e.clientX - dragStartPx;
-      if (Math.abs(dxPx) > 8) dragMoved = true;
+      const dxPx = e.clientX - dragStartX;
+      const dyPx = e.clientY - dragStartY;
+      if (!axis) {
+        // Definite vertical swipe → give the gesture to the page scroll.
+        if (Math.abs(dyPx) > 14 && Math.abs(dyPx) > Math.abs(dxPx) * 1.3) { dragging = false; return; }
+        // Horizontal (with a bias in its favour on diagonals) → pan the chart.
+        if (Math.abs(dxPx) > 10 && Math.abs(dxPx) >= Math.abs(dyPx) * 0.9) {
+          axis = "h";
+          (svg as unknown as Element).setPointerCapture?.(e.pointerId);
+        } else return;
+      }
+      dragMoved = true;
       const now = performance.now(), dt = now - lastT;
       if (dt > 0) vel = 0.75 * vel + 0.25 * ((e.clientX - lastPx) / dt);
       lastPx = e.clientX; lastT = now;
@@ -612,11 +627,10 @@ import Footer from '../components/Footer.astro';
       if (!dragging) return;
       dragging = false;
       if (!dragMoved || !camActive) return;
-      // Fling: project the camera forward by release velocity, so a quick flick
-      // travels multiple stages (05 → 01 in one confident swipe) while a slow
-      // drag still settles on the stage nearest where you left it.
+      // Fling: a genuinely quick flick projects the camera further (05 → 01 in
+      // one confident swipe); ordinary drags settle on the nearest stage.
       const scale = cam.w / (svg as unknown as HTMLElement).clientWidth;
-      const momentum = Math.abs(vel) > 0.15 ? vel * 300 * scale : 0;
+      const momentum = Math.abs(vel) > 0.35 ? vel * 200 * scale : 0;
       const projected = Math.max(cam.x0, Math.min(cam.x1, camX - momentum));
       const centre = projected + cam.w / 2;
       let best = 0, bd = Infinity;
