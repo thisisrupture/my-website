@@ -164,26 +164,32 @@ import Footer from '../components/Footer.astro';
   .fam-root .fam-loop-arrow { fill: var(--coral); }
   .fam-root .fam-loop-text { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; fill: var(--coral); }
 
-  /* Nodes */
+  /* Nodes.
+     Inactive ("knocked back") nodes keep an OPAQUE paper fill so the climbing
+     curve is always fully hidden behind the circle — never showing through.
+     Dimming is expressed through stroke-opacity and text opacity, not group
+     opacity, which is what previously let the curve bleed through. */
   .fam-root .fam-node { cursor: pointer; outline: none; }
   .fam-root[data-anim="on"] .fam-node { opacity: 0; animation: fam-fade 0.4s var(--fam-delay, 0s) forwards; }
   .fam-root .fam-node-dot {
-    fill: var(--paper); stroke: var(--ink); stroke-width: 2.5;
-    transition: fill 0.2s var(--ease, ease), stroke 0.2s var(--ease, ease), r 0.2s var(--ease, ease);
+    fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; stroke-opacity: 0.5;
+    transition: fill 0.2s var(--ease, ease), stroke 0.2s var(--ease, ease), stroke-opacity 0.2s var(--ease, ease), r 0.2s var(--ease, ease);
   }
-  .fam-root .fam-node[data-accent="true"] .fam-node-dot { fill: var(--mint); stroke: var(--mint); }
-  .fam-root .fam-node[data-coral="true"]  .fam-node-dot { fill: var(--coral); stroke: var(--coral); }
+  .fam-root .fam-node[data-accent="true"] .fam-node-dot { stroke: var(--mint); }
+  .fam-root .fam-node[data-coral="true"]  .fam-node-dot { stroke: var(--coral); }
 
   .fam-root .fam-node-num {
     font-family: var(--font-mono); font-size: 16px; font-weight: 600; letter-spacing: 0.02em;
-    fill: var(--ink); transition: fill 0.2s var(--ease, ease);
+    fill: var(--ink); opacity: 0.55; dominant-baseline: central;
+    transition: fill 0.2s var(--ease, ease), opacity 0.2s var(--ease, ease);
   }
-  .fam-root .fam-node[data-accent="true"] .fam-node-num { fill: var(--ink); }
-  .fam-root .fam-node[data-coral="true"]  .fam-node-num { fill: var(--paper); }
+  .fam-root .fam-node[data-accent="true"] .fam-node-num { fill: var(--mint-ink); }
+  .fam-root .fam-node[data-coral="true"]  .fam-node-num { fill: var(--coral); }
 
   .fam-root .fam-node-name {
     font-family: var(--font-sans); font-size: 14px; font-weight: 600;
-    fill: var(--ink); transition: fill 0.2s var(--ease, ease), opacity 0.2s var(--ease, ease);
+    fill: var(--ink); opacity: 0.5;
+    transition: fill 0.2s var(--ease, ease), opacity 0.2s var(--ease, ease);
   }
 
   /* Hover / focus */
@@ -191,16 +197,13 @@ import Footer from '../components/Footer.astro';
   .fam-root .fam-node:focus-visible .fam-node-dot { r: 27; }
   .fam-root .fam-node:focus-visible .fam-node-dot { stroke: var(--mint-ink); }
 
-  /* Active (selected) */
-  .fam-root .fam-node[data-active="true"] .fam-node-dot { fill: var(--ink); stroke: var(--ink); }
-  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-dot { fill: var(--mint-ink); stroke: var(--mint-ink); }
-  .fam-root .fam-node[data-active="true"][data-coral="true"]  .fam-node-dot { fill: var(--coral-ink); stroke: var(--coral-ink); }
-  .fam-root .fam-node[data-active="true"] .fam-node-num { fill: var(--paper); }
-  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-num { fill: var(--paper); }
-
-  /* Dimming when a node is selected */
-  .fam-root .fam-svg[data-selection="true"] .fam-node[data-active="false"] { opacity: 0.34; }
-  .fam-root .fam-svg[data-selection="true"] .fam-node[data-active="false"] .fam-node-name { opacity: 0.5; }
+  /* Active (selected) — bright ink / mint / coral fills */
+  .fam-root .fam-node[data-active="true"] .fam-node-dot { fill: var(--ink); stroke: var(--ink); stroke-opacity: 1; }
+  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-dot { fill: var(--mint); stroke: var(--mint); }
+  .fam-root .fam-node[data-active="true"][data-coral="true"]  .fam-node-dot { fill: var(--coral); stroke: var(--coral); }
+  .fam-root .fam-node[data-active="true"] .fam-node-num { fill: var(--paper); opacity: 1; }
+  .fam-root .fam-node[data-active="true"][data-accent="true"] .fam-node-num { fill: var(--ink); }
+  .fam-root .fam-node[data-active="true"] .fam-node-name { opacity: 1; }
 
   /* ---- Detail panel ---- */
   .fam-root .fam-panel {
@@ -213,7 +216,7 @@ import Footer from '../components/Footer.astro';
     font-family: var(--font-mono); font-size: clamp(30px, 5vw, 44px); font-weight: 600;
     color: var(--fg-faint); line-height: 1;
   }
-  .fam-root .fam-panel[data-accent="true"] .fam-panel-num { color: var(--mint-ink); }
+  .fam-root .fam-panel[data-accent="true"] .fam-panel-num { color: var(--mint); }
   .fam-root .fam-panel[data-coral="true"]  .fam-panel-num { color: var(--coral); }
   .fam-root .fam-panel-name {
     font-family: var(--font-sans); font-weight: 700; font-size: clamp(1.15rem, 2.2vw, 1.4rem);
@@ -250,15 +253,17 @@ import Footer from '../components/Footer.astro';
          detail content sits underneath the chart ---- */
   @media (max-width: 900px) {
     .fam-root .fam-node-name { display: none; }
-    .fam-root .fam-node-dot { r: 34; }
+    .fam-root .fam-node-dot { r: 42; }
     .fam-root .fam-node:hover .fam-node-dot,
-    .fam-root .fam-node:focus-visible .fam-node-dot { r: 34; }
-    .fam-root .fam-node-num { font-size: 27px; }
-    .fam-root .fam-axis-label { font-size: 16px; }
-    .fam-root .fam-daylight-text { font-size: 16px; }
-    .fam-root .fam-loop-text { font-size: 14px; }
+    .fam-root .fam-node:focus-visible .fam-node-dot { r: 42; }
+    .fam-root .fam-node-num { font-size: 34px; }
+    .fam-root .fam-axis-label { font-size: 17px; }
+    .fam-root .fam-daylight-text { font-size: 17px; }
+    .fam-root .fam-loop-text { font-size: 15px; }
 
-    .fam-root .fam-panel { grid-template-columns: 56px 1fr; gap: 14px 18px; min-height: 0; }
+    .fam-root .fam-panel { grid-template-columns: 60px 1fr; gap: 14px 18px; min-height: 0; }
+    .fam-root .fam-panel-name { font-size: 1.35rem; }
+    .fam-root .fam-panel-desc { font-size: 1.12rem; line-height: 1.6; }
     .fam-root .fam-panel-ctrl {
       grid-column: 1 / -1; flex-direction: row; align-items: center; justify-self: stretch;
       justify-content: space-between; border-top: var(--hairline-faint); padding-top: 16px; margin-top: 4px;
@@ -392,7 +397,7 @@ import Footer from '../components/Footer.astro';
 
       const num = document.createElementNS(NS, "text");
       num.setAttribute("class", "fam-node-num");
-      num.setAttribute("x", String(X[i])); num.setAttribute("y", String(Y[i] + 5.5));
+      num.setAttribute("x", String(X[i])); num.setAttribute("y", String(Y[i]));
       num.setAttribute("text-anchor", "middle");
       num.textContent = s.num;
       g.appendChild(num);
