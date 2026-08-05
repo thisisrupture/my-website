@@ -129,13 +129,9 @@ import Footer from '../components/Footer.astro';
   }
 
   /* ---- Figure frame ---- */
-  /* Proximity scroll-snap: scrolling near the figure settles it crisply into
-     view with the chart and copy held on screen, without trapping the scroll. */
-  html { scroll-snap-type: y proximity; }
-  .fam-root .fam-figure {
-    margin: 0; border: var(--hairline); background: var(--paper);
-    scroll-snap-align: start; scroll-margin-top: 14px;
-  }
+  /* No scroll-snap on desktop: wheel/trackpad snapping reads as hijacked input,
+     and the figure exceeds shorter viewports, where CSS snap misbehaves anyway. */
+  .fam-root .fam-figure { margin: 0; border: var(--hairline); background: var(--paper); }
   .fam-root .fam-stage { padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) 8px; }
   .fam-root .fam-svg { width: 100%; height: auto; display: block; overflow: visible; }
 
@@ -261,6 +257,17 @@ import Footer from '../components/Footer.astro';
      full-width beneath. The SVG is clipped so off-camera artwork never bleeds
      out of the frame, and the axis caption becomes an HTML strip that wraps. */
   @media (max-width: 900px) {
+    /* Mobile-only proximity snap: the figure is a self-contained unit (chart,
+       stepper, copy), so landing near it seats it cleanly at the top of the
+       viewport — while scrolling past stays free. Touch momentum makes
+       proximity feel natural here in a way it doesn't with a mouse wheel. */
+    html { scroll-snap-type: y proximity; }
+    .fam-root .fam-figure { scroll-snap-align: start; scroll-margin-top: 10px; }
+
+    /* Suppress double-tap zoom inside the figure (rapid taps on nodes/arrows
+       were triggering browser zoom). Pinch-zoom on the page is unaffected. */
+    .fam-root .fam-figure, .fam-root .fam-figure * { touch-action: manipulation; }
+
     .fam-root .fam-stage { padding: clamp(14px, 3.5vw, 20px) clamp(12px, 3vw, 18px) 0; }
     .fam-root .fam-svg { overflow: hidden; touch-action: pan-y; cursor: grab; }
     .fam-root .fam-svg:active { cursor: grabbing; }
