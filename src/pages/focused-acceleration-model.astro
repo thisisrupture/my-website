@@ -26,6 +26,9 @@ import Footer from '../components/Footer.astro';
 
         <!-- ===== INTERACTIVE FIGURE ===== -->
         <figure class="fam-figure">
+          <div class="fam-figure-title" id="famFigTitle" data-show="false" aria-hidden="true">
+            The Focused Acceleration Model<sup>&trade;</sup><span class="fam-stop">.</span>
+          </div>
           <div class="fam-stage">
             <svg class="fam-svg" id="famSvg" viewBox="0 0 1120 630" role="group"
                  aria-label="The Focused Acceleration Model: five stages climbing from a converged-market baseline to competitive daylight."
@@ -132,6 +135,10 @@ import Footer from '../components/Footer.astro';
   /* No scroll-snap on desktop: wheel/trackpad snapping reads as hijacked input,
      and the figure exceeds shorter viewports, where CSS snap misbehaves anyway. */
   .fam-root .fam-figure { margin: 0; border: var(--hairline); background: var(--paper); }
+
+  /* In-figure title: hidden on desktop; on mobile it fades in once the page
+     headline has scrolled away, so the framework stays named while in the chart. */
+  .fam-root .fam-figure-title { display: none; }
   .fam-root .fam-stage { padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) 8px; }
   .fam-root .fam-svg { width: 100%; height: auto; display: block; overflow: visible; }
 
@@ -267,6 +274,18 @@ import Footer from '../components/Footer.astro';
     /* Suppress double-tap zoom inside the figure (rapid taps on nodes/arrows
        were triggering browser zoom). Pinch-zoom on the page is unaffected. */
     .fam-root .fam-figure, .fam-root .fam-figure * { touch-action: manipulation; }
+
+    .fam-root .fam-figure-title {
+      display: block;
+      font-family: var(--font-serif); font-weight: 700; font-size: 1.15rem;
+      line-height: 1.2; letter-spacing: -0.01em;
+      padding: 14px 16px 0;
+      opacity: 0; transform: translateY(-4px);
+      transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+    }
+    .fam-root .fam-figure-title[data-show="true"] { opacity: 1; transform: none; }
+    .fam-root .fam-figure-title sup { font-size: 0.5em; font-weight: 400; }
+    .fam-root .fam-figure-title .fam-stop { color: var(--coral); }
 
     .fam-root .fam-stage { padding: clamp(14px, 3.5vw, 20px) clamp(12px, 3vw, 18px) 0; }
     .fam-root .fam-svg { overflow: hidden; touch-action: pan-y; cursor: grab; }
@@ -570,16 +589,21 @@ import Footer from '../components/Footer.astro';
     // the nearest stage on release. touch-action: pan-y in CSS keeps vertical
     // swipes scrolling the page, so the chart never traps the scroll.
     let dragging = false, dragMoved = false, dragStartPx = 0, dragStartCam = 0;
+    let lastPx = 0, lastT = 0, vel = 0; // px/ms, smoothed
     svg.addEventListener("pointerdown", (e: PointerEvent) => {
       if (!camActive) return;
       dragging = true; dragMoved = false;
       dragStartPx = e.clientX; dragStartCam = camX;
+      lastPx = e.clientX; lastT = performance.now(); vel = 0;
       (svg as unknown as Element).setPointerCapture?.(e.pointerId);
     });
     svg.addEventListener("pointermove", (e: PointerEvent) => {
       if (!dragging || !camActive) return;
       const dxPx = e.clientX - dragStartPx;
       if (Math.abs(dxPx) > 8) dragMoved = true;
+      const now = performance.now(), dt = now - lastT;
+      if (dt > 0) vel = 0.75 * vel + 0.25 * ((e.clientX - lastPx) / dt);
+      lastPx = e.clientX; lastT = now;
       const scale = cam.w / (svg as unknown as HTMLElement).clientWidth;
       camX = Math.max(cam.x0, Math.min(cam.x1, dragStartCam - dxPx * scale));
       setViewBox(camX, camY);
@@ -588,8 +612,13 @@ import Footer from '../components/Footer.astro';
       if (!dragging) return;
       dragging = false;
       if (!dragMoved || !camActive) return;
-      // Snap to the stage nearest the window centre (and let select re-frame both axes).
-      const centre = camX + cam.w / 2;
+      // Fling: project the camera forward by release velocity, so a quick flick
+      // travels multiple stages (05 → 01 in one confident swipe) while a slow
+      // drag still settles on the stage nearest where you left it.
+      const scale = cam.w / (svg as unknown as HTMLElement).clientWidth;
+      const momentum = Math.abs(vel) > 0.15 ? vel * 300 * scale : 0;
+      const projected = Math.max(cam.x0, Math.min(cam.x1, camX - momentum));
+      const centre = projected + cam.w / 2;
       let best = 0, bd = Infinity;
       camNodes.forEach((n, i) => { const d = Math.abs(n[0] - centre); if (d < bd) { bd = d; best = i; } });
       select(best);
@@ -600,6 +629,16 @@ import Footer from '../components/Footer.astro';
     svg.addEventListener("click", (e) => {
       if (dragMoved) { e.stopPropagation(); e.preventDefault(); dragMoved = false; }
     }, true);
+
+    // In-figure title: fade in once the page headline scrolls out of view
+    // (mobile-only via CSS), so the framework stays named inside the chart.
+    const figTitle = document.getElementById("famFigTitle");
+    const pageTitle = document.querySelector(".fam-title");
+    if (figTitle && pageTitle && "IntersectionObserver" in window) {
+      new IntersectionObserver((entries) => {
+        figTitle.setAttribute("data-show", entries[0].isIntersecting ? "false" : "true");
+      }).observe(pageTitle);
+    }
 
     // Initial build + entrance animation, then rebuild on layout change.
     build(mq.matches ? MOBILE : DESKTOP);
