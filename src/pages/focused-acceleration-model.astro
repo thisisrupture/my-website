@@ -138,9 +138,14 @@ import Footer from '../components/Footer.astro';
     fill: var(--fg-muted); text-transform: uppercase;
   }
 
+  /* Entrance animation keyframes */
+  @keyframes fam-draw { to { stroke-dashoffset: 0; } }
+  @keyframes fam-fade { from { opacity: 0; } to { opacity: 1; } }
+
   /* Climbing line */
   .fam-root .fam-climb { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
   .fam-root .fam-arrowhead { fill: var(--coral); }
+  .fam-root[data-anim="on"] .fam-arrowhead { opacity: 0; animation: fam-fade 0.4s 1.65s forwards; }
 
   /* Baseline */
   .fam-root .fam-baseline { stroke: var(--fg-faint); stroke-width: 1.5; }
@@ -153,13 +158,15 @@ import Footer from '../components/Footer.astro';
     fill: var(--mint-ink); text-transform: uppercase;
   }
 
-  /* Iterate loop */
-  .fam-root .fam-loop-path { fill: none; stroke: var(--fg-muted); stroke-width: 1.4; }
-  .fam-root .fam-loop-arrow { fill: var(--fg-muted); }
-  .fam-root .fam-loop-text { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; fill: var(--fg-muted); }
+  /* Performance-feedback loop — bright coral, revealed only when stage 05 is selected */
+  .fam-root #famLoop { opacity: 0; transition: opacity 0.24s var(--ease); }
+  .fam-root .fam-loop-path { fill: none; stroke: var(--coral); stroke-width: 2; stroke-linecap: round; }
+  .fam-root .fam-loop-arrow { fill: var(--coral); }
+  .fam-root .fam-loop-text { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; fill: var(--coral); }
 
   /* Nodes */
   .fam-root .fam-node { cursor: pointer; outline: none; }
+  .fam-root[data-anim="on"] .fam-node { opacity: 0; animation: fam-fade 0.4s var(--fam-delay, 0s) forwards; }
   .fam-root .fam-node-dot {
     fill: var(--paper); stroke: var(--ink); stroke-width: 2.5;
     transition: fill 0.2s var(--ease, ease), stroke 0.2s var(--ease, ease), r 0.2s var(--ease, ease);
@@ -239,18 +246,30 @@ import Footer from '../components/Footer.astro';
     border-top: var(--hairline-faint); padding: 12px 14px; line-height: 1.5;
   }
 
-  /* ---- Responsive ---- */
-  @media (max-width: 720px) {
-    .fam-root .fam-node-name { font-size: 17px; }
-    .fam-root .fam-axis-label { font-size: 15px; }
-    .fam-root .fam-daylight-text { font-size: 15px; }
-    .fam-root .fam-loop-text { font-size: 13px; }
-    .fam-root .fam-panel { grid-template-columns: 1fr; }
-    .fam-root .fam-panel-ctrl { align-items: flex-start; justify-self: start; }
+  /* ---- Responsive: on mobile the nodes grow, labels drop away, and the
+         detail content sits underneath the chart ---- */
+  @media (max-width: 900px) {
+    .fam-root .fam-node-name { display: none; }
+    .fam-root .fam-node-dot { r: 34; }
+    .fam-root .fam-node:hover .fam-node-dot,
+    .fam-root .fam-node:focus-visible .fam-node-dot { r: 34; }
+    .fam-root .fam-node-num { font-size: 27px; }
+    .fam-root .fam-axis-label { font-size: 16px; }
+    .fam-root .fam-daylight-text { font-size: 16px; }
+    .fam-root .fam-loop-text { font-size: 14px; }
+
+    .fam-root .fam-panel { grid-template-columns: 56px 1fr; gap: 14px 18px; min-height: 0; }
+    .fam-root .fam-panel-ctrl {
+      grid-column: 1 / -1; flex-direction: row; align-items: center; justify-self: stretch;
+      justify-content: space-between; border-top: var(--hairline-faint); padding-top: 16px; margin-top: 4px;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .fam-root .fam-climb, .fam-root .fam-node-dot, .fam-root .fam-node-name, .fam-root .fam-node-num { transition: none !important; }
+    .fam-root[data-anim="on"] .fam-node,
+    .fam-root[data-anim="on"] .fam-arrowhead { animation: none !important; opacity: 1 !important; }
+    .fam-root #famLoop .fam-loop-path { animation: none !important; }
   }
 </style>
 
@@ -293,19 +312,47 @@ import Footer from '../components/Footer.astro';
     climb.setAttribute("d", CLIMB_D);
     arrow.setAttribute("points", ARROW_POINTS);
 
-    // Performance feedback loop — leaves the curve just after stage 05 and reconnects just before it
+    // Performance feedback loop — leaves the curve just after stage 05 and reconnects just before it.
+    // Hidden by default; revealed and drawn only when stage 05 is selected.
+    const loopG    = document.getElementById("famLoop");
+    const loopPath = document.getElementById("famLoopPath") as unknown as SVGPathElement | null;
+    const loopArrow = document.getElementById("famLoopArrow");
+    const loopT1   = document.getElementById("famLoopText1");
+    const loopT2   = document.getElementById("famLoopText2");
+    let loopLen = 0;
     (function () {
-      const loop = document.getElementById("famLoopPath");
-      loop?.setAttribute("d", "M 972 127 A 45 45 0 1 1 938 153");
-      const la = document.getElementById("famLoopArrow");
-      la?.setAttribute("points", "938,153 939.1,165.5 928.1,160.7");
-      const t1 = document.getElementById("famLoopText1");
-      t1?.setAttribute("x", "979"); t1?.setAttribute("y", "245"); t1?.setAttribute("text-anchor", "middle");
-      if (t1) t1.textContent = "PERFORMANCE";
-      const t2 = document.getElementById("famLoopText2");
-      t2?.setAttribute("x", "979"); t2?.setAttribute("y", "261"); t2?.setAttribute("text-anchor", "middle");
-      if (t2) t2.textContent = "FEEDBACK";
+      loopPath?.setAttribute("d", "M 972 127 A 45 45 0 1 1 938 153");
+      loopArrow?.setAttribute("points", "938,153 939.1,165.5 928.1,160.7");
+      loopT1?.setAttribute("x", "979"); loopT1?.setAttribute("y", "245"); loopT1?.setAttribute("text-anchor", "middle");
+      if (loopT1) loopT1.textContent = "PERFORMANCE";
+      loopT2?.setAttribute("x", "979"); loopT2?.setAttribute("y", "261"); loopT2?.setAttribute("text-anchor", "middle");
+      if (loopT2) loopT2.textContent = "FEEDBACK";
+      if (loopPath) {
+        loopLen = loopPath.getTotalLength();
+        loopPath.style.strokeDasharray = String(loopLen);
+        loopPath.style.strokeDashoffset = String(loopLen);
+      }
     })();
+
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Reveal (or hide) the feedback loop for stage 05, redrawing it each time.
+    function setLoop(on: boolean) {
+      if (!loopG) return;
+      loopG.style.opacity = on ? "1" : "0";
+      if (!on || !loopPath) return;
+      if (reduceMotion) { loopPath.style.strokeDashoffset = "0"; return; }
+      loopPath.style.strokeDashoffset = String(loopLen);
+      loopPath.style.animation = "none";
+      loopArrow && (loopArrow.style.animation = "none");
+      loopT1 && (loopT1.style.animation = "none");
+      loopT2 && (loopT2.style.animation = "none");
+      void loopPath.getBoundingClientRect();
+      loopPath.style.animation = "fam-draw 0.7s var(--ease) forwards";
+      loopArrow && (loopArrow.style.animation = "fam-fade 0.4s 0.5s backwards");
+      loopT1 && (loopT1.style.animation = "fam-fade 0.4s 0.55s backwards");
+      loopT2 && (loopT2.style.animation = "fam-fade 0.4s 0.55s backwards");
+    }
 
     // Daylight drop
     (function () {
@@ -336,6 +383,7 @@ import Footer from '../components/Footer.astro';
       g.setAttribute("data-accent", s.accent ? "true" : "false");
       if (s.coral) g.setAttribute("data-coral", "true");
       g.setAttribute("data-active", "false");
+      (g as unknown as SVGGElement).style.setProperty("--fam-delay", (0.4 + i * 0.3) + "s");
 
       const dot = document.createElementNS(NS, "circle");
       dot.setAttribute("class", "fam-node-dot");
@@ -375,8 +423,8 @@ import Footer from '../components/Footer.astro';
     });
 
     function focusNode(i: number) {
-      i = Math.max(0, Math.min(nodeEls.length - 1, i));
-      nodeEls[i].focus();
+      const n = nodeEls.length;
+      nodeEls[((i % n) + n) % n].focus();
     }
 
     const panel = document.getElementById("famPanel");
@@ -386,11 +434,13 @@ import Footer from '../components/Footer.astro';
     const pPos  = document.getElementById("famPanelPos");
     const prevBtn = document.getElementById("famPrev") as HTMLButtonElement | null;
     const nextBtn = document.getElementById("famNext") as HTMLButtonElement | null;
+    const N = STAGES.length;
 
     let current = 0;
 
+    // Wrap-around so the stepper runs continuously in both directions (05 → 01, 01 → 05).
     function select(i: number) {
-      i = Math.max(0, Math.min(STAGES.length - 1, i));
+      i = ((i % N) + N) % N;
       current = i;
       const s = STAGES[i];
       svg!.setAttribute("data-selection", "true");
@@ -398,49 +448,39 @@ import Footer from '../components/Footer.astro';
       if (pNum)  pNum.textContent = s.num;
       if (pName) pName.textContent = s.name;
       if (pDesc) pDesc.textContent = s.desc;
-      if (pPos)  pPos.textContent = s.num + " / 0" + STAGES.length;
-      if (prevBtn) prevBtn.disabled = i === 0;
-      if (nextBtn) nextBtn.disabled = i === STAGES.length - 1;
+      if (pPos)  pPos.textContent = s.num + " / 0" + N;
       panel?.setAttribute("data-accent", s.accent ? "true" : "false");
       panel?.setAttribute("data-coral", s.coral ? "true" : "false");
+      setLoop(i === N - 1);
     }
 
     prevBtn?.addEventListener("click", () => select(current - 1));
     nextBtn?.addEventListener("click", () => select(current + 1));
 
-    // Line-draw animation
-    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    function animateLine() {
-      const len = climb.getTotalLength();
-      climb.style.strokeDasharray = String(len);
-      climb.style.strokeDashoffset = String(len);
-      (arrow as HTMLElement).style.opacity = "0";
-      nodeEls.forEach((n) => ((n as unknown as HTMLElement).style.opacity = "0"));
-
-      const DUR = 1500;
-      let start: number | null = null;
-      function step(ts: number) {
-        if (start === null) start = ts;
-        const p = Math.min((ts - start) / DUR, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        climb.style.strokeDashoffset = String(len * (1 - eased));
-        nodeEls.forEach((n, j) => {
-          if (eased >= (j + 0.5) / nodeEls.length) (n as unknown as HTMLElement).style.opacity = "1";
-        });
-        if (p >= 1) { (arrow as HTMLElement).style.transition = "opacity 0.3s"; (arrow as HTMLElement).style.opacity = "1"; }
-        else requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }
+    // Entrance: draw the curve, then stagger the nodes in. Driven by CSS
+    // keyframes (gated on the root's data-anim flag) so the figure always
+    // settles crisply into its final state and can never be left half-hidden.
+    const root = document.querySelector(".fam-root") as HTMLElement | null;
 
     // Init
     select(0);
-    if (reduce) {
-      (arrow as HTMLElement).style.opacity = "1";
-      nodeEls.forEach((n) => ((n as unknown as HTMLElement).style.opacity = "1"));
+
+    if (reduceMotion || document.hidden) {
+      // Show the finished figure with no entrance animation.
+      climb.style.strokeDashoffset = "0";
     } else {
-      requestAnimationFrame(animateLine);
+      const len = climb.getTotalLength();
+      climb.style.strokeDasharray = String(len);
+      climb.style.strokeDashoffset = String(len);
+      climb.style.animation = "fam-draw 1.6s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards";
+      root?.setAttribute("data-anim", "on");
+      // Once the entrance has played, drop the flag so node opacity is no longer
+      // pinned by the fade animation — this lets the inactive-node dimming take over.
+      // Also guarantees the final drawn state if the animation was interrupted.
+      window.setTimeout(() => {
+        climb.style.strokeDashoffset = "0";
+        root?.removeAttribute("data-anim");
+      }, 2600);
     }
   }
 </script>
