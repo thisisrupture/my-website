@@ -2,25 +2,128 @@
 export interface Props {
   title: string;
   description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  publishedTime?: string;
+  modifiedTime?: string;
 }
-const { title, description = "Rupture strategy in converged markets. A strategy company like no other." } = Astro.props;
+
+const {
+  title,
+  description = "Rupture strategy in converged markets. A strategy company like no other.",
+  image = "/og/default.png",
+  type = "website",
+  noindex = false,
+  publishedTime,
+  modifiedTime,
+} = Astro.props;
+
+const SITE = "https://thisisrupture.com";
+// Astro builds directory-style routes (/essay/index.html) and the sitemap emits
+// trailing slashes, so the canonical has to match or the two disagree.
+const path = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const canonical = new URL(path, SITE).href;
+const ogImage = new URL(image, SITE).href;
+
+const org = {
+  "@type": "Organization",
+  "@id": `${SITE}/#organization`,
+  name: "This is Rupture",
+  legalName: "This is Rupture Ltd",
+  alternateName: ["Rupture", "TIR"],
+  url: SITE,
+  logo: `${SITE}/assets/rupture-wordmark.svg`,
+  email: "hello@thisisrupture.com",
+  description: "A strategy company like no other. Rupture strategy, go-to-market strategy and AI capability for organisations in converged markets.",
+  founder: { "@id": `${SITE}/#kristian-webb` },
+  areaServed: "Worldwide",
+  address: { "@type": "PostalAddress", addressCountry: "GB", addressLocality: "London" },
+  sameAs: ["https://substack.com/@rupturethinking"],
+};
+
+const person = {
+  "@type": "Person",
+  "@id": `${SITE}/#kristian-webb`,
+  name: "Kristian Webb",
+  jobTitle: "Founder",
+  worksFor: { "@id": `${SITE}/#organization` },
+  description: "Strategist. Former NHS cardiac physiologist, then go-to-market lead at Havas Lynx. Coined the term Rupture.",
+  sameAs: ["https://www.linkedin.com/in/kristianwebb/"],
+};
+
+const website = {
+  "@type": "WebSite",
+  "@id": `${SITE}/#website`,
+  url: SITE,
+  name: "This is Rupture",
+  alternateName: "TIR",
+  publisher: { "@id": `${SITE}/#organization` },
+  inLanguage: "en-GB",
+};
+
+const article = type === 'article' ? [{
+  "@type": "Article",
+  "@id": `${canonical}#article`,
+  headline: title,
+  description,
+  image: ogImage,
+  author: { "@id": `${SITE}/#kristian-webb` },
+  publisher: { "@id": `${SITE}/#organization` },
+  mainEntityOfPage: canonical,
+  ...(publishedTime && { datePublished: publishedTime }),
+  ...(modifiedTime && { dateModified: modifiedTime }),
+  inLanguage: "en-GB",
+}] : [];
+
+const jsonLd = { "@context": "https://schema.org", "@graph": [org, person, website, ...article] };
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta name="robots" content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1"} />
+
+  <!-- Open Graph — LinkedIn, Slack, WhatsApp, iMessage, Facebook -->
+  <meta property="og:type" content={type} />
+  <meta property="og:site_name" content="This is Rupture" />
+  <meta property="og:locale" content="en_GB" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content={title} />
+  {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+  {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+  {type === 'article' && <meta property="article:author" content="Kristian Webb" />}
+
+  <!-- X / Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="sitemap" href="/sitemap-index.xml" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="/styles/tokens.css" />
-  <title>{title}</title>
-  <meta name="description" content={description} />
-  <meta property="og:title" content={title} />
-  <meta property="og:description" content={description} />
+
   <meta name="theme-color" content="#efeeea" />
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>

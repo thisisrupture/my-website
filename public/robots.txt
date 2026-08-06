@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Disallow: /thanks
+
+# AI crawlers — explicitly welcome. The ideas are meant to travel.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://thisisrupture.com/sitemap-index.xml
