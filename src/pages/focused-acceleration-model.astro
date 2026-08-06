@@ -14,20 +14,23 @@ import Footer from '../components/Footer.astro';
     <main class="fam-page">
       <div class="fam-root">
 
-        <section class="fam-head">
-          <h1 class="fam-title">Focused Acceleration<sup>&trade;</sup><span class="fam-stop">.</span></h1>
-          <p class="fam-lede">
-            This isn&rsquo;t about doing AI. It&rsquo;s about designing competitive advantage and using AI to
-            reach it faster. Our model helps you adopt AI with the discipline, foresight and visibility
-            that investors and boards can take confidence in.
-          </p>
-        </section>
-
         <!-- ===== INTERACTIVE FIGURE ===== -->
         <figure class="fam-figure">
           <div class="fam-figure-title" id="famFigTitle" data-show="false" aria-hidden="true">
             Focused Acceleration<sup>&trade;</sup><span class="fam-stop">.</span>
           </div>
+
+          <!-- Intro sits in the open top-left space of the chart on desktop,
+               and stacks above it on mobile. -->
+          <section class="fam-head">
+            <h1 class="fam-title">Focused Acceleration<sup>&trade;</sup><span class="fam-stop">.</span></h1>
+            <p class="fam-lede">
+              This isn&rsquo;t about doing AI. It&rsquo;s about designing competitive advantage and using AI to
+              reach it faster. Our model helps you adopt AI with the discipline, foresight and visibility
+              that investors and boards can take confidence in.
+            </p>
+          </section>
+
           <div class="fam-stage">
             <svg class="fam-svg" id="famSvg" viewBox="0 0 1120 630" role="group"
                  aria-label="The Focused Acceleration Model: five stages climbing from a converged-market baseline to competitive daylight."
@@ -103,30 +106,37 @@ import Footer from '../components/Footer.astro';
 
   .fam-page { min-width: 0; }
   /* No extra top padding: the .wrap gutter gap already sets the spacing below
-     the nav, matching every other page. */
-  .fam-root { padding: 0; }
+     the nav, matching every other page. Blocks are spaced by the same gutter. */
+  .fam-root { padding: 0; display: flex; flex-direction: column; gap: var(--gutter); }
 
-  /* ---- Header block ---- */
+  /* ---- Intro: overlaid in the open top-left space of the chart on desktop,
+         so the copy and the figure share one bordered container. ---- */
+  .fam-root .fam-head {
+    position: absolute; z-index: 2;
+    top: clamp(18px, 3vw, 40px); left: clamp(18px, 3vw, 44px);
+    max-width: 46ch;
+  }
+
   .fam-root .fam-title {
     font-family: var(--font-serif);
     font-weight: 700;
-    font-size: clamp(2.2rem, 5.4vw, 4rem);
+    font-size: clamp(1.9rem, 3.2vw, 2.7rem);
     line-height: 1.0; letter-spacing: -0.02em;
-    margin: 0 0 22px; max-width: 18ch;
+    margin: 0 0 16px; max-width: 18ch;
   }
   .fam-root .fam-title sup { font-size: 0.34em; top: -1em; font-weight: 400; }
   .fam-root .fam-title .fam-stop { color: var(--coral); }
 
   .fam-root .fam-lede {
     font-family: var(--font-serif); font-weight: 400;
-    font-size: clamp(1.15rem, 1.8vw, 1.5rem); line-height: 1.4;
-    max-width: 44ch; margin: 0 0 clamp(30px, 5vw, 52px);
+    font-size: clamp(1.02rem, 1.4vw, 1.18rem); line-height: 1.45;
+    max-width: 44ch; margin: 0;
   }
 
   /* ---- Figure frame ---- */
   /* No scroll-snap on desktop: wheel/trackpad snapping reads as hijacked input,
      and the figure exceeds shorter viewports, where CSS snap misbehaves anyway. */
-  .fam-root .fam-figure { margin: 0; border: var(--hairline); background: var(--paper); }
+  .fam-root .fam-figure { position: relative; margin: 0; border: var(--hairline); background: var(--paper); }
 
   /* In-figure title: hidden on desktop; on mobile it fades in once the page
      headline has scrolled away, so the framework stays named while in the chart. */
@@ -240,7 +250,7 @@ import Footer from '../components/Footer.astro';
   .fam-root .fam-nav-btn:disabled { opacity: 0.32; cursor: default; }
   .fam-root .fam-colophon {
     font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--fg-muted);
-    margin: 24px 0 0;
+    margin: 0;
   }
 
   /* ---- Figcaption ---- */
@@ -278,6 +288,14 @@ import Footer from '../components/Footer.astro';
     .fam-root .fam-figure-title[data-show="true"] { opacity: 1; transform: none; }
     .fam-root .fam-figure-title sup { font-size: 0.5em; font-weight: 400; }
     .fam-root .fam-figure-title .fam-stop { color: var(--coral); }
+
+    /* Intro returns to normal flow above the chart — no room to overlay. */
+    .fam-root .fam-head {
+      position: static; max-width: none;
+      padding: 26px clamp(16px, 4vw, 22px) 4px;
+    }
+    .fam-root .fam-title { font-size: 1.85rem; margin-bottom: 12px; }
+    .fam-root .fam-lede { font-size: 1.05rem; }
 
     .fam-root .fam-stage { padding: clamp(14px, 3.5vw, 20px) clamp(12px, 3vw, 18px) 0; }
     .fam-root .fam-svg { overflow: hidden; touch-action: pan-y; cursor: grab; }
