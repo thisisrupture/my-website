@@ -15,8 +15,7 @@ import Footer from '../components/Footer.astro';
       <div class="fam-root">
 
         <section class="fam-head">
-          <div class="fam-eyebrow"><span class="fam-eyebrow-dot" aria-hidden="true"></span>The framework</div>
-          <h1 class="fam-title">The Focused Acceleration Model<sup>&trade;</sup><span class="fam-stop">.</span></h1>
+          <h1 class="fam-title">Focused Acceleration<sup>&trade;</sup><span class="fam-stop">.</span></h1>
           <p class="fam-lede">
             This isn&rsquo;t about doing AI. It&rsquo;s about designing competitive advantage and using AI to
             reach it faster. Our model helps you adopt AI with the discipline, foresight and visibility
@@ -27,7 +26,7 @@ import Footer from '../components/Footer.astro';
         <!-- ===== INTERACTIVE FIGURE ===== -->
         <figure class="fam-figure">
           <div class="fam-figure-title" id="famFigTitle" data-show="false" aria-hidden="true">
-            The Focused Acceleration Model<sup>&trade;</sup><span class="fam-stop">.</span>
+            Focused Acceleration<sup>&trade;</sup><span class="fam-stop">.</span>
           </div>
           <div class="fam-stage">
             <svg class="fam-svg" id="famSvg" viewBox="0 0 1120 630" role="group"
@@ -103,18 +102,11 @@ import Footer from '../components/Footer.astro';
      ------------------------------------------------------------------ */
 
   .fam-page { min-width: 0; }
-  .fam-root { padding: clamp(20px, 4vw, 40px) 0 0; }
+  /* No extra top padding: the .wrap gutter gap already sets the spacing below
+     the nav, matching every other page. */
+  .fam-root { padding: 0; }
 
   /* ---- Header block ---- */
-  .fam-root .fam-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--fg-muted);
-    display: flex; align-items: center; gap: 10px;
-    margin: 0 0 22px;
-  }
-  .fam-root .fam-eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); display: inline-block; }
-
   .fam-root .fam-title {
     font-family: var(--font-serif);
     font-weight: 700;
