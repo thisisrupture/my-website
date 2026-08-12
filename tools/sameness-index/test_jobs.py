@@ -201,3 +201,65 @@ async def test_category_is_passed_through(client, monkeypatch):
     await client.post("/api/run", json={"brands": BRANDS})
     await asyncio.sleep(0.05)
     assert seen["category"] == ""
+
+
+class _NoHTTP:
+    """The pipeline opens an httpx client; these tests stub crawling entirely,
+    and the sandbox's proxy environment makes a real client fail to construct."""
+    async def __aenter__(self): return self
+    async def __aexit__(self, *a): return False
+
+
+@pytest.mark.anyio
+async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
+    """One site behind bot protection must not throw away the whole run —
+    but the result has to say the brand is missing."""
+    import server as s
+    async def crawl(http, brand):
+        if brand["name"] == "Blocked":
+            return "", [], 0                      # too short: unreadable
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+    monkeypatch.setattr(s, "crawl_brand", crawl)
+    monkeypatch.setattr(s, "stage_layers", lambda b, c: _layers())
+    monkeypatch.setattr(s, "stage_space", lambda cat, e: _space())
+    monkeypatch.setattr(s, "stage_code", lambda b, f, p: _code())
+    monkeypatch.setattr(s, "stage_findings", lambda *a: _findings())
+
+    brands = [{"name": "Mine", "url": "https://a.test"},
+              {"name": "Blocked", "url": "https://b.test"},
+              {"name": "Other", "url": "https://c.test"}]
+    result, notes = None, []
+    async for e in s.pipeline(brands):
+        if e["type"] == "result": result = e["data"]
+        if e["type"] == "progress": notes.append(e["text"])
+        if e["type"] == "error": raise AssertionError("run aborted: " + e["text"])
+
+    assert result is not None, "run produced no result"
+    assert [b["name"] for b in result["meta"]["brands"]] == ["Mine", "Other"]
+    assert result["meta"]["unreadable"] == [{"name": "Blocked", "url": "https://b.test"}]
+    assert any("could not be read" in n for n in notes)
+    assert any("Blocked" in x for x in result["limitations"])
+
+
+@pytest.mark.anyio
+async def test_own_brand_unreadable_stops_the_run(monkeypatch):
+    import server as s
+    async def crawl(http, brand):
+        return ("", [], 0) if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1)
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+    monkeypatch.setattr(s, "crawl_brand", crawl)
+    errs = [e async for e in s.pipeline([{"name": "Mine", "url": "https://a.test"},
+                                         {"name": "Other", "url": "https://c.test"}])
+            if e["type"] == "error"]
+    assert errs and "built around your own brand" in errs[0]["text"]
+
+
+async def _layers(): return {"category_guess": "test category", "mandated_word_estimate": 10,
+                             "molecule": ["m"], "elective": ["an elective fragment"]}
+async def _space(): return [{"id": "C01", "label": "L", "description": "D", "source": "Observed in category.",
+                             "tier": "open", "tier_reasoning": "R"},
+                            {"id": "X01", "label": "L2", "description": "D2", "source": "Burden literature.",
+                             "tier": "open", "tier_reasoning": "R2"}]
+async def _code(): return {"C01": "an elective fragment"}
+async def _findings(): return {"headline": "", "findings": [], "brand_comments": {}}

@@ -711,17 +711,47 @@ async def pipeline(brands_in, category_given=""):
     async with httpx.AsyncClient() as http:
 
         # 1 — read the sites
-        corpora, image_cands = {}, {}
+        #
+        # A site that cannot be read is a fact about that site, not a reason to
+        # throw away the whole run. Large pharma sites sit behind bot protection
+        # that inspects the TLS handshake, and no combination of headers gets
+        # past it. So an unreadable competitor is dropped, named on the page,
+        # and the rest of the category is still analysed. Two exceptions: the
+        # user's own brand is the frame for the entire report, and fewer than
+        # two brands is not a comparison.
+        corpora, image_cands, unreadable = {}, {}, []
         for b in brands_in:
             host = urlparse(b["url"] if b["url"].startswith("http") else "https://" + b["url"]).netloc or b["url"]
             yield ev({"type": "progress", "text": f"Reading {host} — the public website, as a patient or prescriber would find it."})
             corpus, images, n_pages = await crawl_brand(http, b)
             if len(corpus) < 400:
-                yield ev({"type": "error", "text": f"Could not read enough of {b['name']}'s site ({b['url']}). It may block automated readers or render entirely in JavaScript."})
-                return
+                if b["name"] == yourn:
+                    yield ev({"type": "error", "text": (
+                        f"Could not read enough of {b['name']}'s site ({b['url']}). The report is built around your own "
+                        "brand, so there is nothing to compare against without it. The site may block automated readers "
+                        "or render entirely in JavaScript. Try the patient site if you entered the HCP one, or the other "
+                        "way round."
+                    )})
+                    return
+                unreadable.append({"name": b["name"], "url": b["url"]})
+                yield ev({"type": "progress", "text": (
+                    f"{b['name']}'s site could not be read — it blocks automated readers or renders entirely in "
+                    "JavaScript. Continuing without it; the report will say so."
+                )})
+                continue
             corpora[b["name"]] = corpus
             image_cands[b["name"]] = images
             yield ev({"type": "progress", "text": f"{b['name']}: {n_pages} page{'s' if n_pages != 1 else ''} read."})
+
+        brands = [b for b in brands if b in corpora]
+        brands_in = [b for b in brands_in if b["name"] in corpora]
+        if len(brands) < 2:
+            yield ev({"type": "error", "text": (
+                "Only one brand's site could be read, and one brand is not a comparison. "
+                + ("Could not read: " + ", ".join(u["name"] for u in unreadable) + ". " if unreadable else "")
+                + "Try different addresses, or a category whose sites are less heavily protected."
+            )})
+            return
 
         # 2 — strip the mandatories, separate the molecule layer
         yield ev({"type": "progress", "text": "Removing regulatory content — safety information, indication statements, prescribing information, disclaimers. None of it was a marketing decision, so none of it is scored."})
@@ -1002,6 +1032,7 @@ async def pipeline(brands_in, category_given=""):
                     {"name": b["name"], "url": b["url"], "accent": ACCENTS[i % len(ACCENTS)]}
                     for i, b in enumerate(brands_in)
                 ],
+                "unreadable": unreadable,
             },
             "headline": headline,
             "standfirst": standfirst,
@@ -1023,7 +1054,12 @@ async def pipeline(brands_in, category_given=""):
             "cross_check": cross_check,
             "findings": findings,
             "boundary_rules": GENERIC_BOUNDARY_RULES,
-            "limitations": [
+            "limitations": ([
+                "Asked for, but could not be read: " + ", ".join(f"{u['name']} ({u['url']})" for u in unreadable)
+                + ". Those sites turn away automated readers or build their pages in the browser, so nothing from them "
+                "is in these numbers. They are competing in this category whether or not this analysis could see them, "
+                "and a territory counted here as used by nobody may well be used by one of them."
+            ] if unreadable else []) + [
                 "The percentages depend on how many territories were identified. Those read off the websites have a user by definition, and those established from the literature are largely unused, also close to by definition. A longer literature list lowers the usage figure without anything changing in the market. Treat the percentages as a description of this list, not as a property of the category; the count of named, evidenced, unused territories does not move when the list length does, which is why it leads.",
                 "Deciding what was determined by the label and what was a marketing decision is a judgement. The rules are published on this page, applied identically to every brand, and open to challenge. Different reasonable rules would change the numbers.",
                 "Websites only. Congress activity, sales aids, field and MSL messaging, paid media and social are not included. This measures the public messaging each brand publishes, not its full commercial message.",

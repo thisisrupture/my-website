@@ -163,6 +163,11 @@
     letter-spacing: -.015em; max-width: 820px; margin-top: 14px;
   }
   .headline .num { color: var(--coral); }
+  .missing-note {
+    font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--ink);
+    border-left: 2px solid var(--coral); padding: 2px 0 2px 13px;
+    margin-top: 14px; max-width: 660px;
+  }
   .headline-why { margin-top: 20px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 
   /* four numbers */
@@ -420,6 +425,7 @@
   <div class="col">
 
     <div class="eyebrow" id="r-meta"></div>
+    <p class="missing-note" id="r-missing" hidden></p>
     <p class="headline" id="r-headline"></p>
     <div class="headline-why">
       <button class="why" id="why-headline">What does this mean?</button>
@@ -709,6 +715,22 @@ function render(data) {
   const m = data.metrics;
 
   $("#r-meta").textContent = `${data.meta.category} · ${data.meta.market} · captured ${data.meta.captured}`;
+
+  // A brand that could not be read is stated above the headline, not buried in
+  // the limitations. Someone who sends this link on will not read the working,
+  // and a partial run must never be mistakable for a complete one.
+  const missed = data.meta.unreadable || [];
+  const note = $("#r-missing");
+  if (missed.length) {
+    note.hidden = false;
+    note.textContent =
+      `${missed.map(m => m.name).join(" and ")} could not be read — ${missed.length === 1 ? "that site turns" : "those sites turn"} ` +
+      `away automated readers or build ${missed.length === 1 ? "its page" : "their pages"} in the browser. ` +
+      `${missed.length === 1 ? "It is" : "They are"} competing in this category regardless, so a territory shown here as ` +
+      `used by nobody may well be used by ${missed.length === 1 ? "it" : "one of them"}.`;
+  } else {
+    note.hidden = true;
+  }
   $("#r-headline").innerHTML = esc(data.headline).replace(/(\b\d+%?\b)/g, '<span class="num">$1</span>');
 
   $("#r-numbers").innerHTML = [
