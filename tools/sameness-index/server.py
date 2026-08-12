@@ -28,6 +28,7 @@ import asyncio
 import base64
 import json
 import os
+import random
 import re
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -349,6 +350,31 @@ async def fetch_hero_image(http, urls):
 # LLM helpers
 # ---------------------------------------------------------------------------
 
+# A run makes roughly a dozen model calls over several minutes. Any one of them
+# can land on a busy moment and come back 529 Overloaded, or 429 rate limited —
+# transient, no fault of the request. Losing the whole run to that means losing
+# the crawl and every call already paid for, so these are waited out rather than
+# surfaced. The waits are long because an overloaded API stays overloaded for
+# tens of seconds, not milliseconds.
+RETRY_STATUSES = {408, 409, 429, 500, 502, 503, 504, 529}
+RETRY_WAITS = [4, 10, 25, 45, 60]
+
+
+async def call_model(**kwargs):
+    last = None
+    for attempt in range(len(RETRY_WAITS) + 1):
+        try:
+            return await get_client().messages.create(**kwargs)
+        except Exception as e:
+            status = getattr(e, "status_code", None)
+            if status not in RETRY_STATUSES or attempt == len(RETRY_WAITS):
+                raise
+            last = e
+            wait = RETRY_WAITS[attempt] * (0.8 + random.random() * 0.4)
+            await asyncio.sleep(wait)
+    raise last
+
+
 async def llm_json(prompt, max_tokens=4000, images=None, stage="this step"):
     """One model call returning JSON.
 
@@ -364,10 +390,23 @@ async def llm_json(prompt, max_tokens=4000, images=None, stage="this step"):
         for mt, b64 in images:
             content.append({"type": "image", "source": {"type": "base64", "media_type": mt, "data": b64}})
     content.append({"type": "text", "text": prompt})
-    msg = await get_client().messages.create(
-        model=MODEL, max_tokens=max_tokens,
-        messages=[{"role": "user", "content": content}],
-    )
+    try:
+        msg = await call_model(
+            model=MODEL, max_tokens=max_tokens,
+            messages=[{"role": "user", "content": content}],
+        )
+    except Exception as e:
+        status = getattr(e, "status_code", None)
+        if status in RETRY_STATUSES:
+            raise RuntimeError(
+                "The model service was busy and stayed busy while the index waited and tried again. "
+                "Nothing is wrong with your brands or the sites. Run it again in a few minutes."
+            ) from e
+        if status in (401, 403):
+            raise RuntimeError(
+                "The model service refused the key. Check ANTHROPIC_API_KEY, and that the account has credit on it."
+            ) from e
+        raise
     if msg.stop_reason == "max_tokens":
         raise RuntimeError(
             f"The answer to {stage} was longer than the room allowed, so it arrived cut off "
