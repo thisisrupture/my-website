@@ -273,7 +273,16 @@ async def fetch_hero_image(http, urls):
 # LLM helpers
 # ---------------------------------------------------------------------------
 
-async def llm_json(prompt, max_tokens=4000, images=None):
+async def llm_json(prompt, max_tokens=4000, images=None, stage="this step"):
+    """One model call returning JSON.
+
+    A truncated answer is treated as a failed run, not repaired. A cut-off
+    territory list would parse fine after trimming the last broken entry, and
+    the run would carry on and produce numbers — quietly computed over a
+    shorter list than the category actually has. Since the percentages are
+    sensitive to list length, that is a wrong answer wearing the clothes of a
+    right one. Better to stop and say so.
+    """
     content = []
     if images:
         for mt, b64 in images:
@@ -283,10 +292,22 @@ async def llm_json(prompt, max_tokens=4000, images=None):
         model=MODEL, max_tokens=max_tokens,
         messages=[{"role": "user", "content": content}],
     )
+    if msg.stop_reason == "max_tokens":
+        raise RuntimeError(
+            f"The answer to {stage} was longer than the room allowed, so it arrived cut off "
+            "and the run stopped rather than score a partial list. This category needs a "
+            "higher limit — raise max_tokens for this stage."
+        )
     raw = "".join(b.text for b in msg.content if b.type == "text").strip()
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.S)
     start = min([i for i in (raw.find("{"), raw.find("[")) if i >= 0], default=0)
-    return json.loads(raw[start:])
+    try:
+        return json.loads(raw[start:])
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"The answer to {stage} did not come back as usable JSON ({e}). "
+            "This is usually a one-off — running the index again normally clears it."
+        ) from e
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +331,7 @@ Return ONLY JSON:
   "molecule": ["<layer 2 fragment>", ...],   // 5-20 short verbatim-ish fragments
   "elective": ["<layer 3 fragment>", ...]    // every distinct elective move, verbatim where possible, 8-30 fragments
 }}"""
-    return await llm_json(prompt, max_tokens=4000)
+    return await llm_json(prompt, max_tokens=8000, stage="separating the layers")
 
 
 async def stage_space(category, brand_electives):
@@ -358,7 +379,7 @@ Return ONLY JSON — a list:
    "source": "<for C: 'Observed in category.' For X/H: the specific literature basis>",
    "tier": "open|frame_only|constrained|closed",
    "tier_reasoning": "<1-2 sentences, specific to this category>"}}, ...]"""
-    return await llm_json(prompt, max_tokens=8000)
+    return await llm_json(prompt, max_tokens=20000, stage="building the territory list")
 
 
 async def stage_code(brand, frags, positions):
@@ -379,7 +400,7 @@ Elective copy for "{brand}":
 
 Return ONLY JSON: {{"<position id>": "<verbatim evidence from the copy>", ...}}
 Only include positions that are clearly taken. An empty object is a valid answer."""
-    return await llm_json(prompt, max_tokens=3000)
+    return await llm_json(prompt, max_tokens=8000, stage="scoring a brand against the territories")
 
 
 async def stage_visual(brand, mt, b64):
@@ -400,7 +421,7 @@ Dimensions (pick ONE short value each, lower case):
 
 Return ONLY JSON: {{"human_configuration": "...", ..., "child_present": true/false,
 "notes": "<2-3 sentences describing what the image shows and how>"}}"""
-    return await llm_json(prompt, max_tokens=1200, images=[(mt, b64)])
+    return await llm_json(prompt, max_tokens=2000, images=[(mt, b64)], stage="reading the hero image")
 
 
 async def stage_findings(category, metrics, positions, brands, cross_check):
@@ -457,7 +478,7 @@ Return ONLY JSON:
  ],
  "brand_comments": {{"<brand>": "<one sentence on its verbal vs visual posture>", ...}}
 }}"""
-    return await llm_json(prompt, max_tokens=3000)
+    return await llm_json(prompt, max_tokens=6000, stage="writing the findings")
 
 
 # ---------------------------------------------------------------------------
