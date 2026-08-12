@@ -1,0 +1,34 @@
+# Render service definition.
+#
+# This tool lives inside the my-website repository, so `rootDir` tells Render
+# to build from this folder and ignore the Astro site around it. Cloudflare
+# Pages does the opposite: it builds the Astro site and ignores this folder.
+# One repository, two deployments, neither aware of the other.
+#
+# The two secrets are marked sync:false, which means Render will not read them
+# from this file — you paste them into the dashboard once and they are never in
+# the repository. See DEPLOY.md.
+
+services:
+  - type: web
+    name: rupture-tools
+    rootDir: tools/sameness-index
+    runtime: python
+    plan: starter          # the free plan sleeps, which would kill runs in flight
+    region: frankfurt      # nearest to the eu-west-2 database
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      # Cost control. Raise deliberately, not casually — each run crawls live
+      # sites and makes about a dozen model calls.
+      - key: SAMENESS_RUNS_PER_IP
+        value: "5"
+      - key: SAMENESS_MAX_CONCURRENT
+        value: "3"

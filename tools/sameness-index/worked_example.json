@@ -1,0 +1,1289 @@
+{
+  "meta": {
+    "tool": "Sameness Index",
+    "version": "0.2",
+    "category": "Non-steroidal topical therapies for atopic dermatitis",
+    "market": "United States",
+    "captured": "12 August 2026",
+    "audience_note": "Patient and HCP sites, atopic dermatitis sections only. Opzelura HCP not captured in this run.",
+    "brands": [
+      {
+        "name": "Zoryve",
+        "company": "Arcutis",
+        "url": "https://www.zoryve.com",
+        "accent": "#FF686B"
+      },
+      {
+        "name": "Vtama",
+        "company": "Organon",
+        "url": "https://www.vtama.com",
+        "accent": "#1F5B4A"
+      },
+      {
+        "name": "Opzelura",
+        "company": "Incyte",
+        "url": "https://www.opzelura.com",
+        "accent": "#303030"
+      },
+      {
+        "name": "Eucrisa",
+        "company": "Pfizer",
+        "url": "https://www.eucrisa.com",
+        "accent": "#727270"
+      }
+    ]
+  },
+  "headline": "73% of what these four brands say, they say together. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody.",
+  "standfirst": "Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. Of the 18 territories nobody explores, 9 need no new clinical evidence to work with — no additional trial, no new endpoint, nothing further to substantiate. They are decisions about how the disease is described, who the communications address, and where they appear, all inside the existing label. They are unexplored because nobody chose them, not because nobody could.",
+  "metrics": {
+    "space_size": 40,
+    "occupied": 22,
+    "empty": 18,
+    "occupancy_rate": 0.55,
+    "crowded": 7,
+    "contested": 16,
+    "sole_held": 6,
+    "crowding_rate": 0.727,
+    "open_empty": 9,
+    "empty_ids": [
+      "X01",
+      "X02",
+      "X03",
+      "X04",
+      "X05",
+      "X06",
+      "X07",
+      "X08",
+      "X09",
+      "X10",
+      "H01",
+      "H02",
+      "H03",
+      "H05",
+      "H06",
+      "H07",
+      "H08",
+      "H10"
+    ],
+    "open_empty_ids": [
+      "X02",
+      "X04",
+      "X05",
+      "X07",
+      "X09",
+      "H06",
+      "H07",
+      "H08",
+      "H10"
+    ],
+    "crowded_ids": [
+      "C01",
+      "C02",
+      "C03",
+      "C05",
+      "C06",
+      "C15",
+      "C20"
+    ],
+    "mean_pairwise": 0.339,
+    "pairwise": {
+      "Zoryve / Vtama": 0.4,
+      "Zoryve / Opzelura": 0.421,
+      "Zoryve / Eucrisa": 0.333,
+      "Vtama / Opzelura": 0.278,
+      "Vtama / Eucrisa": 0.333,
+      "Opzelura / Eucrisa": 0.267
+    },
+    "provenance_counts": {
+      "observed in category": 20,
+      "patient burden literature": 10,
+      "clinical barrier literature": 10
+    },
+    "empty_by_tier": {
+      "frame_only": 4,
+      "open": 9,
+      "constrained": 3,
+      "closed": 2
+    }
+  },
+  "positions": [
+    {
+      "id": "C01",
+      "label": "Steroid avoidance as the lead benefit",
+      "analyst_label": "Steroid avoidance framed as the core promise, not just a product fact",
+      "description": "The brand's central promise is escaping steroids, not just the fact of being steroid-free.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Being steroid-free is a fact of the label. Building the lead benefit around avoiding steroids is a messaging decision, not a new claim. Every brand in the set already does it.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "'NOT A STEROID' set in the hero benefit bar, second of three",
+        "Vtama": "'steroid-free' in the persistent hero banner",
+        "Opzelura": "'STEROID-FREE JAK INHIBITOR CREAM' — first line of hero subcopy",
+        "Eucrisa": "'100% steroid-free' as a hero roundel"
+      }
+    },
+    {
+      "id": "C02",
+      "label": "Safety in young children",
+      "analyst_label": "Paediatric reassurance — safe for very young children",
+      "description": "The site works to reassure that the product is safe for very young children.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Available to any brand whose label covers the age group it depicts. The reassurance itself needs no new endpoint.",
+      "claimers": [
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Vtama": "'as young as 2 years of age' in the hero banner",
+        "Opzelura": "'for you and your kids as young as 2 years'",
+        "Eucrisa": "'Approved for babies' — one of three hero cards"
+      }
+    },
+    {
+      "id": "C03",
+      "label": "The parent as the audience",
+      "analyst_label": "Caregiver addressed as the decision-maker",
+      "description": "The parent or carer, not the patient, is treated as the person making the decision.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "An audience decision. Addressing the parent rather than the patient requires nothing from the label.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "'As a mom who also lives with eczema, walking this path alongside my daughter'",
+        "Vtama": "Caregiver-and-child hero; 'Not actual patients/caregiver'",
+        "Opzelura": "Mother-and-child hero; 'the impact eczema has on you or your child'",
+        "Eucrisa": "'Eczema and Your Child' section in primary nav"
+      }
+    },
+    {
+      "id": "C04",
+      "label": "Speed of relief",
+      "analyst_label": "Speed of relief",
+      "description": "How fast relief arrives is put forward as the reason to choose the brand.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Cannot be claimed without time-to-effect data. Opzelura can make it because its trials measured that endpoint; any other brand would need the same evidence.",
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "'itch improvement as early as 3 or 4 days'"
+      }
+    },
+    {
+      "id": "C05",
+      "label": "Itch as the primary symptom addressed",
+      "analyst_label": "Itch named as the enemy",
+      "description": "Itch, specifically, is cast as the thing the product defeats.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Itch is measured in every pivotal trial in the category. Choosing to lead on it is a decision about message hierarchy, not a new claim.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'powerful skin clearance and reduction in itch' (HCP)",
+        "Vtama": "Dedicated 'Itch Relief' section in primary nav",
+        "Opzelura": "'significantly reduce itch'; dedicated Itch Relief section"
+      }
+    },
+    {
+      "id": "C06",
+      "label": "Clear skin as the outcome",
+      "analyst_label": "Visible clearance as the goal state",
+      "description": "Visibly clear skin is presented as what success looks like.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Clearance is the registrational endpoint for every product in the category. Presenting it as the goal is a matter of emphasis.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'powerful skin clearance'",
+        "Vtama": "'Powerful Skin Clearance' as the first content block",
+        "Opzelura": "'clear or almost clear skin'"
+      }
+    },
+    {
+      "id": "C07",
+      "label": "Suitable for long-term use",
+      "analyst_label": "Permission for long-term or continuous use",
+      "description": "The brand grants permission to keep using the product long term.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Depends entirely on what the label says about duration of use. Opzelura's label specifies non-continuous use, so this territory is not open to it.",
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'safe, long-term disease control for any skin type' (HCP)",
+        "Eucrisa": "'can be part of a long-term treatment plan'"
+      }
+    },
+    {
+      "id": "C08",
+      "label": "Use anywhere on the body",
+      "analyst_label": "Freedom to use anywhere on the body, including sensitive areas",
+      "description": "Freedom to apply anywhere on the body, including sensitive areas.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Claiming use anywhere on the body needs either data in sensitive areas or a label broad enough to cover it. Without one of those it is an unsupported claim.",
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'ZORYVE cream. Once a day. Anywhere.' / 'reliable results anywhere on the body'",
+        "Eucrisa": "'can be used almost everywhere on almost everybody'"
+      }
+    },
+    {
+      "id": "C09",
+      "label": "How the formulation feels",
+      "analyst_label": "Formulation elegance / sensory experience",
+      "description": "The feel and elegance of the formulation is sold as an experience.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Describing how the formulation feels is not an efficacy claim, and carries little regulatory weight.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'gentle formulation' / 'discover elegant formulations' (HCP)",
+        "Vtama": "'safe on skin' — the second half of the hero antithesis"
+      }
+    },
+    {
+      "id": "C10",
+      "label": "Return to everyday life",
+      "analyst_label": "Return to ordinary life and its moments",
+      "description": "Getting ordinary life and its moments back is the promised outcome.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Carried by imagery and tone rather than by an outcome claim. Routine in consumer healthcare advertising.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'Everyone deserves the touch of calm skin'",
+        "Opzelura": "'OPZELURA moments with patients' / 'Moments of Clarity'"
+      }
+    },
+    {
+      "id": "C11",
+      "label": "Touch and closeness restored",
+      "analyst_label": "Touch and physical intimacy restored",
+      "description": "Touch and physical closeness, restored, is the promised outcome.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "A decision about how relief is described. Nothing is claimed that the label does not already support.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'the touch of calm skin' — touch is the headline noun",
+        "Opzelura": "Patient narrative built entirely on hand-holding and touch refusal"
+      }
+    },
+    {
+      "id": "C12",
+      "label": "The emotional burden acknowledged",
+      "analyst_label": "Emotional burden of the disease acknowledged",
+      "description": "The emotional weight of living with the disease is named and acknowledged.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Acknowledging the emotional burden is disease education and invokes no endpoint.",
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "'I was devastated... they were trying to stay away from my eczema'"
+      }
+    },
+    {
+      "id": "C13",
+      "label": "Beauty and skincare codes rather than pharma",
+      "analyst_label": "Beauty or cosmetic category framing",
+      "description": "The brand borrows the codes of beauty and skincare rather than pharma.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Borrowing the codes of another category is an art direction and tone decision. Awards are earned rather than claimed.",
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Allure Best of Beauty and Glamour Beauty & Wellness award roundels in hero"
+      }
+    },
+    {
+      "id": "C14",
+      "label": "The science as the brand story",
+      "analyst_label": "Mechanism or science as the brand story",
+      "description": "The science or mechanism is the brand story, not background material.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "The pharmacology is determined by the molecule, but building the brand story around it is a creative decision and needs no new substantiation.",
+      "claimers": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "'It's not fiction. It's Skin Science.' — the brand line is a science claim",
+        "Eucrisa": "'works above and below the skin's surface' — the hero claim is mechanistic"
+      }
+    },
+    {
+      "id": "C15",
+      "label": "Affordability and access up front",
+      "analyst_label": "Access and affordability foregrounded",
+      "description": "Affordability and access are placed in the foreground of the site.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Copay and access programmes already exist. Whether they lead the messaging or sit three clicks down is a decision.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'committed to affordable patient access' / savings card in primary nav",
+        "Opzelura": "'as little as $0 per tube' in primary nav",
+        "Eucrisa": "'pay as little as $10' banner"
+      }
+    },
+    {
+      "id": "C16",
+      "label": "Simplicity and convenience",
+      "analyst_label": "Convenience and simplicity as a benefit",
+      "description": "Simplicity and convenience of use are claimed as a benefit in themselves.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "The dosing is set by the label. Describing it as simple is a wording decision and attracts little scrutiny.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'simple, once-daily treatment' / 'simplify atopic dermatitis treatment' (HCP)",
+        "Vtama": "'once-daily' foregrounded in the hero banner"
+      }
+    },
+    {
+      "id": "C17",
+      "label": "Category leadership — first, only, number one",
+      "analyst_label": "Category leadership or first-in-class authority claim",
+      "description": "Leadership of the category — number one, first, only — is the claim.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Number-one and first-in-class claims need substantiation and exact wording, and are treated as comparative claims. Expect close review.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'#1 prescribed branded topical' / 'over 1 million prescriptions'",
+        "Vtama": "'first and only AhR agonist' / 'First in Class'"
+      }
+    },
+    {
+      "id": "C18",
+      "label": "Supporting the conversation with the doctor",
+      "analyst_label": "Enabling the physician conversation",
+      "description": "The site equips the patient to have the conversation with their doctor.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Discussion guides, conversation starters and routes to an appointment involve no product claim at all.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'see a dermatologist online' — persistent CTA",
+        "Opzelura": "'Treating eczema starts with a conversation'; Eczema E-Guide"
+      }
+    },
+    {
+      "id": "C19",
+      "label": "Time off treatment between flares",
+      "analyst_label": "Treatment-free intervals / life between flares",
+      "description": "Life between flares — time off treatment — is part of the offer.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Requires durability data. Vtama can make this claim on the strength of its open-label extension study; without equivalent evidence the territory is not available.",
+      "claimers": [
+        "Vtama"
+      ],
+      "n": 1,
+      "receipts": {
+        "Vtama": "'sustained results, even during treatment-free months'"
+      }
+    },
+    {
+      "id": "C20",
+      "label": "Efficacy stated across all skin tones",
+      "analyst_label": "Efficacy across all skin tones",
+      "description": "Efficacy across all skin tones is stated, not just depicted.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Needs demonstrated representation in the trial population. Worded carelessly it becomes a subgroup efficacy claim.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'for any skin type' (HCP); broad skin tone casting in hero",
+        "Vtama": "'across all disease severities, skin tones, and treatment areas'",
+        "Eucrisa": "'can be used on all skin tones'"
+      }
+    },
+    {
+      "id": "X01",
+      "label": "Sleep disruption as the primary burden",
+      "analyst_label": "Sleep disruption named as the primary burden",
+      "description": "Sleep — the patient's ruined nights — treated as the primary burden the product answers.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Sleep loss can be described in disease education, because it is the most consistently reported burden in moderate-to-severe disease. Claiming the product improves sleep would need a sleep endpoint, which none of these trials measured.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X02",
+      "label": "The carer's own exhaustion",
+      "analyst_label": "Caregiver exhaustion — the parent's own lost sleep and toll",
+      "description": "The carer's own exhaustion and lost sleep, addressed as a burden in its own right.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "An audience decision. Describing the parent's own lost sleep is disease education and requires no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X03",
+      "label": "Anxiety and depression alongside the disease",
+      "analyst_label": "Mental health comorbidity — anxiety, depression, low mood",
+      "description": "The anxiety and depression that travel with the disease, named as part of it.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "The anxiety and depression that accompany the disease are well documented and can be described. Any suggestion the product improves mood would need an endpoint that does not exist.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X04",
+      "label": "Visible disease at school, work and in public",
+      "analyst_label": "Visible stigma in social, school or workplace settings",
+      "description": "The social cost of visible disease — school, work, being looked at.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "Disease education. The social cost of visible disease is documented and can be described without a product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X05",
+      "label": "Adults with persistent or late-onset disease",
+      "analyst_label": "Adult-persistent or adult-onset disease as the primary frame",
+      "description": "The adult who never grew out of it, or developed it late, as the primary audience.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "An audience decision that sits well within every label in the set. The category addresses the child by convention, not by requirement.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X06",
+      "label": "The steroid cycle itself as the problem",
+      "analyst_label": "The steroid cycle itself named as the failure — rebound, thinning, fear",
+      "description": "The steroid cycle itself — rebound, thinning, fear — named as the failure to escape.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Legally possible as education about the drug class, but it criticises the current standard of care. Reviewers will read it as an implied comparative claim against corticosteroids.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X07",
+      "label": "The daily work of the whole regimen",
+      "analyst_label": "Time and labour of the whole regimen — bathing, emollients, laundry",
+      "description": "The sheer time and labour of the regimen: bathing, emollients, laundry.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "The bathing, emollient and laundry burden is documented. Describing the daily work of the regimen requires no claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X08",
+      "label": "Not knowing when the next flare will come",
+      "analyst_label": "Flare unpredictability and anticipatory anxiety",
+      "description": "Not knowing when the next flare comes, and the anxiety of waiting for it.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "The anxiety of not knowing when the next flare will come can be described. Suggesting the product resolves it implies a prevention claim, which needs maintenance data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X09",
+      "label": "Years of not being taken seriously",
+      "analyst_label": "Diagnostic delay and not being taken seriously",
+      "description": "The years of being dismissed before anyone took the disease seriously.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A decision about where in the patient journey the communications begin. Addressing someone who feels dismissed is an audience choice, not a claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X10",
+      "label": "The cost and effort of everything tried before",
+      "analyst_label": "Cost and effort of everything tried before this",
+      "description": "The money and effort already spent on everything that came before.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Referring to everything the patient has already tried implies that named alternatives failed. Possible, but reviewed as a comparative claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H01",
+      "label": "Steroid fear named as the problem to solve",
+      "analyst_label": "Corticophobia named directly as the problem steroid-free answers",
+      "description": "Steroid fear in patients and parents, named directly as the problem a steroid-free option answers.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "constrained",
+      "tier_reasoning": "Steroid fear is documented throughout the adherence literature, but naming it criticises the first-line class every prescriber uses daily. Possible with careful wording, and subject to close review.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H02",
+      "label": "Topical steroid withdrawal addressed directly",
+      "analyst_label": "The topical steroid withdrawal narrative addressed head-on",
+      "description": "The topical steroid withdrawal narrative circulating among patients, addressed head-on.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "closed",
+      "tier_reasoning": "Topical steroid withdrawal is a clinical question the field has not settled. A promotional website cannot take a position on it.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H03",
+      "label": "Patients stopping treatment as the clinical problem",
+      "analyst_label": "Adherence and persistence framed as the clinical problem, not efficacy",
+      "description": "Adherence — patients stopping — framed as the clinical problem, rather than efficacy.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "frame_only",
+      "tier_reasoning": "Patients stopping treatment is documented and can be described as the clinical problem. Claiming your product solves it would need persistence data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H04",
+      "label": "Maintenance and flare prevention as the goal",
+      "analyst_label": "Maintenance and flare prevention as the goal, not flare clearance",
+      "description": "Keeping patients clear — maintenance and flare prevention — as the goal of therapy.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "frame_only",
+      "tier_reasoning": "Maintenance can be described as the goal of therapy, because treatment guidelines already recommend it. Claiming the product delivers it needs a maintenance endpoint. Vtama's treatment-free-months data supports part of this argument.",
+      "claimers": [
+        "Vtama"
+      ],
+      "n": 1,
+      "receipts": {
+        "Vtama": "'sustained results, even during treatment-free months' — the closest anything in the category comes to a maintenance frame"
+      }
+    },
+    {
+      "id": "H05",
+      "label": "A measured reduction in steroid use",
+      "analyst_label": "Quantified reduction in total corticosteroid exposure",
+      "description": "A quantified reduction in total corticosteroid exposure as the offer to the prescriber.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "closed",
+      "tier_reasoning": "Requires a trial measuring reduction in steroid use, which nobody has run. Not available without generating that data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H06",
+      "label": "Built for paediatricians and GPs",
+      "analyst_label": "Built for the non-dermatologist prescriber — paediatrics and primary care",
+      "description": "Built for the paediatrician and the GP — the prescribers who fear steroids most.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "An audience and channel decision. Paediatricians and GPs are the most steroid-hesitant prescribers and report the lowest guideline adherence, and no brand in the set addresses them directly.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H07",
+      "label": "Shared decision-making in the consultation",
+      "analyst_label": "Shared decision-making and patient-reported outcomes in the consultation",
+      "description": "Shared decision-making and patient-reported outcomes brought into the consultation.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "Supporting the consultation itself — shared decision-making and patient-reported outcomes — is recommended in the guidelines and involves no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H08",
+      "label": "Coverage and formulary friction as the real barrier",
+      "analyst_label": "Formulary and coverage friction treated as the real barrier",
+      "description": "Coverage, formulary and prior-auth friction treated as the real barrier to prescribing.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "Coverage, prior authorisation and hub support can be brought to the front of the messaging without any clinical claim. The literature identifies cost and formulary restriction as the dominant barrier to prescribing.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H09",
+      "label": "Stinging and burning as the reason patients quit",
+      "analyst_label": "Application tolerability — stinging and burning — as an adherence driver",
+      "description": "Stinging and burning on application, named as the reason patients quit.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "constrained",
+      "tier_reasoning": "Stinging and burning appear in every label's adverse event table, so the evidence exists. Framing tolerability against the category would be treated as an implied comparative claim. Zoryve's 'gentle formulation' implies this without stating it.",
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "'gentle formulation' / 'elegant formulations' — tolerability implied, never named as an adherence driver"
+      }
+    },
+    {
+      "id": "H10",
+      "label": "Reaching the patient before diagnosis",
+      "analyst_label": "Meeting the patient earlier in the diagnostic journey",
+      "description": "Meeting the patient earlier — before diagnosis, before the dermatologist.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "A decision about where the communications start. Disease education before diagnosis requires no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    }
+  ],
+  "brand_position": {
+    "Zoryve": {
+      "claimed": 16,
+      "space_used": 0.4,
+      "uniquely_owned": [
+        "C13",
+        "H09"
+      ],
+      "n_unique": 2,
+      "ownership": 0.125,
+      "crowding": 0.857
+    },
+    "Vtama": {
+      "claimed": 12,
+      "space_used": 0.3,
+      "uniquely_owned": [
+        "C19",
+        "H04"
+      ],
+      "n_unique": 2,
+      "ownership": 0.167,
+      "crowding": 0.857
+    },
+    "Opzelura": {
+      "claimed": 11,
+      "space_used": 0.275,
+      "uniquely_owned": [
+        "C04",
+        "C12"
+      ],
+      "n_unique": 2,
+      "ownership": 0.182,
+      "crowding": 0.857
+    },
+    "Eucrisa": {
+      "claimed": 8,
+      "space_used": 0.2,
+      "uniquely_owned": [],
+      "n_unique": 0,
+      "ownership": 0.0,
+      "crowding": 0.714
+    }
+  },
+  "centre": [
+    {
+      "brand": "Zoryve",
+      "distance": 0.5,
+      "departures": 11,
+      "of": 22,
+      "departure_ids": [
+        "C02",
+        "C07",
+        "C08",
+        "C09",
+        "C10",
+        "C11",
+        "C13",
+        "C16",
+        "C17",
+        "C18",
+        "H09"
+      ]
+    },
+    {
+      "brand": "Vtama",
+      "distance": 0.318,
+      "departures": 7,
+      "of": 22,
+      "departure_ids": [
+        "C09",
+        "C14",
+        "C15",
+        "C16",
+        "C17",
+        "C19",
+        "H04"
+      ]
+    },
+    {
+      "brand": "Opzelura",
+      "distance": 0.273,
+      "departures": 6,
+      "of": 22,
+      "departure_ids": [
+        "C04",
+        "C10",
+        "C11",
+        "C12",
+        "C18",
+        "C20"
+      ]
+    },
+    {
+      "brand": "Eucrisa",
+      "distance": 0.227,
+      "departures": 5,
+      "of": 22,
+      "departure_ids": [
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C14"
+      ]
+    }
+  ],
+  "plot": [
+    {
+      "brand": "Zoryve",
+      "messaging": 0.615,
+      "imagery": 0.708
+    },
+    {
+      "brand": "Vtama",
+      "messaging": 0.663,
+      "imagery": 0.667
+    },
+    {
+      "brand": "Opzelura",
+      "messaging": 0.678,
+      "imagery": 0.708
+    },
+    {
+      "brand": "Eucrisa",
+      "messaging": 0.689,
+      "imagery": 0.667
+    }
+  ],
+  "plot_meta": {
+    "messaging_mean": 0.661,
+    "imagery_mean": 0.688,
+    "imagery_step": 0.125,
+    "imagery_dimensions": 8,
+    "imagery_dimensions_with_majority": 2,
+    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to messaging and to imagery. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. Imagery moves in steps of 12 percentage points because there are only 8 coded dimensions, so small vertical differences are coarse."
+  },
+  "imagery_pairs": [
+    {
+      "pair": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "match": 0.5,
+      "shared": [
+        "Who is in the picture",
+        "Is the eczema shown",
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "match": 0.5,
+      "shared": [
+        "Who is in the picture",
+        "Is anyone touching anyone",
+        "What is happening",
+        "How it is meant to feel"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "match": 0.25,
+      "shared": [
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "match": 0.25,
+      "shared": [
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "match": 0.25,
+      "shared": [
+        "Range of skin tones",
+        "What is happening"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "match": 0.125,
+      "shared": [
+        "What is happening"
+      ]
+    }
+  ],
+  "provenance_breakdown": [
+    {
+      "key": "observed in category",
+      "label": "Read off the four websites",
+      "total": 20,
+      "unused": 0,
+      "note": "Territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the corpus means."
+    },
+    {
+      "key": "patient burden literature",
+      "label": "Established from patient burden literature",
+      "total": 10,
+      "unused": 10,
+      "note": "Territories evidenced in the burden-of-illness literature, identified independently of anything these brands say."
+    },
+    {
+      "key": "clinical barrier literature",
+      "label": "Established from clinical barrier literature",
+      "total": 10,
+      "unused": 8,
+      "note": "Territories evidenced in the prescribing, adherence and guideline literature, identified independently of anything these brands say."
+    }
+  ],
+  "visual": {
+    "dimensions": [
+      {
+        "key": "life_moment",
+        "label": "What is happening",
+        "modal_value": "ordinary domestic",
+        "agreement": 1.0,
+        "spread": {
+          "ordinary domestic": 4
+        },
+        "per_brand": {
+          "Zoryve": "ordinary domestic",
+          "Vtama": "ordinary domestic",
+          "Opzelura": "ordinary domestic",
+          "Eucrisa": "ordinary domestic"
+        }
+      },
+      {
+        "key": "abstraction_motif",
+        "label": "Graphic device used",
+        "modal_value": "none",
+        "agreement": 0.75,
+        "spread": {
+          "none": 3,
+          "celestial": 1
+        },
+        "per_brand": {
+          "Zoryve": "none",
+          "Vtama": "none",
+          "Opzelura": "celestial",
+          "Eucrisa": "none"
+        }
+      },
+      {
+        "key": "human_configuration",
+        "label": "Who is in the picture",
+        "modal_value": "individual alone",
+        "agreement": 0.5,
+        "spread": {
+          "individual alone": 2,
+          "caregiver-child dyad": 2
+        },
+        "per_brand": {
+          "Zoryve": "individual alone",
+          "Vtama": "caregiver-child dyad",
+          "Opzelura": "caregiver-child dyad",
+          "Eucrisa": "individual alone"
+        }
+      },
+      {
+        "key": "touch",
+        "label": "Is anyone touching anyone",
+        "modal_value": "interpersonal touch",
+        "agreement": 0.5,
+        "spread": {
+          "self-touch": 1,
+          "interpersonal touch": 2,
+          "absent": 1
+        },
+        "per_brand": {
+          "Zoryve": "self-touch",
+          "Vtama": "interpersonal touch",
+          "Opzelura": "interpersonal touch",
+          "Eucrisa": "absent"
+        }
+      },
+      {
+        "key": "disease_depiction",
+        "label": "Is the eczema shown",
+        "modal_value": "absent",
+        "agreement": 0.5,
+        "spread": {
+          "absent": 2,
+          "implied only": 1,
+          "visible on lifestyle model": 1
+        },
+        "per_brand": {
+          "Zoryve": "absent",
+          "Vtama": "implied only",
+          "Opzelura": "visible on lifestyle model",
+          "Eucrisa": "absent"
+        }
+      },
+      {
+        "key": "skin_tone_range",
+        "label": "Range of skin tones",
+        "modal_value": "single",
+        "agreement": 0.5,
+        "spread": {
+          "broad": 1,
+          "limited": 1,
+          "single": 2
+        },
+        "per_brand": {
+          "Zoryve": "broad",
+          "Vtama": "limited",
+          "Opzelura": "single",
+          "Eucrisa": "single"
+        }
+      },
+      {
+        "key": "emotional_register",
+        "label": "How it is meant to feel",
+        "modal_value": "tenderness",
+        "agreement": 0.5,
+        "spread": {
+          "calm control": 1,
+          "tenderness": 2,
+          "neutral clinical": 1
+        },
+        "per_brand": {
+          "Zoryve": "calm control",
+          "Vtama": "tenderness",
+          "Opzelura": "tenderness",
+          "Eucrisa": "neutral clinical"
+        }
+      },
+      {
+        "key": "category_borrow",
+        "label": "What it looks like it is selling",
+        "modal_value": "beauty and skincare",
+        "agreement": 0.25,
+        "spread": {
+          "beauty and skincare": 1,
+          "consumer tech": 1,
+          "wellness": 1,
+          "pharma": 1
+        },
+        "per_brand": {
+          "Zoryve": "beauty and skincare",
+          "Vtama": "consumer tech",
+          "Opzelura": "wellness",
+          "Eucrisa": "pharma"
+        }
+      }
+    ],
+    "child_in_hero": 4,
+    "notes": {
+      "Zoryve": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
+      "Vtama": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
+      "Opzelura": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
+      "Eucrisa": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'"
+    },
+    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below."
+  },
+  "cross_check": [
+    {
+      "brand": "Zoryve",
+      "verbal_ownership": 0.125,
+      "visual_distance": 0.375,
+      "hero_notes": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
+      "comment": "Makes the most claims of any brand in the set and appears in almost every territory the category shares. Its borrow from beauty and skincare is the most visually differentiated decision in the category."
+    },
+    {
+      "brand": "Vtama",
+      "verbal_ownership": 0.167,
+      "visual_distance": 0.5,
+      "hero_notes": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
+      "comment": "The clearest example of the copy-versus-imagery gap. Its verbal positioning — skin science — is the most distinctive in the set, but its hero image matches Opzelura on who is pictured, whether they touch, the emotional register and the scene."
+    },
+    {
+      "brand": "Opzelura",
+      "verbal_ownership": 0.182,
+      "visual_distance": 0.5,
+      "hero_notes": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
+      "comment": "Copy and imagery are consistent with each other. The touch-avoidance narrative in the messaging is delivered as restored touch in the photography. Highly similar to competitors, but internally coherent."
+    },
+    {
+      "brand": "Eucrisa",
+      "verbal_ownership": 0.0,
+      "visual_distance": 0.375,
+      "hero_notes": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'",
+      "comment": "Holds no position exclusively, and its imagery is the most conventionally pharmaceutical in the set. It has not been out-positioned by competitors; it has not taken a position."
+    }
+  ],
+  "findings": [
+    {
+      "text": "All four brands build their core message from the same three elements: steroid avoidance as the lead benefit, the parent as the audience, and paediatric reassurance. Four different molecules, one shared message hierarchy.",
+      "refs": [
+        "C01",
+        "C03",
+        "C02"
+      ]
+    },
+    {
+      "text": "The best-evidenced patient needs in this disease appear in nobody's messaging. Sleep disruption, caregiver exhaustion and the anxiety and depression comorbidity are the most consistently documented burdens in the literature, and not one brand builds a message on any of them.",
+      "refs": [
+        "X01",
+        "X02",
+        "X03"
+      ]
+    },
+    {
+      "text": "All four brands state that they are steroid-free. None of them addresses why a patient or parent would care. Steroid fear is documented throughout the clinical literature as a main reason first-line treatment fails, and the category states the product attribute without ever making the patient argument.",
+      "refs": [
+        "H01",
+        "C01",
+        "X06"
+      ]
+    },
+    {
+      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — is visually almost identical to Opzelura.",
+      "refs": [
+        "visual:life_moment",
+        "visual:touch",
+        "visual:human_configuration"
+      ]
+    },
+    {
+      "text": "Treatment guidelines point towards maintenance and flare prevention, and almost no brand messaging follows. Vtama's treatment-free-months claim is the only partial move in that direction, and the stronger version — a quantified reduction in steroid use — is unavailable to everyone until someone runs the trial to support it.",
+      "refs": [
+        "H04",
+        "C19",
+        "H05"
+      ]
+    }
+  ],
+  "boundary_rules": [
+    {
+      "element": "“Steroid-free”",
+      "layer": 2,
+      "rule": "A factual property of the drug class, shared by everything in this category."
+    },
+    {
+      "element": "“Steroid-free, so you can use it where steroids scare you”",
+      "layer": 3,
+      "rule": "What that fact is said to mean for the patient was written by someone."
+    },
+    {
+      "element": "“Once daily”",
+      "layer": 2,
+      "rule": "The dosing is set by the label."
+    },
+    {
+      "element": "“Simple once-daily treatment”",
+      "layer": 3,
+      "rule": "“Simple” is a claimed benefit, not a dosing fact."
+    },
+    {
+      "element": "Age range (“down to 2 years”)",
+      "layer": 2,
+      "rule": "Set by the trials and the label."
+    },
+    {
+      "element": "Photography of a two-year-old",
+      "layer": 3,
+      "rule": "Casting the youngest permitted age was a decision."
+    },
+    {
+      "element": "Endpoint percentages",
+      "layer": 2,
+      "rule": "Trial results."
+    },
+    {
+      "element": "Which endpoint appears first",
+      "layer": 3,
+      "rule": "Message hierarchy is a positioning decision."
+    },
+    {
+      "element": "Clinical photography of lesions",
+      "layer": 2,
+      "rule": "A trial asset."
+    },
+    {
+      "element": "Lifestyle photography",
+      "layer": 3,
+      "rule": "Commissioned and art directed."
+    },
+    {
+      "element": "Explanation of how the drug works",
+      "layer": 2,
+      "rule": "Pharmacology."
+    },
+    {
+      "element": "An analogy or metaphor for how it works",
+      "layer": 3,
+      "rule": "How the science is explained was a creative decision."
+    }
+  ],
+  "limitations": [
+    "The percentages depend on how many territories were identified. Twenty were read off these four websites, so every one of them has a user by definition. The other twenty were established from published literature, and eighteen of those are unused — also close to by definition. Identify thirty from the literature rather than twenty and the usage figure falls from 55% to around 44% without anything changing in the market. Treat the percentages as a description of this list, not as a property of the category. The count of named, evidenced, unused territories does not move when the list length does, which is why it leads.",
+    "Deciding what was determined by the label and what was a marketing decision is a judgement. The rules are published above, applied identically to every brand, and open to challenge. Different reasonable rules would change the numbers.",
+    "Websites only. Congress activity, sales aids, field and MSL messaging, paid media and social are not included. This measures the public messaging each brand publishes, not its full commercial message.",
+    "Four brands were analysed. The comparison is meaningful but sensitive to any one brand being unusual.",
+    "A single capture, taken on 12 August 2026. This is a snapshot, not a trend.",
+    "Eucrisa is not a like-for-like comparison. It was approved in 2016, its creative is materially older than the rest of the set, and its HCP site is currently serving an incomplete page in production. Treat it as a reference point for how the category used to communicate.",
+    "Opzelura's HCP site was not captured in this run, so its prescriber-facing messaging is not represented.",
+    "Deciding which territories a brand uses is a judgement made against the published rules. Every decision carries the exact wording from the site that produced it, so any of them can be checked and disagreed with.",
+    "Availability ratings are a strategic assessment, not a regulatory one. Every position requires medical, legal and regulatory review before use."
+  ]
+}

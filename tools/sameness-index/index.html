@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Sameness Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Epilogue:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:    #EFEEEA;
+    --white:    #FFFFFF;
+    --ink:      #303030;
+    --green:    #1F5B4A;
+    --mint:     #51D4B2;
+    --coral:    #FF686B;
+    --label:    #727270;
+    --divider:  #D7D6D2;
+    --hairline: #ABAAA8;
+    --serif: "Fraunces", Georgia, serif;
+    --sans:  "Epilogue", -apple-system, sans-serif;
+    --mono:  "JetBrains Mono", "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: var(--serif); font-size: 18px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--mint); color: var(--ink); }
+
+  .col { max-width: 940px; margin: 0 auto; padding: 0 28px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--label);
+  }
+  h1 { font-family: var(--serif); font-weight: 900; font-size: 46px; line-height: 1.08; letter-spacing: -.015em; }
+  h2 { font-family: var(--serif); font-weight: 900; font-size: 25px; line-height: 1.2; letter-spacing: -.01em; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 17px; }
+  .muted { color: var(--label); }
+  a { color: inherit; text-decoration-color: var(--divider); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--coral); }
+
+  section { margin: 76px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sec-sub { color: var(--label); font-size: 16px; max-width: 620px; margin-bottom: 26px; }
+
+  /* a small inline "why" affordance — the qualifier lives behind it */
+  .why {
+    font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .02em;
+    color: var(--label); background: none; border: none; cursor: pointer;
+    border-bottom: 1px solid var(--divider); padding: 0 0 1px;
+  }
+  .why:hover { color: var(--coral); border-bottom-color: var(--coral); }
+  .why + .why { margin-left: 22px; }
+
+  /* ---------------------------------------------------------- input */
+  #screen-input { min-height: 100vh; display: flex; align-items: center; }
+  .input-wrap { width: 100%; max-width: 540px; margin: 0 auto; padding: 60px 28px; }
+  .input-wrap h1 { margin: 12px 0 16px; }
+  .lede { font-size: 19px; color: var(--ink); margin-bottom: 38px; }
+
+  .field-row { display: flex; gap: 10px; margin-bottom: 8px; }
+  .field-row input {
+    font-family: var(--sans); font-size: 15px; color: var(--ink);
+    background: transparent; border: none; border-bottom: 1px solid var(--divider);
+    padding: 10px 2px; outline: none; transition: border-color .15s;
+  }
+  .field-row input:focus { border-bottom-color: var(--green); }
+  .field-row input::placeholder { color: var(--hairline); }
+  .field-row .f-name { flex: 0 0 38%; }
+  .field-row .f-url { flex: 1; }
+  .field-row .f-x {
+    flex: 0 0 auto; background: none; border: none; color: var(--hairline);
+    font-family: var(--sans); font-size: 17px; cursor: pointer; padding: 0 4px; visibility: hidden;
+  }
+  .field-row.removable .f-x { visibility: visible; }
+  .field-row .f-x:hover { color: var(--coral); }
+  .group-label { margin: 28px 0 8px; }
+  #add-competitor {
+    background: none; border: none; font-family: var(--sans); font-size: 13px;
+    color: var(--label); cursor: pointer; padding: 8px 0;
+    border-bottom: 1px solid var(--divider);
+  }
+  #add-competitor:hover { color: var(--ink); border-bottom-color: var(--coral); }
+  .guidance { font-size: 15px; color: var(--label); margin: 24px 0 32px; }
+  #run-btn {
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
+    color: var(--white); background: var(--green); border: 1px solid var(--green);
+    padding: 14px 34px; cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  #run-btn:hover { background: var(--coral); border-color: var(--coral); }
+  .example-link { display: block; margin-top: 20px; font-size: 14px; color: var(--label); }
+  .input-error { font-family: var(--sans); font-size: 14px; color: var(--coral); margin-top: 16px; display: none; }
+  .offline-note {
+    display: none; font-family: var(--sans); font-size: 13.5px; line-height: 1.65;
+    color: var(--label); margin-top: 20px; padding-left: 16px; border-left: 2px solid var(--coral);
+  }
+  .offline-note strong { color: var(--ink); font-weight: 600; }
+  .offline-note code {
+    display: block; font-family: var(--mono); font-size: 12px; color: var(--ink);
+    background: rgba(48,48,48,.05); padding: 5px 8px; margin: 5px 0; width: fit-content;
+  }
+  #run-btn.disabled { background: var(--hairline); border-color: var(--hairline); cursor: not-allowed; }
+  #run-btn.disabled:hover { background: var(--hairline); border-color: var(--hairline); }
+
+  /* ---------------------------------------------------------- progress */
+  #screen-progress { min-height: 100vh; display: none; align-items: center; }
+  .progress-wrap { width: 100%; max-width: 600px; margin: 0 auto; padding: 60px 28px; }
+  #progress-log { margin-top: 30px; }
+  #progress-log p { margin: 0 0 13px; color: var(--label); font-size: 17px; animation: fadein .45s ease both; }
+  #progress-log p:last-child { color: var(--ink); }
+  #progress-log p:last-child::after {
+    content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 10px;
+    border-radius: 50%; background: var(--coral); vertical-align: middle; animation: pulse 1.2s ease infinite;
+  }
+  #progress-log p.perror { color: var(--coral); }
+  #progress-log p.perror::after { display: none; }
+  @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+  @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
+
+  /* ---------------------------------------------------------- result */
+  #screen-result { display: none; padding: 76px 0 110px; }
+  .headline {
+    font-family: var(--serif); font-weight: 900; font-size: 38px; line-height: 1.16;
+    letter-spacing: -.015em; max-width: 820px; margin-top: 14px;
+  }
+  .headline .num { color: var(--coral); }
+  .headline-why { margin-top: 20px; }
+
+  /* four numbers */
+  .four-numbers { display: flex; margin: 52px 0 0; border-top: 1px solid var(--ink); }
+  .four-numbers > div { flex: 1; padding: 22px 14px 20px 0; cursor: pointer; }
+  .four-numbers > div + div { border-left: 1px solid var(--divider); padding-left: 22px; }
+  .four-numbers > div:hover .n { color: var(--coral); }
+  .four-numbers .n { font-family: var(--serif); font-weight: 900; font-size: 50px; line-height: 1; transition: color .15s; }
+  .four-numbers .l {
+    font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; margin-top: 10px; color: var(--label);
+  }
+  .four-numbers > div.key .n { color: var(--coral); }
+
+  /* plot */
+  #plot { margin-top: 8px; max-width: 620px; }
+  #plot svg { width: 100%; height: auto; overflow: visible; }
+  #plot .pole {
+    font-family: var(--sans); font-size: 13px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  #plot .pole.sub { font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: none; opacity: .8; }
+  #plot .pole-conv { fill: var(--label); }
+  #plot .pole-day  { fill: var(--green); }
+  #plot .axis-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; fill: var(--label); }
+  #plot .brand-label { font-family: var(--sans); font-size: 13px; font-weight: 600; }
+  #plot .cross { stroke: var(--divider); }
+  #plot .cross-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; fill: var(--hairline); }
+  #plot .frame { fill: none; stroke: var(--divider); }
+  #plot .pt { cursor: pointer; }
+  #plot .pt:hover circle { r: 11; }
+
+  /* map */
+  #map { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; }
+  .cell {
+    min-height: 92px; padding: 10px; cursor: pointer; display: flex;
+    flex-direction: column; justify-content: space-between; transition: transform .1s;
+    border: 1px solid transparent;
+  }
+  .cell:hover { outline: 2px solid var(--coral); outline-offset: -1px; }
+  .cell .c-id { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; opacity: .6; }
+  .cell .c-label { font-family: var(--sans); font-size: 13px; font-weight: 500; line-height: 1.3; margin-top: 3px; }
+  .cell .c-foot { font-family: var(--mono); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; opacity: .75; }
+  .cell.empty { background: rgba(255,104,107,.07); border: 1px dashed var(--coral); }
+  .cell.empty .c-foot { color: var(--coral); opacity: 1; }
+  .cell.n1 { background: rgba(31,91,74,.10); }
+  .cell.n2 { background: rgba(31,91,74,.26); }
+  .cell.n3 { background: rgba(31,91,74,.48); color: var(--white); }
+  .cell.n4 { background: var(--green); color: var(--white); }
+  .map-legend {
+    display: flex; gap: 20px; align-items: center; margin-top: 16px; flex-wrap: wrap;
+    font-family: var(--sans); font-size: 12px; color: var(--label);
+  }
+  .map-legend .sw { display: inline-block; width: 13px; height: 13px; margin-right: 6px; vertical-align: -2px; }
+  .map-legend .sw.e { background: rgba(255,104,107,.07); border: 1px dashed var(--coral); }
+
+  /* findings */
+  .finding { display: flex; gap: 18px; margin-bottom: 26px; max-width: 730px; }
+  .finding .f-n { font-family: var(--mono); font-size: 11px; color: var(--hairline); padding-top: 8px; flex: 0 0 20px; }
+  .finding p { font-size: 18.5px; }
+  .finding .f-ev { font-family: var(--sans); font-size: 12.5px; margin-top: 7px; }
+  .f-ev a { color: var(--label); margin-right: 12px; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--divider); }
+  .f-ev a:hover { color: var(--coral); border-bottom-color: var(--coral); }
+
+  /* what shared territory costs */
+  .ev-item {
+    display: flex; gap: 18px; max-width: 730px; padding: 18px 0;
+    border-top: 1px solid var(--divider); cursor: pointer;
+  }
+  .ev-item:hover .ev-claim { color: var(--coral); }
+  .ev-n { font-family: var(--mono); font-size: 11px; color: var(--hairline); padding-top: 6px; flex: 0 0 20px; }
+  .ev-claim { font-family: var(--serif); font-weight: 900; font-size: 18px; letter-spacing: -.01em; }
+  .ev-so { font-family: var(--sans); font-size: 15px; color: var(--label); margin-top: 5px; }
+
+  /* territories to explore */
+  .day-item {
+    border-top: 1px solid var(--divider); padding: 18px 0; max-width: 730px;
+    cursor: pointer; display: flex; align-items: baseline; gap: 16px;
+  }
+  .day-item:hover .d-label { color: var(--coral); }
+  .d-label { font-family: var(--serif); font-weight: 900; font-size: 19px; flex: 1; letter-spacing: -.01em; }
+  .d-desc { color: var(--label); font-size: 15.5px; margin-top: 3px; font-family: var(--sans); }
+  .tier-chip {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase;
+    padding: 4px 9px; border: 1px solid var(--divider); color: var(--label); white-space: nowrap;
+  }
+  .tier-chip.open { border-color: var(--green); color: var(--green); background: rgba(81,212,178,.22); }
+
+  /* disclosure */
+  details.working { margin-top: 70px; border-top: 1px solid var(--ink); }
+  details.working > summary {
+    list-style: none; cursor: pointer; padding: 22px 0;
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+  }
+  details.working > summary::-webkit-details-marker { display: none; }
+  details.working > summary::before { content: "+ "; color: var(--coral); }
+  details.working[open] > summary::before { content: "− "; }
+  .working-body h2 { margin-top: 52px; }
+  .working-body .sec-sub { margin-top: 8px; }
+
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px; }
+  th {
+    text-align: left; font-family: var(--mono); font-weight: 500; font-size: 10px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--label);
+    padding: 8px 14px 8px 0; border-bottom: 1px solid var(--ink);
+  }
+  td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--divider); vertical-align: top; }
+  td.serif { font-family: var(--serif); font-size: 15px; }
+  td.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { color: var(--coral); }
+  tr.total td { font-weight: 600; border-bottom: none; }
+  .brand-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .brand-block { border-top: 1px solid var(--divider); padding: 18px 0; }
+  .b-stats { font-family: var(--sans); font-size: 13px; color: var(--label); margin-top: 4px; }
+  .b-owned { font-size: 15px; margin-top: 8px; font-family: var(--sans); }
+
+  /* bar chart (inside full working) */
+  .centre-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; cursor: pointer; }
+  .centre-row:hover .cr-name { color: var(--coral); }
+  .cr-name { font-family: var(--sans); font-size: 13.5px; font-weight: 600; flex: 0 0 96px; text-align: right; }
+  .cr-track { flex: 1; position: relative; height: 22px; }
+  .cr-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--divider); }
+  .cr-bar { position: absolute; top: 50%; left: 0; height: 3px; margin-top: -1.5px; }
+  .cr-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; margin-top: -6px; margin-left: -6px; }
+  .cr-val { font-family: var(--mono); font-size: 11px; color: var(--label); flex: 0 0 118px; }
+
+  /* drawer */
+  #drawer-scrim { position: fixed; inset: 0; background: rgba(48,48,48,.3); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 40; }
+  #drawer-scrim.on { opacity: 1; pointer-events: auto; }
+  #drawer {
+    position: fixed; top: 0; right: 0; height: 100%; width: min(540px, 94vw);
+    background: var(--paper); border-left: 1px solid var(--divider);
+    transform: translateX(102%); transition: transform .3s cubic-bezier(.2,.7,.2,1);
+    z-index: 50; overflow-y: auto; padding: 40px 36px 60px;
+  }
+  #drawer.on { transform: none; }
+  #drawer-close {
+    position: absolute; top: 18px; right: 20px; background: none; border: none;
+    font-family: var(--sans); font-size: 22px; color: var(--hairline); cursor: pointer;
+  }
+  #drawer-close:hover { color: var(--coral); }
+  .dr-label { font-family: var(--serif); font-weight: 900; font-size: 25px; line-height: 1.16; margin: 10px 0 8px; letter-spacing: -.015em; }
+  .dr-desc { color: var(--label); font-family: var(--sans); font-size: 15.5px; margin-bottom: 20px; }
+  .dr-h {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--label); margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--divider);
+  }
+  .receipt { border-left: 2px solid var(--divider); padding: 2px 0 2px 14px; margin-bottom: 16px; }
+  .r-brand { font-family: var(--sans); font-size: 12px; font-weight: 600; }
+  .r-quote { font-size: 16.5px; font-style: italic; margin-top: 3px; }
+  .dr-empty { font-family: var(--sans); font-size: 15px; color: var(--label); }
+  .dr-src { font-family: var(--sans); font-size: 14px; color: var(--label); }
+  #drawer p { margin-bottom: 9px; }
+
+  footer { border-top: 1px solid var(--divider); padding: 26px 0 50px; margin-top: 80px; }
+  footer .col { font-family: var(--sans); font-size: 12.5px; color: var(--label); }
+
+  @media (max-width: 680px) {
+    h1 { font-size: 34px; } .headline { font-size: 27px; }
+    .four-numbers { flex-wrap: wrap; border-top: none; }
+    .four-numbers > div { flex: 1 1 44%; border-top: 1px solid var(--divider); }
+    .four-numbers > div + div { border-left: none; padding-left: 0; }
+    .field-row { flex-wrap: wrap; } .field-row .f-name { flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ INPUT -->
+<div id="screen-input">
+  <div class="input-wrap">
+    <div class="eyebrow">Rupture</div>
+    <h1>The Sameness Index</h1>
+    <p class="lede">Enter your brand and your competitors. The index reads each brand's public website, sets aside the regulatory content and everything the label determines, and compares what is left — the messaging each brand chose.</p>
+
+    <div class="group-label eyebrow">Your brand</div>
+    <div id="your-brand">
+      <div class="field-row">
+        <input class="f-name" type="text" placeholder="Brand name">
+        <input class="f-url" type="url" placeholder="https://www.yourbrand.com">
+        <button class="f-x" tabindex="-1">×</button>
+      </div>
+    </div>
+
+    <div class="group-label eyebrow">Competitors</div>
+    <div id="competitors"></div>
+    <button id="add-competitor" type="button">Add another competitor</button>
+
+    <p class="guidance">Four to six brands gives the most reliable read. Two cannot produce a meaningful comparison.</p>
+    <button id="run-btn" type="button">Run the index</button>
+    <div class="input-error" id="input-error"></div>
+    <div class="offline-note" id="offline-note">
+      <strong>This page is open as a file, so live runs are not available.</strong>
+      Reading competitor websites needs the local analysis server — a browser cannot fetch other people's
+      domains by itself. To run your own brands:
+      <code>pip install -r requirements.txt</code>
+      <code>export ANTHROPIC_API_KEY=sk-ant-…</code>
+      <code>uvicorn server:app</code>
+      then open <strong>http://127.0.0.1:8000</strong>. The worked example below needs none of that.
+    </div>
+    <a class="example-link" id="load-example" href="#">Or load the worked example — US non-steroidal topical atopic dermatitis</a>
+  </div>
+</div>
+
+<!-- ============================================ PROGRESS -->
+<div id="screen-progress">
+  <div class="progress-wrap">
+    <div class="eyebrow">Running the index</div>
+    <div id="progress-log"></div>
+  </div>
+</div>
+
+<!-- ============================================ RESULT -->
+<div id="screen-result">
+  <div class="col">
+
+    <div class="eyebrow" id="r-meta"></div>
+    <p class="headline" id="r-headline"></p>
+    <div class="headline-why">
+      <button class="why" id="why-headline">What does this mean?</button>
+      <button class="why" id="copy-link" hidden>Copy the link to this result</button>
+    </div>
+
+    <div class="four-numbers" id="r-numbers"></div>
+
+    <section id="sec-plot">
+      <div class="sec-head">
+        <h2>Convergence and daylight</h2>
+        <button class="why" id="why-plot">How this is measured</button>
+      </div>
+      <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight. Right is messaging, up is imagery. Dot size is how much each brand claims, so a small dot far out is distinct mainly because it says very little.</p>
+      <div id="plot"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>The messaging territory map</h2>
+        <button class="why" id="why-map">Where this list came from</button>
+      </div>
+      <p class="sec-sub">Each cell is one territory. Darker means more brands are using it. Outlined cells are used by nobody. Click any cell for the evidence.</p>
+      <div id="map"></div>
+      <div class="map-legend" id="map-legend"></div>
+    </section>
+
+    <section>
+      <h2>What the analysis found</h2>
+      <p class="sec-sub">Each finding links to the evidence behind it.</p>
+      <div id="r-findings"></div>
+    </section>
+
+    <section>
+      <h2>What shared territory costs</h2>
+      <p class="sec-sub">Sameness is not only a missed opportunity. There is a body of evidence on what happens to messages that sound like their competitors.</p>
+      <div id="r-evidence"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>Territories to explore</h2>
+        <button class="why" id="why-daylight">How these are judged</button>
+      </div>
+      <p class="sec-sub" id="daylight-intro"></p>
+      <div id="r-daylight"></div>
+    </section>
+
+    <details class="working">
+      <summary>Show the full working</summary>
+      <div class="working-body">
+
+        <h2>What each brand does differently</h2>
+        <p class="sec-sub">How often a brand departs from what most of the category does, across the territories anyone uses.</p>
+        <div id="centre-chart"></div>
+
+        <h2>Where these territories came from</h2>
+        <p class="sec-sub">Click a source to list the territories in it.</p>
+        <table class="prov" id="t-prov"></table>
+
+        <h2>Every territory</h2>
+        <table id="t-positions"></table>
+
+        <h2>Brand by brand</h2>
+        <div id="t-brands"></div>
+
+        <h2>How similar each pair of brands is</h2>
+        <p class="sec-sub">Share of territories two brands have in common, out of all either uses.</p>
+        <table id="t-pairwise"></table>
+
+        <h2>Imagery</h2>
+        <p class="sec-sub" id="visual-exclusions"></p>
+        <table id="t-visual"></table>
+
+        <h2>Copy compared with imagery</h2>
+        <p class="sec-sub">A brand can have distinctive copy and generic photography. Scoring them separately is the only way to see it.</p>
+        <div id="t-crosscheck"></div>
+
+        <h2>How copy was separated before scoring</h2>
+        <p class="sec-sub">Regulatory content is removed. Content the product and label determine is set aside. What remains is what somebody decided, and only that is scored.</p>
+        <table id="t-boundary"></table>
+
+        <h2>Limitations</h2>
+        <div id="r-limits" class="sec-sub" style="max-width:730px"></div>
+
+      </div>
+    </details>
+
+  </div>
+  <footer><div class="col">The Sameness Index · Rupture · every number here is one click from the sentence on a brand's website that produced it.</div></footer>
+</div>
+
+<!-- ============================================ DRAWER -->
+<div id="drawer-scrim"></div>
+<aside id="drawer" aria-label="Detail">
+  <button id="drawer-close" aria-label="Close">×</button>
+  <div id="drawer-content"></div>
+</aside>
+
+<script>
+"use strict";
+
+let DATA = null, ACC = {}, DAYLIGHT_RANK = {};
+
+const TIER_NAMES = {
+  open: "Explore now",
+  frame_only: "Raise, not claim",
+  constrained: "Needs substantiation",
+  closed: "Not viable",
+};
+const TIER_EXPLAIN = {
+  open: "Requires no new clinical evidence to explore — no additional trial, no new endpoint, nothing further to substantiate. A decision about how the disease is described, who is addressed, or where the communications appear, and it sits inside the existing label.",
+  frame_only: "The patient need can be described in disease education, because published evidence supports describing it. Saying the product improves it would need a trial endpoint that does not exist.",
+  constrained: "Legally available, but needs supporting evidence and careful wording, and risks being read as a comparative or disparaging claim about competitors. Expect close review.",
+  closed: "Not worth pursuing without clinical data nobody has generated, or would require taking a position on a clinical question the field has not settled.",
+};
+
+/* Evidence on the cost of shared messaging territory. General marketing
+   science, not derived from this run, so it is stated once and cited. */
+const EVIDENCE = [
+  {
+    claim: "Competitive clutter damages recall of the brand, not the argument",
+    detail: "In controlled tests, competing advertising substantially reduced recall of brand names while leaving recall of the ad's claims largely intact. In a category where several brands make the same argument, the argument survives in memory and the identity of who made it does not.",
+    so: "Sharing a territory does not split the credit. It risks producing recall with no name attached to it.",
+    sources: [
+      ["Kent & Allen, Journal of Marketing (1994)", "https://journals.sagepub.com/doi/abs/10.1177/002224299405800307"],
+      ["Burke & Srull, Marketing Letters — competitive clutter and recall", "https://link.springer.com/article/10.1007/BF00994075"],
+    ],
+  },
+  {
+    claim: "Interference falls hardest on the less familiar brand",
+    detail: "Familiar brands show better recall of new product information and their memory is less affected by exposure to competitors' advertising. Less familiar brands carry the cost of the clutter.",
+    so: "Sameness is not neutral between competitors. It protects whoever is already best known and taxes everyone else — which makes it most expensive for the challenger and the newer launch.",
+    sources: [
+      ["Kent & Allen, Journal of Marketing (1994)", "https://journals.sagepub.com/doi/abs/10.1177/002224299405800307"],
+      ["Kent & Allen — are familiar brands exempt?", "https://www.researchgate.net/publication/285956593_Competitive_Interference_Effects_in_Memory_for_Advertising_Are_Familiar_Brands_Exempt"],
+    ],
+  },
+  {
+    claim: "Category codes get misattributed to the market leader",
+    detail: "Where a dominant brand owns the category's mental space, advertising built from shared category codes tends to be assigned by audiences to that leader rather than to the brand that paid for it.",
+    so: "Money spent in a territory you share with the category leader can reinforce their position rather than build yours.",
+    sources: [
+      ["Brand misattribution and category codes", "https://bhatnaturally.com/2020/12/06/brand-misattribution-distinctive-brand-assets-and-creative-ads/"],
+      ["Brand misattribution: the wrecker of marketing investments", "https://leapfrogstrategy.com/brand-misattribution-the-wrecker-of-marketing-investments/"],
+    ],
+  },
+  {
+    claim: "High recognition with low uniqueness identifies the category, not you",
+    detail: "Ehrenberg-Bass work on distinctive assets separates fame from uniqueness. An asset many people recognise but many brands share points the audience to the category rather than to a particular brand, and does not build mental availability for it.",
+    so: "A territory occupied by every brand in the set is functionally a category convention. It is a cost of entry, not a point of difference.",
+    sources: [
+      ["Romaniuk, Ehrenberg-Bass — distinctive asset measurement", "https://marketingscience.info/learn-with-us/commercial-research/distinctive-asset"],
+      ["Distinctive brand assets framework", "https://umbrex.com/resources/frameworks/marketing-frameworks/distinctive-brand-assets-framework-ehrenberg-bass/"],
+    ],
+  },
+  {
+    claim: "In pharma, the most-recalled messages are the ones everyone can make",
+    detail: "Benchmarking of more than 14,000 messages across 380 brands found foundational messages — indication, approval, mechanism of action, innovation — are the most recalled by prescribers, above 40%. Those are largely determined by the molecule and its label, so every competitor can make them.",
+    so: "The messages that land most easily are the ones least able to separate you. Differentiation has to be built somewhere the label does not hand to everyone.",
+    sources: [
+      ["ZoomRx pharma messaging benchmarks", "https://blog.zoomrx.com/promotional-tracking/pharma-messaging-benchmarks/"],
+    ],
+  },
+];
+
+const $ = (s, r) => (r || document).querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const pos = id => DATA.positions.find(p => p.id === id);
+const pct = v => Math.round(v * 100) + "%";
+const shortLabel = l => { const c = l.split(" — ")[0]; return c.length > 54 ? c.slice(0, 52) + "…" : c; };
+
+/* ---------------------------------------------------- input */
+function competitorRow() {
+  const row = el("div", "field-row removable");
+  row.innerHTML = `<input class="f-name" type="text" placeholder="Brand name">
+    <input class="f-url" type="url" placeholder="https://www.competitor.com">
+    <button class="f-x" type="button" tabindex="-1">×</button>`;
+  row.querySelector(".f-x").addEventListener("click", () => { row.remove(); syncAdd(); });
+  return row;
+}
+function syncAdd() { $("#add-competitor").style.display = $("#competitors").children.length >= 6 ? "none" : ""; }
+$("#competitors").appendChild(competitorRow());
+$("#competitors").appendChild(competitorRow());
+syncAdd();
+$("#add-competitor").addEventListener("click", () => { $("#competitors").appendChild(competitorRow()); syncAdd(); });
+
+// A page opened as a file cannot reach the analysis server, and a browser
+// cannot crawl other domains on its own. Say so before the form is filled in,
+// not after the request fails.
+const OFFLINE = location.protocol === "file:";
+if (OFFLINE) {
+  $("#offline-note").style.display = "block";
+  $("#run-btn").classList.add("disabled");
+  $("#run-btn").title = "Live runs need the local analysis server";
+}
+
+$("#run-btn").addEventListener("click", () => {
+  if (OFFLINE) {
+    $("#offline-note").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  const rows = [$("#your-brand .field-row"), ...$("#competitors").children];
+  const brands = [];
+  for (const r of rows) {
+    const name = r.querySelector(".f-name").value.trim(), url = r.querySelector(".f-url").value.trim();
+    if (name || url) brands.push({ name, url });
+  }
+  const err = $("#input-error"); err.style.display = "none";
+  if (brands.length < 2 || brands.some(b => !b.name || !b.url)) {
+    err.textContent = "Each brand needs a name and a URL, and the index needs your brand plus at least one competitor.";
+    err.style.display = "block"; return;
+  }
+  runIndex(brands);
+});
+
+$("#load-example").addEventListener("click", async e => {
+  e.preventDefault();
+  const inline = document.getElementById("worked-example");
+  if (inline) { try { render(JSON.parse(inline.textContent)); return; } catch (x) {} }
+  try {
+    const r = await fetch("worked_example.json");
+    if (!r.ok) throw new Error();
+    render(await r.json());
+  } catch {
+    const err = $("#input-error");
+    err.textContent = "Could not load the worked example. Regenerate it with generate_worked_example.py.";
+    err.style.display = "block";
+  }
+});
+
+/* ---------------------------------------------------- run */
+function showScreen(id) {
+  ["screen-input", "screen-progress", "screen-result"].forEach(s => document.getElementById(s).style.display = "none");
+  const scr = document.getElementById(id);
+  scr.style.display = id === "screen-result" ? "block" : "flex";
+  window.scrollTo(0, 0);
+}
+function logProgress(text, isError) {
+  const log = $("#progress-log");
+  log.appendChild(el("p", isError ? "perror" : "", esc(text)));
+  if (log.children.length > 14) log.removeChild(log.firstChild);
+}
+// A run takes two to five minutes, so the server does not answer the request
+// that starts it. It hands back an id, gets on with the work, and this page
+// asks every couple of seconds what has happened since it last looked. The
+// id goes straight into the address bar: the run is shareable from the moment
+// it starts, and closing the tab no longer throws the work away.
+const POLL_MS = 2000;
+
+async function runIndex(brands) {
+  showScreen("screen-progress");
+  $("#progress-log").innerHTML = "";
+  logProgress("Starting the run — " + brands.map(b => b.name).join(", ") + ".");
+  let id;
+  try {
+    const resp = await fetch("/api/run", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brands }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || "The analysis server returned " + resp.status + ".");
+    id = body.id;
+    if (!id) throw new Error("The analysis server did not start a run.");
+  } catch (e) {
+    return runFailed(e.message);
+  }
+  history.replaceState(null, "", "/r/" + id);
+  pollRun(id);
+}
+
+async function pollRun(id) {
+  let seen = 0, misses = 0;
+  for (;;) {
+    let state;
+    try {
+      const resp = await fetch("/api/run/" + encodeURIComponent(id) + "?since=" + seen);
+      if (resp.status === 404) return runFailed("No run with that link. It may be from an older version of the tool, or the link may be incomplete.");
+      if (!resp.ok) throw new Error("The analysis server returned " + resp.status + ".");
+      state = await resp.json();
+      misses = 0;
+    } catch (e) {
+      // A dropped connection mid-run is not a failed run. The work is
+      // happening on the server either way, so keep asking for a while.
+      if (++misses > 8) return runFailed(e.message || "Lost contact with the analysis server.");
+      await new Promise(r => setTimeout(r, POLL_MS * 2));
+      continue;
+    }
+    (state.progress || []).forEach(p => logProgress(p.text, p.type === "error"));
+    seen = state.progress_total || seen;
+    if (state.status === "complete" && state.result) return render(state.result);
+    if (state.status === "failed") return runFailed(state.error || "The run failed.");
+    await new Promise(r => setTimeout(r, POLL_MS));
+  }
+}
+
+function runFailed(msg) {
+  msg = msg || "Something went wrong.";
+  showScreen("screen-progress");
+  logProgress(msg, true);
+  if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+    logProgress("The page could not reach the analysis server at " + location.origin + ".", true);
+    logProgress("Running it locally? Start it in the sameness-index folder with: uvicorn server:app — then reload this page.", true);
+  } else if (/ANTHROPIC_API_KEY/i.test(msg)) {
+    logProgress("Set the key in the same shell you start the server from, then restart it.", true);
+  } else {
+    logProgress("Reload the page to try again. The worked example still opens without the server.", true);
+  }
+}
+
+// Arriving at /r/<id> — either a shared link, or this tab reloaded mid-run.
+// Both are the same thing: ask the server what that run has done.
+const PERMALINK = (location.pathname.match(/^\/r\/([a-z0-9]{6,32})$/i) || [])[1];
+if (PERMALINK && !OFFLINE) {
+  showScreen("screen-progress");
+  logProgress("Opening this result…");
+  pollRun(PERMALINK);
+}
+
+/* ---------------------------------------------------- render */
+function tierChip(t) { return `<span class="tier-chip ${t}">${TIER_NAMES[t] || t}</span>`; }
+function dot(b) { return `<span class="brand-dot" style="background:${ACC[b] || "#999"}"></span>`; }
+
+function render(data) {
+  DATA = data;
+  ACC = {};
+  data.meta.brands.forEach(b => ACC[b.name] = b.accent);
+  const m = data.metrics;
+
+  $("#r-meta").textContent = `${data.meta.category} · ${data.meta.market} · captured ${data.meta.captured}`;
+  $("#r-headline").innerHTML = esc(data.headline).replace(/(\b\d+%?\b)/g, '<span class="num">$1</span>');
+
+  $("#r-numbers").innerHTML = [
+    ["space_size", m.space_size, "Territories", ""],
+    ["occupied", m.occupied, "In use", ""],
+    ["contested", m.contested, "Shared", ""],
+    ["open_empty", m.open_empty, "To explore", "key"],
+  ].map(([k, n, l, cls]) => `<div class="${cls}" data-num="${k}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  $("#r-numbers").querySelectorAll("[data-num]").forEach(d =>
+    d.addEventListener("click", () => openNumberDrawer(d.dataset.num)));
+
+  renderPlot(); renderMap(); renderFindings(); renderEvidence(); renderDaylight();
+  renderCentre(); renderProvenance(); renderWorking();
+  showShareLink();
+  showScreen("screen-result");
+}
+
+// A result is only useful inside the account if it can be passed around, and
+// nobody thinks to copy an address bar. The worked example has no run behind
+// it, so there is nothing to share and the button stays hidden.
+function showShareLink() {
+  const btn = $("#copy-link");
+  if (!/^\/r\/[a-z0-9]{6,32}$/i.test(location.pathname)) { btn.hidden = true; return; }
+  btn.hidden = false;
+  btn.textContent = "Copy the link to this result";
+  btn.onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); btn.textContent = "Link copied"; }
+    catch { btn.textContent = location.href; }
+    setTimeout(() => { btn.textContent = "Copy the link to this result"; }, 2600);
+  };
+}
+
+/* ---- the four numbers, explained on click ---- */
+function openNumberDrawer(key) {
+  const m = DATA.metrics, pb = DATA.provenance_breakdown || [];
+  const defs = {
+    space_size: ["Territories identified",
+      `${m.space_size} distinct arguments any brand in this category could build communications on.`,
+      `Two sources. ${(pb.find(p => p.key === "observed in category") || {}).total || 0} were read off the brand websites — every one of those has a user by definition. The rest were established from published literature on patient burden and prescribing barriers, independently of anything these brands say. The literature half is not optional: a list drawn only from what brands already say would have a claimant for every entry, and unused territory could never appear. It does mean the percentages describe this list rather than the category — a longer literature list lowers the usage figure without anything changing in the market.`],
+    occupied: ["In use",
+      `${m.occupied} of the ${m.space_size} territories are used by at least one brand.`,
+      `A territory counts as used only where the wording on the site clearly makes that argument. Where it is ambiguous, it is not counted — under-counting is the conservative direction, and every count carries the verbatim wording that produced it.`],
+    contested: ["Shared",
+      `${m.contested} territories are used by two or more brands — ${pct(m.crowding_rate)} of everything in use.`,
+      `This is the sameness figure. Where several brands occupy the same territory, none of them owns it, and the audience has no basis on which to tell them apart on that argument.`],
+    open_empty: ["Worth exploring first",
+      `${m.open_empty} territories are used by nobody and need no new clinical evidence to work with.`,
+      `No additional trial, no new endpoint, nothing further to substantiate. These are decisions about how the disease is described, who the communications address, and where they appear — all inside the existing label. They are unexplored because nobody chose them, not because nobody could. Every one carries the published evidence it rests on. Whether any of them fits your brand, your label and your review process is a judgement this tool cannot make for you.`],
+  };
+  const d = defs[key]; if (!d) return;
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">The number</span>
+    <div class="dr-label">${esc(d[0])}</div>
+    <div class="dr-desc">${esc(d[1])}</div>
+    <div class="dr-h">What sits behind it</div>
+    <p class="dr-src">${esc(d[2])}</p>`;
+  showDrawer();
+}
+
+/* ---- plot ---- */
+function renderPlot() {
+  const sec = $("#sec-plot");
+  const pts = (DATA.plot || []).filter(p => p.imagery !== null && p.imagery !== undefined);
+  const pm = DATA.plot_meta || {};
+  if (pts.length < 2 || pm.imagery_mean == null) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+
+  const W = 620, H = 440, L = 62, R = 26, T = 34, B = 62;
+  const iw = W - L - R, ih = H - T - B;
+  const span = (arr, mean, minPad) => {
+    const lo = Math.min(...arr, mean), hi = Math.max(...arr, mean);
+    const pad = Math.max((hi - lo) * .35, minPad);
+    return [lo - pad, hi + pad];
+  };
+  const [x0, x1] = span(pts.map(p => p.messaging), pm.messaging_mean, .02);
+  const [y0, y1] = span(pts.map(p => p.imagery), pm.imagery_mean, (pm.imagery_step || .125) * .4);
+  const X = v => L + ((v - x0) / (x1 - x0)) * iw;
+  const Y = v => T + ih - ((v - y0) / (y1 - y0)) * ih;
+  const cx = X(pm.messaging_mean), cy = Y(pm.imagery_mean);
+
+  // The field is read from its origin. Bottom-left is convergence — a brand
+  // saying and showing what everyone else says and shows. Distance out from
+  // that corner is daylight. The shading and the rings carry that reading
+  // without adding any number the data does not support.
+  const ox = L, oy = T + ih;                       // convergence corner
+
+  const svg = [
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Convergence against daylight, messaging and imagery">`,
+    `<defs>
+      <linearGradient id="daylight" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%"   stop-color="#303030" stop-opacity=".13"/>
+        <stop offset="42%"  stop-color="#303030" stop-opacity=".04"/>
+        <stop offset="72%"  stop-color="#51D4B2" stop-opacity=".14"/>
+        <stop offset="100%" stop-color="#51D4B2" stop-opacity=".34"/>
+      </linearGradient>
+      <clipPath id="field"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath>
+    </defs>`,
+    `<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#daylight)"/>`,
+    `<rect class="frame" x="${L}" y="${T}" width="${iw}" height="${ih}"/>`,
+    // category average, kept as the reference point but made quieter
+    `<line class="cross" x1="${cx}" y1="${T}" x2="${cx}" y2="${T + ih}" stroke-dasharray="3 3"/>`,
+    `<line class="cross" x1="${L}" y1="${cy}" x2="${L + iw}" y2="${cy}" stroke-dasharray="3 3"/>`,
+    `<text class="cross-label" x="${cx + 5}" y="${T - 7}">Category average</text>`,
+    // the two poles — the field is read between them
+    `<text class="pole pole-conv" x="${L + 12}" y="${T + ih - 26}">Convergence</text>`,
+    `<text class="pole pole-conv sub" x="${L + 12}" y="${T + ih - 12}">Same as everyone else</text>`,
+    `<text class="pole pole-day" x="${W - R - 12}" y="${T + 22}" text-anchor="end">Daylight</text>`,
+    `<text class="pole pole-day sub" x="${W - R - 12}" y="${T + 36}" text-anchor="end">Unlike anyone else</text>`,
+    `<text class="axis-label" x="${L + iw / 2}" y="${H - 24}" text-anchor="middle">Messaging — converged → distinct</text>`,
+    `<text class="axis-label" transform="translate(${L - 40},${T + ih / 2}) rotate(-90)" text-anchor="middle">Imagery — converged → distinct</text>`,
+  ];
+
+  // Daylight = how far out from the convergence corner a brand sits, read on
+  // the plotted field. A rank within this set, not an absolute score — which
+  // is why it is reported as an order rather than a number.
+  const dayOrder = [...pts].map(p => ({
+    brand: p.brand,
+    r: Math.hypot(X(p.messaging) - ox, oy - Y(p.imagery)),
+  })).sort((a, b) => b.r - a.r);
+  DAYLIGHT_RANK = {};
+  dayOrder.forEach((x, i) => DAYLIGHT_RANK[x.brand] = i + 1);
+
+  const placed = [];
+  const hit = (a, b) => a.x1 > b.x0 && a.x0 < b.x1 && a.y1 > b.y0 && a.y0 < b.y1;
+  for (const p of pts) {
+    const col = ACC[p.brand] || "#999", px = X(p.messaging), py = Y(p.imagery);
+    const w = p.brand.length * 7.4 + 4, h = 15;
+    const cands = [
+      { x: px + 13, y: py + 4, a: "start" }, { x: px - 13, y: py + 4, a: "end" },
+      { x: px, y: py - 15, a: "middle" }, { x: px, y: py + 23, a: "middle" },
+      { x: px + 13, y: py - 11, a: "start" }, { x: px - 13, y: py + 19, a: "end" },
+    ];
+    let pick = null;
+    for (const c of cands) {
+      const bx = c.a === "start" ? c.x : c.a === "end" ? c.x - w : c.x - w / 2;
+      const box = { x0: bx, x1: bx + w, y0: c.y - h + 3, y1: c.y + 4 };
+      if (box.x0 < L - 2 || box.x1 > L + iw + 2 || box.y0 < T || box.y1 > T + ih) continue;
+      if (placed.some(q => hit(box, q))) continue;
+      pick = c; placed.push(box); break;
+    }
+    if (!pick) pick = cands[0];
+    // Dot size = how many territories the brand claims. Without this, a brand
+    // that says very little overlaps with nobody, reads as maximally distinct,
+    // and sits in the daylight corner looking like the winner. Size exposes it:
+    // a small dot far out is distinct because it is barely present.
+    const claimed = ((DATA.brand_position || {})[p.brand] || {}).claimed;
+    const r = claimed == null ? 8 : 5 + Math.sqrt(claimed) * 1.35;
+    svg.push(`<g class="pt" data-brand="${esc(p.brand)}"><circle cx="${px}" cy="${py}" r="${r.toFixed(1)}" fill="${col}"/>` +
+      `<text class="brand-label" x="${pick.x}" y="${pick.y}" text-anchor="${pick.a}" fill="${col}">${esc(p.brand)}</text></g>`);
+  }
+  svg.push("</svg>");
+  $("#plot").innerHTML = svg.join("");
+  $("#plot").querySelectorAll("[data-brand]").forEach(g =>
+    g.addEventListener("click", () => {
+      const r = (DATA.centre || []).find(x => x.brand === g.dataset.brand);
+      if (r) openBrandDrawer(r);
+    }));
+}
+
+/* ---- map ---- */
+function renderMap() {
+  const map = $("#map"); map.innerHTML = "";
+  const maxN = DATA.meta.brands.length;
+  [...DATA.positions].sort((a, b) => b.n - a.n || a.id.localeCompare(b.id)).forEach(p => {
+    const shade = p.n === 0 ? "empty" : "n" + Math.min(4, Math.ceil(p.n / maxN * 4));
+    const c = el("div", `cell ${shade} tier-${p.tier}`);
+    c.innerHTML = `<div><div class="c-id">${p.id}</div><div class="c-label">${esc(shortLabel(p.label))}</div></div>
+      <div class="c-foot">${p.n === 0 ? "Unused" : p.n + " of " + maxN}</div>`;
+    c.addEventListener("click", () => openDrawer(p.id));
+    map.appendChild(c);
+  });
+  $("#map-legend").innerHTML =
+    `<span><span class="sw e"></span>unused</span>
+     <span><span class="sw" style="background:rgba(31,91,74,.10)"></span>one brand</span>
+     <span><span class="sw" style="background:rgba(31,91,74,.48)"></span>several</span>
+     <span><span class="sw" style="background:#1F5B4A"></span>every brand</span>`;
+}
+
+/* ---- findings ---- */
+function renderFindings() {
+  const w = $("#r-findings"); w.innerHTML = "";
+  (DATA.findings || []).forEach((f, i) => {
+    const links = (f.refs || []).map(r => {
+      if (r.startsWith("visual:")) {
+        const d = (DATA.visual.dimensions || []).find(x => x.key === r.slice(7));
+        return `<a data-vref="${r.slice(7)}">${esc(d ? d.label.toLowerCase() : r.slice(7))}</a>`;
+      }
+      const p = pos(r);
+      return `<a data-ref="${r}">${esc(p ? shortLabel(p.label).toLowerCase() : r)}</a>`;
+    }).join("");
+    const d = el("div", "finding");
+    d.innerHTML = `<div class="f-n">${String(i + 1).padStart(2, "0")}</div>
+      <div><p>${esc(f.text)}</p><div class="f-ev">${links}</div></div>`;
+    w.appendChild(d);
+  });
+  w.querySelectorAll("[data-ref]").forEach(a => a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+  w.querySelectorAll("[data-vref]").forEach(a => a.addEventListener("click", () => openVisualDrawer(a.dataset.vref)));
+}
+
+/* ---- what shared territory costs ---- */
+function renderEvidence() {
+  const w = $("#r-evidence"); w.innerHTML = "";
+  EVIDENCE.forEach((e, i) => {
+    const d = el("div", "ev-item");
+    d.innerHTML = `<div class="ev-n">${String(i + 1).padStart(2, "0")}</div>
+      <div><div class="ev-claim">${esc(e.claim)}</div>
+      <div class="ev-so">${esc(e.so)}</div></div>`;
+    d.addEventListener("click", () => noteDrawer("Evidence", e.claim, `
+      <p>${esc(e.detail)}</p>
+      <div class="dr-h">What it means here</div>
+      <p>${esc(e.so)}</p>
+      <div class="dr-h">Sources</div>
+      ${e.sources.map(([t, u]) => `<p class="dr-src"><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join("")}
+      <p class="dr-src" style="margin-top:14px">This is general marketing science, not a finding from this run. It is included because it establishes what shared territory costs, independently of any single category.</p>`));
+    w.appendChild(d);
+  });
+}
+
+/* ---- territories to explore ---- */
+function renderDaylight() {
+  const empty = DATA.positions.filter(p => p.n === 0);
+  const order = { open: 0, frame_only: 1, constrained: 2, closed: 3 };
+  const shown = empty.filter(p => p.tier !== "closed").sort((a, b) => order[a.tier] - order[b.tier]);
+  const open = empty.filter(p => p.tier === "open");
+  $("#daylight-intro").textContent =
+    `${empty.length} territories are used by no brand in this set. ${shown.length} are worth exploring, ` +
+    `starting with the ${open.length} that need no new clinical evidence to work with. ` +
+    `Each is a starting point for the conversation, not a recommendation — what survives review is your call.`;
+  const w = $("#r-daylight"); w.innerHTML = "";
+  shown.forEach(p => {
+    const d = el("div", "day-item");
+    d.innerHTML = `<div><div class="d-label">${esc(p.label)}</div><div class="d-desc">${esc(p.description)}</div></div>${tierChip(p.tier)}`;
+    d.addEventListener("click", () => openDrawer(p.id));
+    w.appendChild(d);
+  });
+}
+
+/* ---- bar chart ---- */
+function renderCentre() {
+  const rows = DATA.centre || [], chart = $("#centre-chart");
+  chart.innerHTML = "";
+  if (!rows.length) return;
+  const max = Math.max(...rows.map(r => r.distance), .05);
+  rows.forEach(r => {
+    const col = ACC[r.brand] || "#999", p = (r.distance / max) * 100;
+    const row = el("div", "centre-row");
+    row.innerHTML = `<div class="cr-name">${esc(r.brand)}</div>
+      <div class="cr-track"><div class="cr-bar" style="width:${p}%;background:${col};opacity:.4"></div>
+      <div class="cr-dot" style="left:${p}%;background:${col}"></div></div>
+      <div class="cr-val">${r.departures} of ${r.of}</div>`;
+    row.addEventListener("click", () => openBrandDrawer(r));
+    chart.appendChild(row);
+  });
+}
+
+/* ---- provenance ---- */
+function renderProvenance() {
+  const rows = DATA.provenance_breakdown || [], t = $("#t-prov");
+  if (!rows.length) { t.innerHTML = ""; return; }
+  const tt = rows.reduce((a, r) => a + r.total, 0), tu = rows.reduce((a, r) => a + r.unused, 0);
+  t.innerHTML = `<tr><th>Source</th><th class="num">Territories</th><th class="num">Unused</th></tr>` +
+    rows.map(r => `<tr class="clickable" data-prov="${esc(r.key)}"><td>${esc(r.label)}</td>
+      <td class="num">${r.total}</td><td class="num">${r.unused}</td></tr>`).join("") +
+    `<tr class="total"><td>Total</td><td class="num">${tt}</td><td class="num">${tu}</td></tr>`;
+  t.querySelectorAll("[data-prov]").forEach(tr =>
+    tr.addEventListener("click", () => openProvenanceDrawer(tr.dataset.prov)));
+}
+
+/* ---- full working tables ---- */
+function renderWorking() {
+  const m = DATA.metrics;
+
+  const tp = $("#t-positions");
+  tp.innerHTML = `<tr><th></th><th>Territory</th><th>Availability</th><th>Source</th><th class="num">Brands</th></tr>` +
+    DATA.positions.map(p => `<tr class="clickable" data-ref="${p.id}"><td>${p.id}</td>
+      <td class="serif">${esc(p.label)}</td><td>${tierChip(p.tier)}</td>
+      <td>${esc(p.provenance)}</td><td class="num">${p.claimers.map(dot).join("")}${p.n || "—"}</td></tr>`).join("");
+  tp.querySelectorAll("[data-ref]").forEach(tr => tr.addEventListener("click", () => openDrawer(tr.dataset.ref)));
+
+  const tb = $("#t-brands"); tb.innerHTML = "";
+  const you = DATA.meta.brands[0].name;
+  DATA.meta.brands.forEach(b => {
+    const s = DATA.brand_position[b.name]; if (!s) return;
+    const owned = (s.uniquely_owned || []).map(id => {
+      const p = pos(id); return p ? `<a data-ref="${id}" style="cursor:pointer">${esc(shortLabel(p.label))}</a>` : id;
+    }).join(" · ") || `<span class="muted">none — every territory it uses is also used by a competitor</span>`;
+    const d = el("div", "brand-block");
+    d.innerHTML = `<h3>${dot(b.name)}${esc(b.name)}${b.name === you ? ` <span class="muted" style="font-weight:400">(your brand)</span>` : ""}</h3>
+      <div class="b-stats">uses ${s.claimed} of ${m.space_size} · ${s.n_unique} used by no competitor · appears in ${pct(s.crowding)} of the territories most of the category shares</div>
+      <div class="b-owned">Used by no competitor: ${owned}</div>`;
+    tb.appendChild(d);
+  });
+  tb.querySelectorAll("[data-ref]").forEach(a => a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+
+  $("#t-pairwise").innerHTML = `<tr><th>Pair</th><th class="num">In common</th></tr>` +
+    Object.entries(m.pairwise || {}).sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `<tr><td class="serif">${esc(k)}</td><td class="num">${pct(v)}</td></tr>`).join("");
+
+  $("#visual-exclusions").textContent = (DATA.visual && DATA.visual.exclusions) || "";
+  const dims = (DATA.visual && DATA.visual.dimensions) || [];
+  const names = DATA.meta.brands.map(b => b.name);
+  $("#t-visual").innerHTML = `<tr><th>Dimension</th>${names.map(n => `<th>${esc(n)}</th>`).join("")}<th class="num">Agree</th></tr>` +
+    dims.map(d => `<tr class="clickable" data-vref="${d.key}"><td class="serif">${esc(d.label)}</td>` +
+      names.map(n => `<td>${esc(d.per_brand && d.per_brand[n] !== undefined ? d.per_brand[n] : "—")}</td>`).join("") +
+      `<td class="num">${pct(d.agreement)}</td></tr>`).join("");
+  $("#t-visual").querySelectorAll("[data-vref]").forEach(tr =>
+    tr.addEventListener("click", () => openVisualDrawer(tr.dataset.vref)));
+
+  const tc = $("#t-crosscheck"); tc.innerHTML = "";
+  (DATA.cross_check || []).forEach(r => {
+    const d = el("div", "brand-block");
+    d.innerHTML = `<h3>${dot(r.brand)}${esc(r.brand)}</h3>
+      <div class="b-stats">${pct(r.verbal_ownership)} of the territories it uses are used by no competitor</div>
+      <div class="b-owned">${esc(r.comment || "")}</div>`;
+    tc.appendChild(d);
+  });
+
+  $("#t-boundary").innerHTML = `<tr><th>Content</th><th>Treated as</th><th>Why</th></tr>` +
+    (DATA.boundary_rules || []).map(r =>
+      `<tr><td class="serif">${r.element}</td><td>${r.layer === 2 ? "Set by the label" : "A decision"}</td><td>${esc(r.rule)}</td></tr>`).join("");
+
+  $("#r-limits").innerHTML = (DATA.limitations || []).map(x => `<p style="margin-bottom:11px">${esc(x)}</p>`).join("");
+}
+
+/* ---------------------------------------------------- drawers */
+function openDrawer(id) {
+  const p = pos(id); if (!p) return;
+  const receipts = p.n === 0
+    ? `<p class="dr-empty">No brand in this set uses this territory anywhere on its website. It is unexplored.</p>`
+    : p.claimers.map(b => `<div class="receipt" style="border-color:${ACC[b] || "var(--divider)"}">
+        <div class="r-brand" style="color:${ACC[b] || "inherit"}">${esc(b)}</div>
+        <div class="r-quote">${esc(p.receipts[b])}</div></div>`).join("");
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">${p.id} · ${esc(p.provenance)}</span>
+    <div class="dr-label">${esc(p.label)}</div>
+    <div class="dr-desc">${esc(p.description)}</div>
+    <div class="dr-h">Who uses it, and the wording on their site</div>
+    ${receipts}
+    <div class="dr-h">Could you explore this</div>
+    <p>${tierChip(p.tier)}</p>
+    <p>${esc(p.tier_reasoning)}</p>
+    <p class="dr-src">${esc(TIER_EXPLAIN[p.tier] || "")}</p>
+    <p class="dr-src">A strategic assessment, not a regulatory one, and a starting point for a conversation rather than a recommendation. Whether it fits your brand, your label and your review process is your judgement, and anything you pursue needs medical, legal and regulatory review.</p>
+    <div class="dr-h">Where it came from</div>
+    <p class="dr-src">${esc(p.source || p.provenance)}</p>`;
+  showDrawer();
+}
+
+function openBrandDrawer(r) {
+  const dep = (r.departure_ids || []).map(id => pos(id)).filter(Boolean);
+  const own = dep.filter(p => p.claimers.includes(r.brand));
+  const declined = dep.filter(p => !p.claimers.includes(r.brand));
+  const list = a => a.length ? a.map(p => `<div class="receipt" style="border-color:${ACC[r.brand] || "var(--divider)"}">
+      <div class="r-quote" style="font-style:normal">${esc(p.label)}</div>
+      <div class="dr-src" style="margin-top:2px">used by ${p.n} of ${DATA.meta.brands.length}</div></div>`).join("")
+    : `<p class="dr-empty">None.</p>`;
+  const pt = (DATA.plot || []).find(p => p.brand === r.brand), pm = DATA.plot_meta || {};
+  let plotBlock = "";
+  if (pt) {
+    const n = Object.keys(DAYLIGHT_RANK).length, rank = DAYLIGHT_RANK[r.brand];
+    const ord = ["", "most", "second-most", "third-most", "fourth-most", "fifth-most", "sixth-most", "seventh-most"][rank] || `${rank}th-most`;
+    const cmp = (v, mean) => v == null ? "—" : `${v > mean ? "more distinct" : "more converged"} than the category average`;
+    plotBlock = `<div class="dr-h">Daylight</div>
+      <p>${rank === n ? "The most converged brand in the set" : `The ${ord} daylight of ${n} brands`} — how far it sits from the corner where a brand says and shows what everyone else does.</p>
+      <p>Messaging: ${cmp(pt.messaging, pm.messaging_mean)}</p>
+      <p>Imagery: ${cmp(pt.imagery, pm.imagery_mean)}</p>
+      <p class="dr-src">A rank within this set, read off the plotted field, not an absolute score. The lists below answer a different question — where specifically it breaks from the majority. A brand that claims a great deal overlaps with everybody and so sits closer to convergence, while departing from the majority more often than anyone.</p>`;
+  }
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">Brand</span>
+    <div class="dr-label">${esc(r.brand)}</div>
+    <div class="dr-desc">Departs from what most of the category does in ${r.departures} of the ${r.of} territories anyone uses.</div>
+    ${plotBlock}
+    <div class="dr-h">Makes an argument most competitors do not</div>
+    ${list(own)}
+    <div class="dr-h">Declines an argument most competitors make</div>
+    ${list(declined)}`;
+  showDrawer();
+}
+
+function openProvenanceDrawer(key) {
+  const meta = (DATA.provenance_breakdown || []).find(r => r.key === key); if (!meta) return;
+  const items = DATA.positions.filter(p => p.provenance === key);
+  const render = a => a.length ? a.map(p => `<div class="receipt" style="border-color:${p.n ? "var(--divider)" : "var(--coral)"}">
+      <div class="r-quote" style="font-style:normal"><a data-ref="${p.id}" style="cursor:pointer">${esc(p.label)}</a></div>
+      <div class="dr-src" style="margin-top:2px">${p.n ? "used by " + esc(p.claimers.join(", ")) : "unused · " + esc(TIER_NAMES[p.tier].toLowerCase())}</div>
+    </div>`).join("") : `<p class="dr-empty">None.</p>`;
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">Source</span>
+    <div class="dr-label">${esc(meta.label)}</div>
+    <div class="dr-desc">${esc(meta.note)}</div>
+    <div class="dr-h">Unused (${meta.unused})</div>${render(items.filter(p => p.n === 0))}
+    <div class="dr-h">In use (${meta.total - meta.unused})</div>${render(items.filter(p => p.n > 0))}`;
+  $("#drawer-content").querySelectorAll("[data-ref]").forEach(a =>
+    a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+  showDrawer();
+}
+
+function openVisualDrawer(key) {
+  const d = (DATA.visual.dimensions || []).find(x => x.key === key); if (!d) return;
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">Imagery · commissioned photography only</span>
+    <div class="dr-label">${esc(d.label)}</div>
+    <div class="dr-desc">${pct(d.agreement)} of brands share the most common value: <strong>${esc(d.modal_value)}</strong>.</div>
+    <div class="dr-h">Each brand's lead image, coded</div>
+    ${Object.entries(d.per_brand || {}).map(([b, v]) => `<div class="receipt" style="border-color:${ACC[b] || "var(--divider)"}">
+      <div class="r-brand" style="color:${ACC[b] || "inherit"}">${esc(b)}</div>
+      <div class="r-quote" style="font-style:normal">${esc(v)}</div>
+      <div class="dr-src" style="margin-top:3px">${esc((DATA.visual.notes || {})[b] || "")}</div></div>`).join("")}
+    <div class="dr-h">What is excluded</div>
+    <p class="dr-src">${esc(DATA.visual.exclusions || "")}</p>`;
+  showDrawer();
+}
+
+/* ---- the "why" buttons ---- */
+function noteDrawer(kicker, title, body) {
+  $("#drawer-content").innerHTML = `<span class="eyebrow">${esc(kicker)}</span>
+    <div class="dr-label">${esc(title)}</div>${body}`;
+  showDrawer();
+}
+$("#why-headline").addEventListener("click", () => noteDrawer("Reading this", "What the headline means", `
+  <p>Requiring no new clinical evidence means exactly that: no additional trial, no new endpoint, nothing further to substantiate.</p>
+  <p>These territories are decisions about how the disease is described, who the communications address, and where they appear — all of which sit inside the existing label. They are unused because nobody chose them, not because nobody could.</p>
+  <p class="dr-src">Every unused territory listed on this page carries the published evidence it rests on, and can be checked.</p>`));
+
+$("#why-plot").addEventListener("click", () => {
+  const pm = DATA.plot_meta || {};
+  noteDrawer("Method", "How the plot is measured", `
+    <p>Both axes ask the same question of each brand — how unlike the other brands is it — once of its messaging, once of its imagery. Using one calculation for both is what makes the axes comparable, and it is what makes distance from the bottom-left corner readable as daylight.</p>
+    <p class="dr-src">${esc(pm.caveat || "")}</p>
+    <p class="dr-src">Read the field by position, not by absolute score. The corner is the direction of full convergence rather than a measured zero, so what the plot supports is the order the brands sit in and how far apart they are — not a percentage of daylight.</p>
+    <p class="dr-src"><strong>One trap worth knowing.</strong> A brand that claims very few territories overlaps with nobody, and low overlap reads as distinctiveness. It can therefore sit far into the daylight corner while having taken no position at all. Dot size guards against this: it shows how much each brand claims, so a small dot far out is distinct because it is barely present, not because it has found daylight. Check the size before reading the position.</p>
+    <p class="dr-src">Of the ${pm.imagery_dimensions} imagery dimensions coded, only ${pm.imagery_dimensions_with_majority} have a value most brands share — the rest split evenly. That is why imagery is measured as distance from the other brands rather than from a category centre: at this number of brands there is no stable centre in the imagery to measure from.</p>`);
+});
+
+$("#why-map").addEventListener("click", () => openNumberDrawer("space_size"));
+
+$("#why-daylight").addEventListener("click", () => noteDrawer("Method", "How these are judged", `
+  ${Object.keys(TIER_NAMES).map(t => `<p>${tierChip(t)}</p><p class="dr-src">${esc(TIER_EXPLAIN[t])}</p>`).join("")}
+  <p class="dr-src" style="margin-top:16px">Ratings are a strategic assessment, not a regulatory one. They are a prompt for the conversation, not a recommendation — some territories will not fit your brand, your label or your appetite, and that is a judgement for your team. Anything pursued needs medical, legal and regulatory review.</p>
+  <p class="dr-src">Territories needing substantiation are often worth the difficulty: one requiring no new evidence can be copied within a campaign cycle, whereas one built on evidence a competitor does not have stays yours until they generate it.</p>`));
+
+function showDrawer() { $("#drawer").classList.add("on"); $("#drawer-scrim").classList.add("on"); $("#drawer").scrollTop = 0; }
+function hideDrawer() { $("#drawer").classList.remove("on"); $("#drawer-scrim").classList.remove("on"); }
+$("#drawer-close").addEventListener("click", hideDrawer);
+$("#drawer-scrim").addEventListener("click", hideDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer(); });
+</script>
+
+<!-- ============================================ DRAWER -->
+<script type="application/json" id="worked-example">
+{
+  "meta": {
+    "tool": "Sameness Index",
+    "version": "0.2",
+    "category": "Non-steroidal topical therapies for atopic dermatitis",
+    "market": "United States",
+    "captured": "12 August 2026",
+    "audience_note": "Patient and HCP sites, atopic dermatitis sections only. Opzelura HCP not captured in this run.",
+    "brands": [
+      {
+        "name": "Zoryve",
+        "company": "Arcutis",
+        "url": "https://www.zoryve.com",
+        "accent": "#FF686B"
+      },
+      {
+        "name": "Vtama",
+        "company": "Organon",
+        "url": "https://www.vtama.com",
+        "accent": "#1F5B4A"
+      },
+      {
+        "name": "Opzelura",
+        "company": "Incyte",
+        "url": "https://www.opzelura.com",
+        "accent": "#303030"
+      },
+      {
+        "name": "Eucrisa",
+        "company": "Pfizer",
+        "url": "https://www.eucrisa.com",
+        "accent": "#727270"
+      }
+    ]
+  },
+  "headline": "73% of what these four brands say, they say together. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody.",
+  "standfirst": "Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. Of the 18 territories nobody explores, 9 need no new clinical evidence to work with — no additional trial, no new endpoint, nothing further to substantiate. They are decisions about how the disease is described, who the communications address, and where they appear, all inside the existing label. They are unexplored because nobody chose them, not because nobody could.",
+  "metrics": {
+    "space_size": 40,
+    "occupied": 22,
+    "empty": 18,
+    "occupancy_rate": 0.55,
+    "crowded": 7,
+    "contested": 16,
+    "sole_held": 6,
+    "crowding_rate": 0.727,
+    "open_empty": 9,
+    "empty_ids": [
+      "X01",
+      "X02",
+      "X03",
+      "X04",
+      "X05",
+      "X06",
+      "X07",
+      "X08",
+      "X09",
+      "X10",
+      "H01",
+      "H02",
+      "H03",
+      "H05",
+      "H06",
+      "H07",
+      "H08",
+      "H10"
+    ],
+    "open_empty_ids": [
+      "X02",
+      "X04",
+      "X05",
+      "X07",
+      "X09",
+      "H06",
+      "H07",
+      "H08",
+      "H10"
+    ],
+    "crowded_ids": [
+      "C01",
+      "C02",
+      "C03",
+      "C05",
+      "C06",
+      "C15",
+      "C20"
+    ],
+    "mean_pairwise": 0.339,
+    "pairwise": {
+      "Zoryve / Vtama": 0.4,
+      "Zoryve / Opzelura": 0.421,
+      "Zoryve / Eucrisa": 0.333,
+      "Vtama / Opzelura": 0.278,
+      "Vtama / Eucrisa": 0.333,
+      "Opzelura / Eucrisa": 0.267
+    },
+    "provenance_counts": {
+      "observed in category": 20,
+      "patient burden literature": 10,
+      "clinical barrier literature": 10
+    },
+    "empty_by_tier": {
+      "frame_only": 4,
+      "open": 9,
+      "constrained": 3,
+      "closed": 2
+    }
+  },
+  "positions": [
+    {
+      "id": "C01",
+      "label": "Steroid avoidance as the lead benefit",
+      "analyst_label": "Steroid avoidance framed as the core promise, not just a product fact",
+      "description": "The brand's central promise is escaping steroids, not just the fact of being steroid-free.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Being steroid-free is a fact of the label. Building the lead benefit around avoiding steroids is a messaging decision, not a new claim. Every brand in the set already does it.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "'NOT A STEROID' set in the hero benefit bar, second of three",
+        "Vtama": "'steroid-free' in the persistent hero banner",
+        "Opzelura": "'STEROID-FREE JAK INHIBITOR CREAM' — first line of hero subcopy",
+        "Eucrisa": "'100% steroid-free' as a hero roundel"
+      }
+    },
+    {
+      "id": "C02",
+      "label": "Safety in young children",
+      "analyst_label": "Paediatric reassurance — safe for very young children",
+      "description": "The site works to reassure that the product is safe for very young children.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Available to any brand whose label covers the age group it depicts. The reassurance itself needs no new endpoint.",
+      "claimers": [
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Vtama": "'as young as 2 years of age' in the hero banner",
+        "Opzelura": "'for you and your kids as young as 2 years'",
+        "Eucrisa": "'Approved for babies' — one of three hero cards"
+      }
+    },
+    {
+      "id": "C03",
+      "label": "The parent as the audience",
+      "analyst_label": "Caregiver addressed as the decision-maker",
+      "description": "The parent or carer, not the patient, is treated as the person making the decision.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "An audience decision. Addressing the parent rather than the patient requires nothing from the label.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "'As a mom who also lives with eczema, walking this path alongside my daughter'",
+        "Vtama": "Caregiver-and-child hero; 'Not actual patients/caregiver'",
+        "Opzelura": "Mother-and-child hero; 'the impact eczema has on you or your child'",
+        "Eucrisa": "'Eczema and Your Child' section in primary nav"
+      }
+    },
+    {
+      "id": "C04",
+      "label": "Speed of relief",
+      "analyst_label": "Speed of relief",
+      "description": "How fast relief arrives is put forward as the reason to choose the brand.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Cannot be claimed without time-to-effect data. Opzelura can make it because its trials measured that endpoint; any other brand would need the same evidence.",
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "'itch improvement as early as 3 or 4 days'"
+      }
+    },
+    {
+      "id": "C05",
+      "label": "Itch as the primary symptom addressed",
+      "analyst_label": "Itch named as the enemy",
+      "description": "Itch, specifically, is cast as the thing the product defeats.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Itch is measured in every pivotal trial in the category. Choosing to lead on it is a decision about message hierarchy, not a new claim.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'powerful skin clearance and reduction in itch' (HCP)",
+        "Vtama": "Dedicated 'Itch Relief' section in primary nav",
+        "Opzelura": "'significantly reduce itch'; dedicated Itch Relief section"
+      }
+    },
+    {
+      "id": "C06",
+      "label": "Clear skin as the outcome",
+      "analyst_label": "Visible clearance as the goal state",
+      "description": "Visibly clear skin is presented as what success looks like.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Clearance is the registrational endpoint for every product in the category. Presenting it as the goal is a matter of emphasis.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'powerful skin clearance'",
+        "Vtama": "'Powerful Skin Clearance' as the first content block",
+        "Opzelura": "'clear or almost clear skin'"
+      }
+    },
+    {
+      "id": "C07",
+      "label": "Suitable for long-term use",
+      "analyst_label": "Permission for long-term or continuous use",
+      "description": "The brand grants permission to keep using the product long term.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Depends entirely on what the label says about duration of use. Opzelura's label specifies non-continuous use, so this territory is not open to it.",
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'safe, long-term disease control for any skin type' (HCP)",
+        "Eucrisa": "'can be part of a long-term treatment plan'"
+      }
+    },
+    {
+      "id": "C08",
+      "label": "Use anywhere on the body",
+      "analyst_label": "Freedom to use anywhere on the body, including sensitive areas",
+      "description": "Freedom to apply anywhere on the body, including sensitive areas.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Claiming use anywhere on the body needs either data in sensitive areas or a label broad enough to cover it. Without one of those it is an unsupported claim.",
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'ZORYVE cream. Once a day. Anywhere.' / 'reliable results anywhere on the body'",
+        "Eucrisa": "'can be used almost everywhere on almost everybody'"
+      }
+    },
+    {
+      "id": "C09",
+      "label": "How the formulation feels",
+      "analyst_label": "Formulation elegance / sensory experience",
+      "description": "The feel and elegance of the formulation is sold as an experience.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Describing how the formulation feels is not an efficacy claim, and carries little regulatory weight.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'gentle formulation' / 'discover elegant formulations' (HCP)",
+        "Vtama": "'safe on skin' — the second half of the hero antithesis"
+      }
+    },
+    {
+      "id": "C10",
+      "label": "Return to everyday life",
+      "analyst_label": "Return to ordinary life and its moments",
+      "description": "Getting ordinary life and its moments back is the promised outcome.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Carried by imagery and tone rather than by an outcome claim. Routine in consumer healthcare advertising.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'Everyone deserves the touch of calm skin'",
+        "Opzelura": "'OPZELURA moments with patients' / 'Moments of Clarity'"
+      }
+    },
+    {
+      "id": "C11",
+      "label": "Touch and closeness restored",
+      "analyst_label": "Touch and physical intimacy restored",
+      "description": "Touch and physical closeness, restored, is the promised outcome.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "A decision about how relief is described. Nothing is claimed that the label does not already support.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'the touch of calm skin' — touch is the headline noun",
+        "Opzelura": "Patient narrative built entirely on hand-holding and touch refusal"
+      }
+    },
+    {
+      "id": "C12",
+      "label": "The emotional burden acknowledged",
+      "analyst_label": "Emotional burden of the disease acknowledged",
+      "description": "The emotional weight of living with the disease is named and acknowledged.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Acknowledging the emotional burden is disease education and invokes no endpoint.",
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "'I was devastated... they were trying to stay away from my eczema'"
+      }
+    },
+    {
+      "id": "C13",
+      "label": "Beauty and skincare codes rather than pharma",
+      "analyst_label": "Beauty or cosmetic category framing",
+      "description": "The brand borrows the codes of beauty and skincare rather than pharma.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Borrowing the codes of another category is an art direction and tone decision. Awards are earned rather than claimed.",
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Allure Best of Beauty and Glamour Beauty & Wellness award roundels in hero"
+      }
+    },
+    {
+      "id": "C14",
+      "label": "The science as the brand story",
+      "analyst_label": "Mechanism or science as the brand story",
+      "description": "The science or mechanism is the brand story, not background material.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "The pharmacology is determined by the molecule, but building the brand story around it is a creative decision and needs no new substantiation.",
+      "claimers": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "'It's not fiction. It's Skin Science.' — the brand line is a science claim",
+        "Eucrisa": "'works above and below the skin's surface' — the hero claim is mechanistic"
+      }
+    },
+    {
+      "id": "C15",
+      "label": "Affordability and access up front",
+      "analyst_label": "Access and affordability foregrounded",
+      "description": "Affordability and access are placed in the foreground of the site.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Copay and access programmes already exist. Whether they lead the messaging or sit three clicks down is a decision.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'committed to affordable patient access' / savings card in primary nav",
+        "Opzelura": "'as little as $0 per tube' in primary nav",
+        "Eucrisa": "'pay as little as $10' banner"
+      }
+    },
+    {
+      "id": "C16",
+      "label": "Simplicity and convenience",
+      "analyst_label": "Convenience and simplicity as a benefit",
+      "description": "Simplicity and convenience of use are claimed as a benefit in themselves.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "The dosing is set by the label. Describing it as simple is a wording decision and attracts little scrutiny.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'simple, once-daily treatment' / 'simplify atopic dermatitis treatment' (HCP)",
+        "Vtama": "'once-daily' foregrounded in the hero banner"
+      }
+    },
+    {
+      "id": "C17",
+      "label": "Category leadership — first, only, number one",
+      "analyst_label": "Category leadership or first-in-class authority claim",
+      "description": "Leadership of the category — number one, first, only — is the claim.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Number-one and first-in-class claims need substantiation and exact wording, and are treated as comparative claims. Expect close review.",
+      "claimers": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'#1 prescribed branded topical' / 'over 1 million prescriptions'",
+        "Vtama": "'first and only AhR agonist' / 'First in Class'"
+      }
+    },
+    {
+      "id": "C18",
+      "label": "Supporting the conversation with the doctor",
+      "analyst_label": "Enabling the physician conversation",
+      "description": "The site equips the patient to have the conversation with their doctor.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "open",
+      "tier_reasoning": "Discussion guides, conversation starters and routes to an appointment involve no product claim at all.",
+      "claimers": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "'see a dermatologist online' — persistent CTA",
+        "Opzelura": "'Treating eczema starts with a conversation'; Eczema E-Guide"
+      }
+    },
+    {
+      "id": "C19",
+      "label": "Time off treatment between flares",
+      "analyst_label": "Treatment-free intervals / life between flares",
+      "description": "Life between flares — time off treatment — is part of the offer.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Requires durability data. Vtama can make this claim on the strength of its open-label extension study; without equivalent evidence the territory is not available.",
+      "claimers": [
+        "Vtama"
+      ],
+      "n": 1,
+      "receipts": {
+        "Vtama": "'sustained results, even during treatment-free months'"
+      }
+    },
+    {
+      "id": "C20",
+      "label": "Efficacy stated across all skin tones",
+      "analyst_label": "Efficacy across all skin tones",
+      "description": "Efficacy across all skin tones is stated, not just depicted.",
+      "provenance": "observed in category",
+      "source": "Observed in category — at least one brand in the set makes this claim on its live site.",
+      "tier": "constrained",
+      "tier_reasoning": "Needs demonstrated representation in the trial population. Worded carelessly it becomes a subgroup efficacy claim.",
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Eucrisa"
+      ],
+      "n": 3,
+      "receipts": {
+        "Zoryve": "'for any skin type' (HCP); broad skin tone casting in hero",
+        "Vtama": "'across all disease severities, skin tones, and treatment areas'",
+        "Eucrisa": "'can be used on all skin tones'"
+      }
+    },
+    {
+      "id": "X01",
+      "label": "Sleep disruption as the primary burden",
+      "analyst_label": "Sleep disruption named as the primary burden",
+      "description": "Sleep — the patient's ruined nights — treated as the primary burden the product answers.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Sleep loss can be described in disease education, because it is the most consistently reported burden in moderate-to-severe disease. Claiming the product improves sleep would need a sleep endpoint, which none of these trials measured.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X02",
+      "label": "The carer's own exhaustion",
+      "analyst_label": "Caregiver exhaustion — the parent's own lost sleep and toll",
+      "description": "The carer's own exhaustion and lost sleep, addressed as a burden in its own right.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "An audience decision. Describing the parent's own lost sleep is disease education and requires no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X03",
+      "label": "Anxiety and depression alongside the disease",
+      "analyst_label": "Mental health comorbidity — anxiety, depression, low mood",
+      "description": "The anxiety and depression that travel with the disease, named as part of it.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "The anxiety and depression that accompany the disease are well documented and can be described. Any suggestion the product improves mood would need an endpoint that does not exist.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X04",
+      "label": "Visible disease at school, work and in public",
+      "analyst_label": "Visible stigma in social, school or workplace settings",
+      "description": "The social cost of visible disease — school, work, being looked at.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "Disease education. The social cost of visible disease is documented and can be described without a product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X05",
+      "label": "Adults with persistent or late-onset disease",
+      "analyst_label": "Adult-persistent or adult-onset disease as the primary frame",
+      "description": "The adult who never grew out of it, or developed it late, as the primary audience.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "An audience decision that sits well within every label in the set. The category addresses the child by convention, not by requirement.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X06",
+      "label": "The steroid cycle itself as the problem",
+      "analyst_label": "The steroid cycle itself named as the failure — rebound, thinning, fear",
+      "description": "The steroid cycle itself — rebound, thinning, fear — named as the failure to escape.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Legally possible as education about the drug class, but it criticises the current standard of care. Reviewers will read it as an implied comparative claim against corticosteroids.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X07",
+      "label": "The daily work of the whole regimen",
+      "analyst_label": "Time and labour of the whole regimen — bathing, emollients, laundry",
+      "description": "The sheer time and labour of the regimen: bathing, emollients, laundry.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "The bathing, emollient and laundry burden is documented. Describing the daily work of the regimen requires no claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X08",
+      "label": "Not knowing when the next flare will come",
+      "analyst_label": "Flare unpredictability and anticipatory anxiety",
+      "description": "Not knowing when the next flare comes, and the anxiety of waiting for it.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "The anxiety of not knowing when the next flare will come can be described. Suggesting the product resolves it implies a prevention claim, which needs maintenance data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X09",
+      "label": "Years of not being taken seriously",
+      "analyst_label": "Diagnostic delay and not being taken seriously",
+      "description": "The years of being dismissed before anyone took the disease seriously.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A decision about where in the patient journey the communications begin. Addressing someone who feels dismissed is an audience choice, not a claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "X10",
+      "label": "The cost and effort of everything tried before",
+      "analyst_label": "Cost and effort of everything tried before this",
+      "description": "The money and effort already spent on everything that came before.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness studies; sleep disturbance, mental-health comorbidity and caregiver toll are documented independently of any brand's messaging. See sources.md (X-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Referring to everything the patient has already tried implies that named alternatives failed. Possible, but reviewed as a comparative claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H01",
+      "label": "Steroid fear named as the problem to solve",
+      "analyst_label": "Corticophobia named directly as the problem steroid-free answers",
+      "description": "Steroid fear in patients and parents, named directly as the problem a steroid-free option answers.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "constrained",
+      "tier_reasoning": "Steroid fear is documented throughout the adherence literature, but naming it criticises the first-line class every prescriber uses daily. Possible with careful wording, and subject to close review.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H02",
+      "label": "Topical steroid withdrawal addressed directly",
+      "analyst_label": "The topical steroid withdrawal narrative addressed head-on",
+      "description": "The topical steroid withdrawal narrative circulating among patients, addressed head-on.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "closed",
+      "tier_reasoning": "Topical steroid withdrawal is a clinical question the field has not settled. A promotional website cannot take a position on it.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H03",
+      "label": "Patients stopping treatment as the clinical problem",
+      "analyst_label": "Adherence and persistence framed as the clinical problem, not efficacy",
+      "description": "Adherence — patients stopping — framed as the clinical problem, rather than efficacy.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "frame_only",
+      "tier_reasoning": "Patients stopping treatment is documented and can be described as the clinical problem. Claiming your product solves it would need persistence data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H04",
+      "label": "Maintenance and flare prevention as the goal",
+      "analyst_label": "Maintenance and flare prevention as the goal, not flare clearance",
+      "description": "Keeping patients clear — maintenance and flare prevention — as the goal of therapy.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "frame_only",
+      "tier_reasoning": "Maintenance can be described as the goal of therapy, because treatment guidelines already recommend it. Claiming the product delivers it needs a maintenance endpoint. Vtama's treatment-free-months data supports part of this argument.",
+      "claimers": [
+        "Vtama"
+      ],
+      "n": 1,
+      "receipts": {
+        "Vtama": "'sustained results, even during treatment-free months' — the closest anything in the category comes to a maintenance frame"
+      }
+    },
+    {
+      "id": "H05",
+      "label": "A measured reduction in steroid use",
+      "analyst_label": "Quantified reduction in total corticosteroid exposure",
+      "description": "A quantified reduction in total corticosteroid exposure as the offer to the prescriber.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "closed",
+      "tier_reasoning": "Requires a trial measuring reduction in steroid use, which nobody has run. Not available without generating that data.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H06",
+      "label": "Built for paediatricians and GPs",
+      "analyst_label": "Built for the non-dermatologist prescriber — paediatrics and primary care",
+      "description": "Built for the paediatrician and the GP — the prescribers who fear steroids most.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "An audience and channel decision. Paediatricians and GPs are the most steroid-hesitant prescribers and report the lowest guideline adherence, and no brand in the set addresses them directly.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H07",
+      "label": "Shared decision-making in the consultation",
+      "analyst_label": "Shared decision-making and patient-reported outcomes in the consultation",
+      "description": "Shared decision-making and patient-reported outcomes brought into the consultation.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "Supporting the consultation itself — shared decision-making and patient-reported outcomes — is recommended in the guidelines and involves no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H08",
+      "label": "Coverage and formulary friction as the real barrier",
+      "analyst_label": "Formulary and coverage friction treated as the real barrier",
+      "description": "Coverage, formulary and prior-auth friction treated as the real barrier to prescribing.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "Coverage, prior authorisation and hub support can be brought to the front of the messaging without any clinical claim. The literature identifies cost and formulary restriction as the dominant barrier to prescribing.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "H09",
+      "label": "Stinging and burning as the reason patients quit",
+      "analyst_label": "Application tolerability — stinging and burning — as an adherence driver",
+      "description": "Stinging and burning on application, named as the reason patients quit.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "constrained",
+      "tier_reasoning": "Stinging and burning appear in every label's adverse event table, so the evidence exists. Framing tolerability against the category would be treated as an implied comparative claim. Zoryve's 'gentle formulation' implies this without stating it.",
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "'gentle formulation' / 'elegant formulations' — tolerability implied, never named as an adherence driver"
+      }
+    },
+    {
+      "id": "H10",
+      "label": "Reaching the patient before diagnosis",
+      "analyst_label": "Meeting the patient earlier in the diagnostic journey",
+      "description": "Meeting the patient earlier — before diagnosis, before the dermatologist.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from clinical barrier literature — corticophobia, adherence and prescribing-barrier studies; guideline consensus on maintenance therapy. See sources.md (H-series). Congress transcripts are the stated upgrade path.",
+      "tier": "open",
+      "tier_reasoning": "A decision about where the communications start. Disease education before diagnosis requires no product claim.",
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    }
+  ],
+  "brand_position": {
+    "Zoryve": {
+      "claimed": 16,
+      "space_used": 0.4,
+      "uniquely_owned": [
+        "C13",
+        "H09"
+      ],
+      "n_unique": 2,
+      "ownership": 0.125,
+      "crowding": 0.857
+    },
+    "Vtama": {
+      "claimed": 12,
+      "space_used": 0.3,
+      "uniquely_owned": [
+        "C19",
+        "H04"
+      ],
+      "n_unique": 2,
+      "ownership": 0.167,
+      "crowding": 0.857
+    },
+    "Opzelura": {
+      "claimed": 11,
+      "space_used": 0.275,
+      "uniquely_owned": [
+        "C04",
+        "C12"
+      ],
+      "n_unique": 2,
+      "ownership": 0.182,
+      "crowding": 0.857
+    },
+    "Eucrisa": {
+      "claimed": 8,
+      "space_used": 0.2,
+      "uniquely_owned": [],
+      "n_unique": 0,
+      "ownership": 0.0,
+      "crowding": 0.714
+    }
+  },
+  "centre": [
+    {
+      "brand": "Zoryve",
+      "distance": 0.5,
+      "departures": 11,
+      "of": 22,
+      "departure_ids": [
+        "C02",
+        "C07",
+        "C08",
+        "C09",
+        "C10",
+        "C11",
+        "C13",
+        "C16",
+        "C17",
+        "C18",
+        "H09"
+      ]
+    },
+    {
+      "brand": "Vtama",
+      "distance": 0.318,
+      "departures": 7,
+      "of": 22,
+      "departure_ids": [
+        "C09",
+        "C14",
+        "C15",
+        "C16",
+        "C17",
+        "C19",
+        "H04"
+      ]
+    },
+    {
+      "brand": "Opzelura",
+      "distance": 0.273,
+      "departures": 6,
+      "of": 22,
+      "departure_ids": [
+        "C04",
+        "C10",
+        "C11",
+        "C12",
+        "C18",
+        "C20"
+      ]
+    },
+    {
+      "brand": "Eucrisa",
+      "distance": 0.227,
+      "departures": 5,
+      "of": 22,
+      "departure_ids": [
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C14"
+      ]
+    }
+  ],
+  "plot": [
+    {
+      "brand": "Zoryve",
+      "messaging": 0.615,
+      "imagery": 0.708
+    },
+    {
+      "brand": "Vtama",
+      "messaging": 0.663,
+      "imagery": 0.667
+    },
+    {
+      "brand": "Opzelura",
+      "messaging": 0.678,
+      "imagery": 0.708
+    },
+    {
+      "brand": "Eucrisa",
+      "messaging": 0.689,
+      "imagery": 0.667
+    }
+  ],
+  "plot_meta": {
+    "messaging_mean": 0.661,
+    "imagery_mean": 0.688,
+    "imagery_step": 0.125,
+    "imagery_dimensions": 8,
+    "imagery_dimensions_with_majority": 2,
+    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to messaging and to imagery. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. Imagery moves in steps of 12 percentage points because there are only 8 coded dimensions, so small vertical differences are coarse."
+  },
+  "imagery_pairs": [
+    {
+      "pair": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "match": 0.5,
+      "shared": [
+        "Who is in the picture",
+        "Is the eczema shown",
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "match": 0.5,
+      "shared": [
+        "Who is in the picture",
+        "Is anyone touching anyone",
+        "What is happening",
+        "How it is meant to feel"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Vtama"
+      ],
+      "match": 0.25,
+      "shared": [
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "match": 0.25,
+      "shared": [
+        "What is happening",
+        "Graphic device used"
+      ]
+    },
+    {
+      "pair": [
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "match": 0.25,
+      "shared": [
+        "Range of skin tones",
+        "What is happening"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Opzelura"
+      ],
+      "match": 0.125,
+      "shared": [
+        "What is happening"
+      ]
+    }
+  ],
+  "provenance_breakdown": [
+    {
+      "key": "observed in category",
+      "label": "Read off the four websites",
+      "total": 20,
+      "unused": 0,
+      "note": "Territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the corpus means."
+    },
+    {
+      "key": "patient burden literature",
+      "label": "Established from patient burden literature",
+      "total": 10,
+      "unused": 10,
+      "note": "Territories evidenced in the burden-of-illness literature, identified independently of anything these brands say."
+    },
+    {
+      "key": "clinical barrier literature",
+      "label": "Established from clinical barrier literature",
+      "total": 10,
+      "unused": 8,
+      "note": "Territories evidenced in the prescribing, adherence and guideline literature, identified independently of anything these brands say."
+    }
+  ],
+  "visual": {
+    "dimensions": [
+      {
+        "key": "life_moment",
+        "label": "What is happening",
+        "modal_value": "ordinary domestic",
+        "agreement": 1.0,
+        "spread": {
+          "ordinary domestic": 4
+        },
+        "per_brand": {
+          "Zoryve": "ordinary domestic",
+          "Vtama": "ordinary domestic",
+          "Opzelura": "ordinary domestic",
+          "Eucrisa": "ordinary domestic"
+        }
+      },
+      {
+        "key": "abstraction_motif",
+        "label": "Graphic device used",
+        "modal_value": "none",
+        "agreement": 0.75,
+        "spread": {
+          "none": 3,
+          "celestial": 1
+        },
+        "per_brand": {
+          "Zoryve": "none",
+          "Vtama": "none",
+          "Opzelura": "celestial",
+          "Eucrisa": "none"
+        }
+      },
+      {
+        "key": "human_configuration",
+        "label": "Who is in the picture",
+        "modal_value": "individual alone",
+        "agreement": 0.5,
+        "spread": {
+          "individual alone": 2,
+          "caregiver-child dyad": 2
+        },
+        "per_brand": {
+          "Zoryve": "individual alone",
+          "Vtama": "caregiver-child dyad",
+          "Opzelura": "caregiver-child dyad",
+          "Eucrisa": "individual alone"
+        }
+      },
+      {
+        "key": "touch",
+        "label": "Is anyone touching anyone",
+        "modal_value": "interpersonal touch",
+        "agreement": 0.5,
+        "spread": {
+          "self-touch": 1,
+          "interpersonal touch": 2,
+          "absent": 1
+        },
+        "per_brand": {
+          "Zoryve": "self-touch",
+          "Vtama": "interpersonal touch",
+          "Opzelura": "interpersonal touch",
+          "Eucrisa": "absent"
+        }
+      },
+      {
+        "key": "disease_depiction",
+        "label": "Is the eczema shown",
+        "modal_value": "absent",
+        "agreement": 0.5,
+        "spread": {
+          "absent": 2,
+          "implied only": 1,
+          "visible on lifestyle model": 1
+        },
+        "per_brand": {
+          "Zoryve": "absent",
+          "Vtama": "implied only",
+          "Opzelura": "visible on lifestyle model",
+          "Eucrisa": "absent"
+        }
+      },
+      {
+        "key": "skin_tone_range",
+        "label": "Range of skin tones",
+        "modal_value": "single",
+        "agreement": 0.5,
+        "spread": {
+          "broad": 1,
+          "limited": 1,
+          "single": 2
+        },
+        "per_brand": {
+          "Zoryve": "broad",
+          "Vtama": "limited",
+          "Opzelura": "single",
+          "Eucrisa": "single"
+        }
+      },
+      {
+        "key": "emotional_register",
+        "label": "How it is meant to feel",
+        "modal_value": "tenderness",
+        "agreement": 0.5,
+        "spread": {
+          "calm control": 1,
+          "tenderness": 2,
+          "neutral clinical": 1
+        },
+        "per_brand": {
+          "Zoryve": "calm control",
+          "Vtama": "tenderness",
+          "Opzelura": "tenderness",
+          "Eucrisa": "neutral clinical"
+        }
+      },
+      {
+        "key": "category_borrow",
+        "label": "What it looks like it is selling",
+        "modal_value": "beauty and skincare",
+        "agreement": 0.25,
+        "spread": {
+          "beauty and skincare": 1,
+          "consumer tech": 1,
+          "wellness": 1,
+          "pharma": 1
+        },
+        "per_brand": {
+          "Zoryve": "beauty and skincare",
+          "Vtama": "consumer tech",
+          "Opzelura": "wellness",
+          "Eucrisa": "pharma"
+        }
+      }
+    ],
+    "child_in_hero": 4,
+    "notes": {
+      "Zoryve": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
+      "Vtama": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
+      "Opzelura": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
+      "Eucrisa": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'"
+    },
+    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below."
+  },
+  "cross_check": [
+    {
+      "brand": "Zoryve",
+      "verbal_ownership": 0.125,
+      "visual_distance": 0.375,
+      "hero_notes": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
+      "comment": "Makes the most claims of any brand in the set and appears in almost every territory the category shares. Its borrow from beauty and skincare is the most visually differentiated decision in the category."
+    },
+    {
+      "brand": "Vtama",
+      "verbal_ownership": 0.167,
+      "visual_distance": 0.5,
+      "hero_notes": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
+      "comment": "The clearest example of the copy-versus-imagery gap. Its verbal positioning — skin science — is the most distinctive in the set, but its hero image matches Opzelura on who is pictured, whether they touch, the emotional register and the scene."
+    },
+    {
+      "brand": "Opzelura",
+      "verbal_ownership": 0.182,
+      "visual_distance": 0.5,
+      "hero_notes": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
+      "comment": "Copy and imagery are consistent with each other. The touch-avoidance narrative in the messaging is delivered as restored touch in the photography. Highly similar to competitors, but internally coherent."
+    },
+    {
+      "brand": "Eucrisa",
+      "verbal_ownership": 0.0,
+      "visual_distance": 0.375,
+      "hero_notes": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'",
+      "comment": "Holds no position exclusively, and its imagery is the most conventionally pharmaceutical in the set. It has not been out-positioned by competitors; it has not taken a position."
+    }
+  ],
+  "findings": [
+    {
+      "text": "All four brands build their core message from the same three elements: steroid avoidance as the lead benefit, the parent as the audience, and paediatric reassurance. Four different molecules, one shared message hierarchy.",
+      "refs": [
+        "C01",
+        "C03",
+        "C02"
+      ]
+    },
+    {
+      "text": "The best-evidenced patient needs in this disease appear in nobody's messaging. Sleep disruption, caregiver exhaustion and the anxiety and depression comorbidity are the most consistently documented burdens in the literature, and not one brand builds a message on any of them.",
+      "refs": [
+        "X01",
+        "X02",
+        "X03"
+      ]
+    },
+    {
+      "text": "All four brands state that they are steroid-free. None of them addresses why a patient or parent would care. Steroid fear is documented throughout the clinical literature as a main reason first-line treatment fails, and the category states the product attribute without ever making the patient argument.",
+      "refs": [
+        "H01",
+        "C01",
+        "X06"
+      ]
+    },
+    {
+      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — is visually almost identical to Opzelura.",
+      "refs": [
+        "visual:life_moment",
+        "visual:touch",
+        "visual:human_configuration"
+      ]
+    },
+    {
+      "text": "Treatment guidelines point towards maintenance and flare prevention, and almost no brand messaging follows. Vtama's treatment-free-months claim is the only partial move in that direction, and the stronger version — a quantified reduction in steroid use — is unavailable to everyone until someone runs the trial to support it.",
+      "refs": [
+        "H04",
+        "C19",
+        "H05"
+      ]
+    }
+  ],
+  "boundary_rules": [
+    {
+      "element": "“Steroid-free”",
+      "layer": 2,
+      "rule": "A factual property of the drug class, shared by everything in this category."
+    },
+    {
+      "element": "“Steroid-free, so you can use it where steroids scare you”",
+      "layer": 3,
+      "rule": "What that fact is said to mean for the patient was written by someone."
+    },
+    {
+      "element": "“Once daily”",
+      "layer": 2,
+      "rule": "The dosing is set by the label."
+    },
+    {
+      "element": "“Simple once-daily treatment”",
+      "layer": 3,
+      "rule": "“Simple” is a claimed benefit, not a dosing fact."
+    },
+    {
+      "element": "Age range (“down to 2 years”)",
+      "layer": 2,
+      "rule": "Set by the trials and the label."
+    },
+    {
+      "element": "Photography of a two-year-old",
+      "layer": 3,
+      "rule": "Casting the youngest permitted age was a decision."
+    },
+    {
+      "element": "Endpoint percentages",
+      "layer": 2,
+      "rule": "Trial results."
+    },
+    {
+      "element": "Which endpoint appears first",
+      "layer": 3,
+      "rule": "Message hierarchy is a positioning decision."
+    },
+    {
+      "element": "Clinical photography of lesions",
+      "layer": 2,
+      "rule": "A trial asset."
+    },
+    {
+      "element": "Lifestyle photography",
+      "layer": 3,
+      "rule": "Commissioned and art directed."
+    },
+    {
+      "element": "Explanation of how the drug works",
+      "layer": 2,
+      "rule": "Pharmacology."
+    },
+    {
+      "element": "An analogy or metaphor for how it works",
+      "layer": 3,
+      "rule": "How the science is explained was a creative decision."
+    }
+  ],
+  "limitations": [
+    "The percentages depend on how many territories were identified. Twenty were read off these four websites, so every one of them has a user by definition. The other twenty were established from published literature, and eighteen of those are unused — also close to by definition. Identify thirty from the literature rather than twenty and the usage figure falls from 55% to around 44% without anything changing in the market. Treat the percentages as a description of this list, not as a property of the category. The count of named, evidenced, unused territories does not move when the list length does, which is why it leads.",
+    "Deciding what was determined by the label and what was a marketing decision is a judgement. The rules are published above, applied identically to every brand, and open to challenge. Different reasonable rules would change the numbers.",
+    "Websites only. Congress activity, sales aids, field and MSL messaging, paid media and social are not included. This measures the public messaging each brand publishes, not its full commercial message.",
+    "Four brands were analysed. The comparison is meaningful but sensitive to any one brand being unusual.",
+    "A single capture, taken on 12 August 2026. This is a snapshot, not a trend.",
+    "Eucrisa is not a like-for-like comparison. It was approved in 2016, its creative is materially older than the rest of the set, and its HCP site is currently serving an incomplete page in production. Treat it as a reference point for how the category used to communicate.",
+    "Opzelura's HCP site was not captured in this run, so its prescriber-facing messaging is not represented.",
+    "Deciding which territories a brand uses is a judgement made against the published rules. Every decision carries the exact wording from the site that produced it, so any of them can be checked and disagreed with.",
+    "Availability ratings are a strategic assessment, not a regulatory one. Every position requires medical, legal and regulatory review before use."
+  ]
+}
+</script>
+</body>
+</html>
