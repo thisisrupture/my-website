@@ -33,6 +33,23 @@
 
   .col { max-width: 940px; margin: 0 auto; padding: 0 28px; }
 
+  /* The top of the report is paired rather than stacked, so the whole
+     diagnosis — the numbers, the picture, and what it found — is visible
+     without scrolling. Below the fold it goes back to being a document, which
+     is what the territory lists and the working want to be. Everything
+     collapses to one column below 900px, in the same reading order. */
+  .pair {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 46px; align-items: start; margin: 56px 0;
+  }
+  .pair.wide-right { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .pair > section { margin: 0; }
+  .panel-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  .panel-head h2 { font-size: 21px; }
+  @media (max-width: 900px) {
+    .pair, .pair.wide-right { grid-template-columns: 1fr; gap: 52px; }
+  }
+
   .eyebrow {
     font-family: var(--mono); font-size: 11px; font-weight: 500;
     letter-spacing: .12em; text-transform: uppercase; color: var(--label);
@@ -220,14 +237,6 @@
   .f-ev a:hover { color: var(--coral); border-bottom-color: var(--coral); }
 
   /* what shared territory costs */
-  .ev-item {
-    display: flex; gap: 18px; max-width: 730px; padding: 18px 0;
-    border-top: 1px solid var(--divider); cursor: pointer;
-  }
-  .ev-item:hover .ev-claim { color: var(--coral); }
-  .ev-n { font-family: var(--mono); font-size: 11px; color: var(--hairline); padding-top: 6px; flex: 0 0 20px; }
-  .ev-claim { font-family: var(--serif); font-weight: 900; font-size: 18px; letter-spacing: -.01em; }
-  .ev-so { font-family: var(--sans); font-size: 15px; color: var(--label); margin-top: 5px; }
 
   /* territories to explore */
   .day-item {
@@ -335,6 +344,8 @@
 
   footer { border-top: 1px solid var(--divider); padding: 26px 0 50px; margin-top: 80px; }
   footer .col { font-family: var(--sans); font-size: 12.5px; color: var(--label); }
+  footer a { color: var(--green); text-decoration: none; border-bottom: 1px solid var(--divider); }
+  footer a:hover { color: var(--coral); border-bottom-color: var(--coral); }
 
   @media (max-width: 680px) {
     h1 { font-size: 34px; } .headline { font-size: 27px; }
@@ -380,6 +391,7 @@
       then open <strong>http://127.0.0.1:8000</strong>. The worked example below needs none of that.
     </div>
     <a class="example-link" id="load-example" href="#">Or load the worked example — US non-steroidal topical atopic dermatitis</a>
+    <a class="example-link" href="mailto:hello@thisisrupture.com?subject=Sameness%20Index">Questions, or want this run on your own category? hello@thisisrupture.com</a>
   </div>
 </div>
 
@@ -404,14 +416,22 @@
 
     <div class="four-numbers" id="r-numbers"></div>
 
-    <section id="sec-plot">
-      <div class="sec-head">
-        <h2>Convergence and daylight</h2>
-        <button class="why" id="why-plot">How this is measured</button>
-      </div>
-      <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight. Right is messaging, up is imagery. Dot size is how much each brand claims, so a small dot far out is distinct mainly because it says very little.</p>
-      <div id="plot"></div>
-    </section>
+    <div class="pair">
+      <section id="sec-plot">
+        <div class="panel-head">
+          <h2>Convergence and daylight</h2>
+          <button class="why" id="why-plot">How this is measured</button>
+        </div>
+        <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight. Right is messaging, up is imagery. Dot size is how much each brand claims, so a small dot far out is distinct mainly because it says very little.</p>
+        <div id="plot"></div>
+      </section>
+
+      <section>
+        <h2>What the analysis found</h2>
+        <p class="sec-sub">Each finding links to the evidence behind it.</p>
+        <div id="r-findings"></div>
+      </section>
+    </div>
 
     <section>
       <div class="sec-head">
@@ -423,12 +443,6 @@
       <div class="map-legend" id="map-legend"></div>
     </section>
 
-    <section>
-      <h2>What the analysis found</h2>
-      <p class="sec-sub">Each finding links to the evidence behind it.</p>
-      <div id="r-findings"></div>
-    </section>
-
     <section id="sec-lit">
       <h2>Where the unused territories come from</h2>
       <p class="sec-sub" id="lit-intro"></p>
@@ -438,11 +452,6 @@
       </details>
     </section>
 
-    <section>
-      <h2>What shared territory costs</h2>
-      <p class="sec-sub">Sameness is not only a missed opportunity. There is a body of evidence on what happens to messages that sound like their competitors.</p>
-      <div id="r-evidence"></div>
-    </section>
 
     <section>
       <div class="sec-head">
@@ -494,7 +503,7 @@
     </details>
 
   </div>
-  <footer><div class="col">The Sameness Index · Rupture · every number here is one click from the sentence on a brand's website that produced it.</div></footer>
+  <footer><div class="col">The Sameness Index · Rupture · every number here is one click from the sentence on a brand's website that produced it. <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index" id="foot-mail">hello@thisisrupture.com</a></div></footer>
 </div>
 
 <!-- ============================================ DRAWER -->
@@ -522,54 +531,6 @@ const TIER_EXPLAIN = {
   closed: "Not worth pursuing without clinical data nobody has generated, or would require taking a position on a clinical question the field has not settled.",
 };
 
-/* Evidence on the cost of shared messaging territory. General marketing
-   science, not derived from this run, so it is stated once and cited. */
-const EVIDENCE = [
-  {
-    claim: "Competitive clutter damages recall of the brand, not the argument",
-    detail: "In controlled tests, competing advertising substantially reduced recall of brand names while leaving recall of the ad's claims largely intact. In a category where several brands make the same argument, the argument survives in memory and the identity of who made it does not.",
-    so: "Sharing a territory does not split the credit. It risks producing recall with no name attached to it.",
-    sources: [
-      ["Kent & Allen, Journal of Marketing (1994)", "https://journals.sagepub.com/doi/abs/10.1177/002224299405800307"],
-      ["Burke & Srull, Marketing Letters — competitive clutter and recall", "https://link.springer.com/article/10.1007/BF00994075"],
-    ],
-  },
-  {
-    claim: "Interference falls hardest on the less familiar brand",
-    detail: "Familiar brands show better recall of new product information and their memory is less affected by exposure to competitors' advertising. Less familiar brands carry the cost of the clutter.",
-    so: "Sameness is not neutral between competitors. It protects whoever is already best known and taxes everyone else — which makes it most expensive for the challenger and the newer launch.",
-    sources: [
-      ["Kent & Allen, Journal of Marketing (1994)", "https://journals.sagepub.com/doi/abs/10.1177/002224299405800307"],
-      ["Kent & Allen — are familiar brands exempt?", "https://www.researchgate.net/publication/285956593_Competitive_Interference_Effects_in_Memory_for_Advertising_Are_Familiar_Brands_Exempt"],
-    ],
-  },
-  {
-    claim: "Category codes get misattributed to the market leader",
-    detail: "Where a dominant brand owns the category's mental space, advertising built from shared category codes tends to be assigned by audiences to that leader rather than to the brand that paid for it.",
-    so: "Money spent in a territory you share with the category leader can reinforce their position rather than build yours.",
-    sources: [
-      ["Brand misattribution and category codes", "https://bhatnaturally.com/2020/12/06/brand-misattribution-distinctive-brand-assets-and-creative-ads/"],
-      ["Brand misattribution: the wrecker of marketing investments", "https://leapfrogstrategy.com/brand-misattribution-the-wrecker-of-marketing-investments/"],
-    ],
-  },
-  {
-    claim: "High recognition with low uniqueness identifies the category, not you",
-    detail: "Ehrenberg-Bass work on distinctive assets separates fame from uniqueness. An asset many people recognise but many brands share points the audience to the category rather than to a particular brand, and does not build mental availability for it.",
-    so: "A territory occupied by every brand in the set is functionally a category convention. It is a cost of entry, not a point of difference.",
-    sources: [
-      ["Romaniuk, Ehrenberg-Bass — distinctive asset measurement", "https://marketingscience.info/learn-with-us/commercial-research/distinctive-asset"],
-      ["Distinctive brand assets framework", "https://umbrex.com/resources/frameworks/marketing-frameworks/distinctive-brand-assets-framework-ehrenberg-bass/"],
-    ],
-  },
-  {
-    claim: "In pharma, the most-recalled messages are the ones everyone can make",
-    detail: "Benchmarking of more than 14,000 messages across 380 brands found foundational messages — indication, approval, mechanism of action, innovation — are the most recalled by prescribers, above 40%. Those are largely determined by the molecule and its label, so every competitor can make them.",
-    so: "The messages that land most easily are the ones least able to separate you. Differentiation has to be built somewhere the label does not hand to everyone.",
-    sources: [
-      ["ZoomRx pharma messaging benchmarks", "https://blog.zoomrx.com/promotional-tracking/pharma-messaging-benchmarks/"],
-    ],
-  },
-];
 
 const $ = (s, r) => (r || document).querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
@@ -747,7 +708,7 @@ function render(data) {
   $("#r-numbers").querySelectorAll("[data-num]").forEach(d =>
     d.addEventListener("click", () => openNumberDrawer(d.dataset.num)));
 
-  renderPlot(); renderMap(); renderFindings(); renderLiterature(); renderEvidence(); renderDaylight();
+  renderPlot(); renderMap(); renderFindings(); renderLiterature(); renderDaylight();
   renderCentre(); renderProvenance(); renderWorking();
   showShareLink();
   showScreen("screen-result");
@@ -1074,25 +1035,6 @@ function renderFindings() {
   });
   w.querySelectorAll("[data-ref]").forEach(a => a.addEventListener("click", () => openDrawer(a.dataset.ref)));
   w.querySelectorAll("[data-vref]").forEach(a => a.addEventListener("click", () => openVisualDrawer(a.dataset.vref)));
-}
-
-/* ---- what shared territory costs ---- */
-function renderEvidence() {
-  const w = $("#r-evidence"); w.innerHTML = "";
-  EVIDENCE.forEach((e, i) => {
-    const d = el("div", "ev-item");
-    d.innerHTML = `<div class="ev-n">${String(i + 1).padStart(2, "0")}</div>
-      <div><div class="ev-claim">${esc(e.claim)}</div>
-      <div class="ev-so">${esc(e.so)}</div></div>`;
-    d.addEventListener("click", () => noteDrawer("Evidence", e.claim, `
-      <p>${esc(e.detail)}</p>
-      <div class="dr-h">What it means here</div>
-      <p>${esc(e.so)}</p>
-      <div class="dr-h">Sources</div>
-      ${e.sources.map(([t, u]) => `<p class="dr-src"><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a></p>`).join("")}
-      <p class="dr-src" style="margin-top:14px">This is general marketing science, not a finding from this run. It is included because it establishes what shared territory costs, independently of any single category.</p>`));
-    w.appendChild(d);
-  });
 }
 
 /* ---- the research behind the territories nobody uses ----
