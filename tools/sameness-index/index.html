@@ -55,7 +55,16 @@
     border-bottom: 1px solid var(--divider); padding: 0 0 1px;
   }
   .why:hover { color: var(--coral); border-bottom-color: var(--coral); }
-  .why + .why { margin-left: 22px; }
+
+  /* The permalink is how a result travels inside an account, so it is a
+     control in its own right rather than a footnote next to one. */
+  .share-btn {
+    font-family: var(--sans); font-size: 14px; font-weight: 600; letter-spacing: .01em;
+    color: var(--paper); background: var(--green); border: none; border-radius: 2px;
+    padding: 11px 18px; cursor: pointer; transition: background .15s;
+  }
+  .share-btn:hover { background: var(--ink); }
+  .share-btn.done { background: var(--ink); }
 
   /* ---------------------------------------------------------- input */
   #screen-input { min-height: 100vh; display: flex; align-items: center; }
@@ -129,7 +138,7 @@
     letter-spacing: -.015em; max-width: 820px; margin-top: 14px;
   }
   .headline .num { color: var(--coral); }
-  .headline-why { margin-top: 20px; }
+  .headline-why { margin-top: 20px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 
   /* four numbers */
   .four-numbers { display: flex; margin: 52px 0 0; border-top: 1px solid var(--ink); }
@@ -158,6 +167,23 @@
   #plot .cross { stroke: var(--divider); }
   #plot .cross-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; fill: var(--hairline); }
   #plot .frame { fill: none; stroke: var(--divider); }
+
+  /* two-brand circles */
+  .venn-frame { fill: none; stroke: var(--divider); }
+  .venn-frame-label, .venn-outside {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    text-transform: uppercase; fill: var(--label);
+  }
+  .venn-hit { cursor: pointer; }
+  .venn-hit:hover circle { fill-opacity: .38; }
+  /* Labels sit above the circles, so they must not swallow the click that was
+     aimed at the region underneath them. */
+  .venn-n, .venn-cap, .venn-brand, .venn-outside, .venn-frame-label { pointer-events: none; }
+  .venn-n { font-family: var(--serif); font-weight: 900; font-size: 34px; }
+  .venn-n.mid { fill: var(--ink); }
+  .venn-cap { font-family: var(--sans); font-size: 11.5px; font-weight: 600; fill: var(--label); }
+  .venn-cap.mid { fill: var(--ink); }
+  .venn-brand { font-family: var(--sans); font-size: 13px; font-weight: 600; }
   #plot .pt { cursor: pointer; }
   #plot .pt:hover circle { r: 11; }
 
@@ -280,6 +306,29 @@
   .receipt { border-left: 2px solid var(--divider); padding: 2px 0 2px 14px; margin-bottom: 16px; }
   .r-brand { font-family: var(--sans); font-size: 12px; font-weight: 600; }
   .r-quote { font-size: 16.5px; font-style: italic; margin-top: 3px; }
+  .r-see {
+    display: inline-block; margin-top: 7px; font-family: var(--sans); font-size: 12px;
+    font-weight: 600; color: var(--green); text-decoration: none;
+    border-bottom: 1px solid var(--divider); padding-bottom: 1px;
+  }
+  .r-see:hover { color: var(--coral); border-bottom-color: var(--coral); }
+
+  /* the research behind unused territories */
+  .lit-item {
+    display: flex; gap: 22px; align-items: flex-start; justify-content: space-between;
+    padding: 17px 0; border-bottom: 1px solid var(--divider); cursor: pointer;
+  }
+  .lit-item:hover .d-label { color: var(--coral); }
+  .lit-src {
+    font-family: var(--sans); font-size: 13px; color: var(--label);
+    margin-top: 7px; max-width: 620px;
+  }
+  .lit-use {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--label); white-space: nowrap; padding-top: 4px;
+  }
+  .lit-use.none { color: var(--coral); }
+  details.lit { margin-top: 6px; }
   .dr-empty { font-family: var(--sans); font-size: 15px; color: var(--label); }
   .dr-src { font-family: var(--sans); font-size: 14px; color: var(--label); }
   #drawer p { margin-bottom: 9px; }
@@ -350,7 +399,7 @@
     <p class="headline" id="r-headline"></p>
     <div class="headline-why">
       <button class="why" id="why-headline">What does this mean?</button>
-      <button class="why" id="copy-link" hidden>Copy the link to this result</button>
+      <button class="share-btn" id="copy-link" hidden>Copy the link to this result</button>
     </div>
 
     <div class="four-numbers" id="r-numbers"></div>
@@ -378,6 +427,15 @@
       <h2>What the analysis found</h2>
       <p class="sec-sub">Each finding links to the evidence behind it.</p>
       <div id="r-findings"></div>
+    </section>
+
+    <section id="sec-lit">
+      <h2>Where the unused territories come from</h2>
+      <p class="sec-sub" id="lit-intro"></p>
+      <details class="working lit">
+        <summary id="lit-summary">Show the evidence behind them</summary>
+        <div class="working-body"><div id="r-literature"></div></div>
+      </details>
     </section>
 
     <section>
@@ -689,7 +747,7 @@ function render(data) {
   $("#r-numbers").querySelectorAll("[data-num]").forEach(d =>
     d.addEventListener("click", () => openNumberDrawer(d.dataset.num)));
 
-  renderPlot(); renderMap(); renderFindings(); renderEvidence(); renderDaylight();
+  renderPlot(); renderMap(); renderFindings(); renderLiterature(); renderEvidence(); renderDaylight();
   renderCentre(); renderProvenance(); renderWorking();
   showShareLink();
   showScreen("screen-result");
@@ -704,46 +762,54 @@ function showShareLink() {
   btn.hidden = false;
   btn.textContent = "Copy the link to this result";
   btn.onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); btn.textContent = "Link copied"; }
-    catch { btn.textContent = location.href; }
-    setTimeout(() => { btn.textContent = "Copy the link to this result"; }, 2600);
+    try {
+      await navigator.clipboard.writeText(location.href);
+      btn.textContent = "Link copied — anyone can open it, no login";
+      btn.classList.add("done");
+    } catch { btn.textContent = location.href; }
+    setTimeout(() => {
+      btn.textContent = "Copy the link to this result";
+      btn.classList.remove("done");
+    }, 3200);
   };
 }
 
-/* ---- the four numbers, explained on click ---- */
+/* ---- the four numbers: the list first, the qualification underneath ---- */
 function openNumberDrawer(key) {
-  const m = DATA.metrics, pb = DATA.provenance_breakdown || [];
+  const m = DATA.metrics, P = DATA.positions;
+  const ids = a => a.map(p => p.id);
+  const nBrands = DATA.meta.brands.length;
   const defs = {
-    space_size: ["Territories identified",
-      `${m.space_size} distinct arguments any brand in this category could build communications on.`,
-      `Two sources. ${(pb.find(p => p.key === "observed in category") || {}).total || 0} were read off the brand websites — every one of those has a user by definition. The rest were established from published literature on patient burden and prescribing barriers, independently of anything these brands say. The literature half is not optional: a list drawn only from what brands already say would have a claimant for every entry, and unused territory could never appear. It does mean the percentages describe this list rather than the category — a longer literature list lowers the usage figure without anything changing in the market.`],
-    occupied: ["In use",
-      `${m.occupied} of the ${m.space_size} territories are used by at least one brand.`,
-      `A territory counts as used only where the wording on the site clearly makes that argument. Where it is ambiguous, it is not counted — under-counting is the conservative direction, and every count carries the verbatim wording that produced it.`],
-    contested: ["Shared",
-      `${m.contested} territories are used by two or more brands — ${pct(m.crowding_rate)} of everything in use.`,
-      `This is the sameness figure. Where several brands occupy the same territory, none of them owns it, and the audience has no basis on which to tell them apart on that argument.`],
-    open_empty: ["Worth exploring first",
-      `${m.open_empty} territories are used by nobody and need no new clinical evidence to work with.`,
-      `No additional trial, no new endpoint, nothing further to substantiate. These are decisions about how the disease is described, who the communications address, and where they appear — all inside the existing label. They are unexplored because nobody chose them, not because nobody could. Every one carries the published evidence it rests on. Whether any of them fits your brand, your label and your review process is a judgement this tool cannot make for you.`],
+    space_size: ["Every territory in this category", ids(P),
+      `A territory is one argument a brand could build its communications on. These ${m.space_size} came from two places. Some were read off the brands' own websites, so each of those has a user by definition. The rest were established from published research on what patients live with and what stops clinicians prescribing, without looking at what these brands say. Both halves are needed: a list built only from what brands already say would have a user for every entry, and territory nobody uses could never show up. It does mean the percentages describe this list — add more research-based territories and the share in use falls, without anything changing in the market. That is why the counts lead and the percentage follows.`],
+    occupied: ["Territories in use", ids(P.filter(p => p.n > 0)),
+      `${m.occupied} of the ${m.space_size} territories are used by at least one brand. A territory only counts as used where the wording on the site clearly makes that argument. Where it could be read either way it is left out, so this is an undercount rather than an overcount — and every one carries the exact wording from the site that produced it, so you can disagree with any of them.`],
+    contested: ["Territories more than one brand uses", ids(P.filter(p => p.n > 1)),
+      `${m.contested} territories are used by ${nBrands === 2 ? "both brands" : "two or more brands"} — ${pct(m.crowding_rate)} of everything in use. This is the sameness figure, and it is the expensive one. Where two brands make the same argument, neither of them owns it, and the audience is given nothing to tell them apart on.`],
+    open_empty: ["Territories to explore first", (m.open_empty_ids || []),
+      `${m.open_empty} territories are used by nobody and need no new clinical evidence behind them. No extra trial, no new endpoint, nothing further to substantiate — they are decisions about how the disease is described, who the communications speak to, and where they appear, all inside the existing label. They sit unused because nobody chose them, not because nobody could. Whether any of them suits your brand, your label and your review process is a judgement this tool cannot make for you, and anything you pursue still needs medical, legal and regulatory review.`],
   };
-  const d = defs[key]; if (!d) return;
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">The number</span>
-    <div class="dr-label">${esc(d[0])}</div>
-    <div class="dr-desc">${esc(d[1])}</div>
-    <div class="dr-h">What sits behind it</div>
-    <p class="dr-src">${esc(d[2])}</p>`;
-  showDrawer();
+  const d = defs[key];
+  if (d) listDrawer("The number", d[0], d[1], d[2]);
 }
 
 /* ---- plot ---- */
 function renderPlot() {
   const sec = $("#sec-plot");
+
+  // With two brands the plot has nothing to say. Each brand has exactly one
+  // peer, so A's distance from B is B's distance from A by definition, and
+  // both dots land on the same point. Two circles answer the question the
+  // reader actually has at two brands: what do they share, and what does each
+  // hold on its own.
+  if (DATA.meta.brands.length === 2) { renderVenn(); return; }
+
   const pts = (DATA.plot || []).filter(p => p.imagery !== null && p.imagery !== undefined);
   const pm = DATA.plot_meta || {};
   if (pts.length < 2 || pm.imagery_mean == null) { sec.style.display = "none"; return; }
   sec.style.display = "";
+  $("#sec-plot h2").textContent = "Convergence and daylight";
+  $("#why-plot").hidden = false;
 
   const W = 620, H = 440, L = 62, R = 26, T = 34, B = 62;
   const iw = W - L - R, ih = H - T - B;
@@ -837,6 +903,139 @@ function renderPlot() {
     }));
 }
 
+/* ---- two brands: overlapping circles ----
+   Areas are honest. Each circle's area is proportional to how many territories
+   that brand uses, and the circles are pushed together until the area of the
+   overlap is proportional to the number they share — solved numerically rather
+   than eyeballed, because a Venn that only looks about right is worse than no
+   Venn at all. The frame around them is the whole category; what falls outside
+   both circles is what neither brand uses. */
+function vennDistance(r1, r2, target) {
+  if (target <= 0) return r1 + r2 + 12;
+  const lens = d => {
+    if (d >= r1 + r2) return 0;
+    if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+    const a1 = Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1));
+    const a2 = Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2));
+    const tri = .5 * Math.sqrt(Math.max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)));
+    return r1 * r1 * a1 + r2 * r2 * a2 - tri;
+  };
+  let lo = Math.abs(r1 - r2), hi = r1 + r2;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (lens(mid) > target) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+function renderVenn() {
+  const sec = $("#sec-plot");
+  sec.style.display = "";
+  const [A, B] = DATA.meta.brands.map(b => b.name);
+  const bp = DATA.brand_position || {};
+  const shared = DATA.positions.filter(p => p.n === 2).map(p => p.id);
+  const onlyA = DATA.positions.filter(p => p.n === 1 && p.claimers[0] === A).map(p => p.id);
+  const onlyB = DATA.positions.filter(p => p.n === 1 && p.claimers[0] === B).map(p => p.id);
+  const unused = DATA.positions.filter(p => p.n === 0).map(p => p.id);
+  const nA = (bp[A] || {}).claimed || onlyA.length + shared.length;
+  const nB = (bp[B] || {}).claimed || onlyB.length + shared.length;
+
+  sec.querySelector("h2").textContent = "What each brand holds, and what they share";
+  sec.querySelector(".sec-sub").textContent =
+    "Each circle is one brand's messaging. Circle size is how many territories that brand uses, and the " +
+    "overlap is drawn to scale — the bigger the overlap, the more of their messaging is interchangeable. " +
+    "Everything outside both circles is territory neither brand uses. Click any part for the list.";
+  $("#why-plot").hidden = true;
+
+  const W = 620, H = 380;
+  const K = Math.min(120 / Math.sqrt(Math.max(nA, nB, 1)), 30);
+  const rA = Math.max(46, Math.sqrt(nA) * K), rB = Math.max(46, Math.sqrt(nB) * K);
+  const targetOverlap = shared.length / Math.max(nA, 1) * Math.PI * rA * rA;
+  const d = vennDistance(rA, rB, targetOverlap);
+  const cxA = W / 2 - d / 2, cxB = W / 2 + d / 2, cy = H / 2 - 4;
+  const colA = ACC[A] || "#FF686B", colB = ACC[B] || "#1F5B4A";
+
+  // Each exclusive count sits in the middle of its own crescent — halfway
+  // between the two circles' left edges, and between their two right edges.
+  // Putting them at the circle centres would drop them into the overlap as
+  // soon as the two brands share much, which is exactly when it matters.
+  const lx = ((cxA - rA) + (cxB - rB)) / 2, rx = ((cxA + rA) + (cxB + rB)) / 2;
+  const svg = `
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Shared and separate messaging territories">
+      <rect class="venn-frame" x="8" y="8" width="${W - 16}" height="${H - 16}" rx="2"/>
+      <text class="venn-frame-label" x="20" y="28">All ${DATA.metrics.space_size} territories in this category</text>
+      <g class="venn-hit" data-set="unused"><rect x="8" y="8" width="${W - 16}" height="${H - 16}" fill="transparent"/></g>
+      <text class="venn-outside" x="${W - 20}" y="${H - 20}" text-anchor="end">${unused.length} used by neither</text>
+
+      <g class="venn-hit" data-set="a">
+        <circle cx="${cxA}" cy="${cy}" r="${rA}" fill="${colA}" fill-opacity=".26" stroke="${colA}" stroke-width="1.5"/>
+      </g>
+      <g class="venn-hit" data-set="b">
+        <circle cx="${cxB}" cy="${cy}" r="${rB}" fill="${colB}" fill-opacity=".26" stroke="${colB}" stroke-width="1.5"/>
+      </g>
+
+      <text class="venn-n" x="${lx}" y="${cy - 2}" text-anchor="middle" fill="${colA}">${onlyA.length}</text>
+      <text class="venn-cap" x="${lx}" y="${cy + 18}" text-anchor="middle">only ${esc(A)}</text>
+      <text class="venn-n" x="${rx}" y="${cy - 2}" text-anchor="middle" fill="${colB}">${onlyB.length}</text>
+      <text class="venn-cap" x="${rx}" y="${cy + 18}" text-anchor="middle">only ${esc(B)}</text>
+      <text class="venn-n mid" x="${W / 2}" y="${cy - 2}" text-anchor="middle">${shared.length}</text>
+      <text class="venn-cap mid" x="${W / 2}" y="${cy + 18}" text-anchor="middle">both</text>
+      <text class="venn-brand" x="${cxA - rA}" y="${cy - rA - 10}" fill="${colA}">${esc(A)} · ${nA} territories</text>
+      <text class="venn-brand" x="${cxB + rB}" y="${cy + rB + 22}" text-anchor="end" fill="${colB}">${esc(B)} · ${nB} territories</text>
+    </svg>`;
+  $("#plot").innerHTML = svg;
+
+  const sets = {
+    a: [`Used only by ${A}`, onlyA, `${A} makes these arguments and ${B} does not. This is where the two brands are actually distinguishable.`],
+    b: [`Used only by ${B}`, onlyB, `${B} makes these arguments and ${A} does not.`],
+    shared: [`Used by both brands`, shared, `Both brands make these arguments. Where two brands say the same thing, neither owns it, and the audience is given no basis for telling them apart on that argument.`],
+    unused: [`Used by neither brand`, unused, `Neither brand makes these arguments anywhere on its website.`],
+  };
+  $("#plot").querySelectorAll(".venn-hit").forEach(g => {
+    g.addEventListener("click", e => {
+      // The overlap is the intersection of both circles, so decide from the
+      // click position rather than which shape received the event.
+      let key = g.dataset.set;
+      if (key === "a" || key === "b") {
+        const pt = $("#plot svg").getBoundingClientRect();
+        const sx = (e.clientX - pt.left) / pt.width * W, sy = (e.clientY - pt.top) / pt.height * H;
+        const inA = Math.hypot(sx - cxA, sy - cy) <= rA, inB = Math.hypot(sx - cxB, sy - cy) <= rB;
+        key = inA && inB ? "shared" : inA ? "a" : "b";
+      }
+      openSetDrawer(...sets[key]);
+    });
+  });
+}
+
+function openSetDrawer(title, ids, note) {
+  listDrawer("Territories", title, ids, note);
+}
+
+/* One list-of-territories drawer, used by the circles and by the four numbers.
+   The list comes first because it is the answer; the qualification sits under
+   it, where it belongs — a reader who wants the caveat will look for it, and a
+   reader who does not should not have to read past it. */
+function listDrawer(kicker, title, ids, note) {
+  const items = ids.map(id => pos(id)).filter(Boolean);
+  const body = items.length
+    ? items.map(p => `<div class="receipt" style="border-color:${p.n ? "var(--divider)" : "var(--coral)"}">
+        <div class="r-quote" style="font-style:normal"><a data-ref="${p.id}" style="cursor:pointer">${esc(p.label)}</a></div>
+        <div class="dr-src" style="margin-top:3px">${p.n
+          ? "used by " + esc(p.claimers.join(", "))
+          : "used by nobody · " + esc((TIER_NAMES[p.tier] || p.tier).toLowerCase())}</div>
+      </div>`).join("")
+    : `<p class="dr-empty">None.</p>`;
+  $("#drawer-content").innerHTML = `
+    <span class="eyebrow">${esc(kicker)}</span>
+    <div class="dr-label">${esc(title)}</div>
+    <div class="dr-desc">${items.length} ${items.length === 1 ? "territory" : "territories"}. Click any one to see the wording behind it.</div>
+    ${body}
+    ${note ? `<div class="dr-h">What this counts</div><p class="dr-src">${esc(note)}</p>` : ""}`;
+  $("#drawer-content").querySelectorAll("[data-ref]").forEach(a =>
+    a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+  showDrawer();
+}
+
 /* ---- map ---- */
 function renderMap() {
   const map = $("#map"); map.innerHTML = "";
@@ -894,6 +1093,51 @@ function renderEvidence() {
       <p class="dr-src" style="margin-top:14px">This is general marketing science, not a finding from this run. It is included because it establishes what shared territory costs, independently of any single category.</p>`));
     w.appendChild(d);
   });
+}
+
+/* ---- the research behind the territories nobody uses ----
+   The claim that some territories were established independently of the brands
+   is the load-bearing one: without it, every territory on the list would have a
+   user by construction and empty ground could never appear. So the claim has to
+   be inspectable. Each entry shows what kind of published work it rests on. */
+function renderLiterature() {
+  const sec = $("#sec-lit");
+  const lit = DATA.positions.filter(p => p.provenance && p.provenance !== "observed in category");
+  if (!lit.length) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+
+  const unused = lit.filter(p => p.n === 0);
+  const burden = lit.filter(p => p.provenance === "patient burden literature");
+  const barrier = lit.filter(p => p.provenance === "clinical barrier literature");
+  const nBrands = DATA.meta.brands.length;
+
+  $("#lit-intro").textContent =
+    `${lit.length} of the ${DATA.metrics.space_size} territories on this list were not read off the brands' websites. ` +
+    `${burden.length} come from published research on what patients with this condition actually live with, and ` +
+    `${barrier.length} from research on what stops clinicians prescribing. They were identified without reference to ` +
+    `anything these brands say, which is why ${unused.length} of them turn out to be used by ` +
+    `${nBrands === 2 ? "neither brand" : "no brand in this set"}.`;
+  $("#lit-summary").textContent = `Show all ${lit.length}, and the research behind each`;
+
+  const group = (title, note, items) => items.length ? `
+    <h2>${esc(title)}</h2>
+    <p class="sec-sub">${esc(note)}</p>
+    ${items.map(p => `<div class="lit-item" data-ref="${p.id}">
+        <div>
+          <div class="d-label">${esc(p.label)}</div>
+          <div class="d-desc">${esc(p.description)}</div>
+          <div class="lit-src">${esc(p.source || "")}</div>
+        </div>
+        <div class="lit-use ${p.n ? "" : "none"}">${p.n ? "used by " + esc(p.claimers.join(", ")) : "used by nobody"}</div>
+      </div>`).join("")}` : "";
+
+  $("#r-literature").innerHTML =
+    group("What patients live with", "Established from burden-of-illness and quality-of-life research in this condition.", burden) +
+    group("What stops clinicians prescribing", "Established from treatment-barrier, adherence and guideline research, and from the questions clinicians raise at congress.", barrier) +
+    `<p class="sec-sub" style="margin-top:26px;max-width:730px">These are described at the level of the kind of evidence they rest on rather than by individual citation. The full source list sits behind the paid version of this analysis.</p>`;
+
+  $("#r-literature").querySelectorAll("[data-ref]").forEach(d =>
+    d.addEventListener("click", () => openDrawer(d.dataset.ref)));
 }
 
 /* ---- territories to explore ---- */
@@ -1005,11 +1249,19 @@ function renderWorking() {
 /* ---------------------------------------------------- drawers */
 function openDrawer(id) {
   const p = pos(id); if (!p) return;
+  // Each quote links to the page it appears on, using a text fragment so the
+  // browser scrolls to the wording and highlights it. Chrome, Edge and Safari
+  // honour that; Firefox opens the page and ignores the highlight. Where the
+  // wording could not be found again on the page, no link is offered rather
+  // than a link that lands nowhere.
+  const links = p.receipt_links || {};
   const receipts = p.n === 0
     ? `<p class="dr-empty">No brand in this set uses this territory anywhere on its website. It is unexplored.</p>`
     : p.claimers.map(b => `<div class="receipt" style="border-color:${ACC[b] || "var(--divider)"}">
         <div class="r-brand" style="color:${ACC[b] || "inherit"}">${esc(b)}</div>
-        <div class="r-quote">${esc(p.receipts[b])}</div></div>`).join("");
+        <div class="r-quote">${esc(p.receipts[b])}</div>
+        ${links[b] ? `<a class="r-see" href="${esc(links[b])}" target="_blank" rel="noopener nofollow">See it on ${esc(b)}'s site →</a>` : ""}
+      </div>`).join("");
   $("#drawer-content").innerHTML = `
     <span class="eyebrow">${p.id} · ${esc(p.provenance)}</span>
     <div class="dr-label">${esc(p.label)}</div>

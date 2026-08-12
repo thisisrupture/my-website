@@ -256,6 +256,82 @@ async def crawl_brand(http, brand):
     return corpus, images, len(seen)
 
 
+# ---------------------------------------------------------------------------
+# Tracing a quote back to the page it came from
+#
+# The crawl stores each brand's pages in one string, separated by [PAGE url]
+# markers, and the layer separation returns fragments without saying which page
+# each came from. Recovering that is a plain string search — no model call, no
+# judgement, and either the wording is on the page or it is not.
+#
+# The link uses a text fragment (#:~:text=...), which tells the browser to jump
+# to that wording and highlight it. Chrome, Edge and Safari honour it; Firefox
+# ignores the fragment and simply opens the page. Either way the reader lands
+# somewhere useful, which is the point — every number one click from the
+# sentence that produced it, now literally.
+# ---------------------------------------------------------------------------
+
+PAGE_MARKER = re.compile(r"\[PAGE (\S+?)\]\n")
+FRAGMENT_MAX = 110
+
+
+def split_pages(corpus):
+    """[(url, text), ...] from a crawled corpus."""
+    parts = PAGE_MARKER.split(corpus)
+    return [(parts[i], parts[i + 1]) for i in range(1, len(parts) - 1, 2)]
+
+
+def _norm(s):
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def locate_quote(quote, pages):
+    """Find the page carrying this wording, and the exact text as the page has
+    it. Returns (url, exact_text) or (None, None).
+
+    Matching is done on normalised whitespace and case, then mapped back to the
+    page's own characters — a fragment link only works if it matches the page
+    exactly, so the quote as the model returned it cannot be trusted for that.
+    """
+    q = _norm(quote)
+    if len(q) < 12:
+        return None, None
+    # Longest first: a full sentence lands precisely; a short opening still
+    # lands on the right paragraph.
+    attempts = [q, q[:80], q[:48]]
+    for page_url, text in pages:
+        flat, index = [], []
+        for i, ch in enumerate(text):
+            c = " " if ch.isspace() else ch.lower()
+            if c == " " and flat and flat[-1] == " ":
+                continue
+            flat.append(c)
+            index.append(i)
+        flat = "".join(flat)
+        for attempt in attempts:
+            if len(attempt) < 12:
+                continue
+            at = flat.find(attempt)
+            if at < 0:
+                continue
+            start = index[at]
+            end = index[min(at + len(attempt), len(index) - 1)] + 1
+            # Whitespace is collapsed before the fragment goes into the link.
+            # The browser matches against rendered text, where a run of spaces
+            # or a line break in the source is one space — a fragment carrying
+            # the raw spacing matches nothing and the highlight silently fails.
+            exact = re.sub(r"\s+", " ", text[start:end]).strip()
+            if len(exact) > FRAGMENT_MAX:
+                exact = exact[:FRAGMENT_MAX].rsplit(" ", 1)[0]
+            return page_url, exact
+    return None, None
+
+
+def quote_link(url, exact):
+    from urllib.parse import quote as urlquote
+    return f"{url}#:~:text={urlquote(exact, safe='')}"
+
+
 async def fetch_hero_image(http, urls):
     """Return (media_type, base64) for the first retrievable candidate."""
     for u in urls[:5]:
@@ -464,15 +540,17 @@ Verbal/visual cross-check: {cc}
 
 Return ONLY JSON:
 {{
- "headline": "<LEAD WITH THE SAMENESS — how much of what these brands say is
-   said by more than one of them. Then, and only then, the unexplored territory.
-   Do not leave 'no new clinical evidence' as an unexplained phrase, and write
-   'explore' rather than 'take' or 'own' — some territories will not suit a
-   given brand and the tool does not know which. Follow this pattern: '73% of
-   what these four brands say, they say together. 16 of the 22 messaging
-   territories in play are shared with a competitor, and 2 are used by every
-   brand in the category. A further 18, each with published evidence behind it,
-   are explored by nobody.'>",
+ "headline": "<LEAD WITH THE SAMENESS, then the counts, then what nobody uses.
+   Keep it plain and keep the arithmetic adding up. Three short sentences, no
+   subordinate clauses, no phrase the reader has to decode. Write 'explore'
+   rather than 'take' or 'own' — some territories will not suit a given brand
+   and the tool does not know which. Follow this pattern exactly, substituting
+   the real numbers: '32% of the messaging in this category is shared. Of 41
+   messaging territories, 7 are used by both brands, 15 by only one, and 19 by
+   neither. 18 of those unused territories come from published evidence on what
+   patients and clinicians say is missing, rather than from anything these
+   brands publish.' With three or more brands, write 'more than one brand'
+   instead of 'both brands'.>",
  "findings": [  // 3 to 5, each one sentence or two, each with evidence refs
    {{"text": "<the finding>", "refs": ["<position id>" or "visual:<dimension key>", ...]}}
  ],
@@ -613,10 +691,30 @@ async def pipeline(brands_in):
             valid = {p["id"] for p in positions}
             coding[b] = {k: str(v) for k, v in codes.items() if k in valid and v}
 
+        # Where each quote lives, so the reader can go and see it in place.
+        pages_by_brand = {b: split_pages(corpora[b]) for b in brands}
+        traced = untraced = 0
+
         for p in positions:
             p["claimers"] = [b for b in brands if p["id"] in coding[b]]
             p["n"] = len(p["claimers"])
             p["receipts"] = {b: coding[b][p["id"]] for b in p["claimers"]}
+            links = {}
+            for b in p["claimers"]:
+                url, exact = locate_quote(coding[b][p["id"]], pages_by_brand[b])
+                if url:
+                    links[b] = quote_link(url, exact)
+                    traced += 1
+                else:
+                    untraced += 1
+            if links:
+                p["receipt_links"] = links
+
+        if traced or untraced:
+            yield ev({"type": "progress", "text": (
+                f"Linked {traced} of {traced + untraced} quotes back to the page they appear on."
+                + (" The rest were paraphrased closely enough that the exact wording could not be found again." if untraced else "")
+            )})
 
         # 5 — visual layer
         yield ev({"type": "progress", "text": "Coding the hero imagery — commissioned photography only. Clinical images, mechanism diagrams and pack shots are excluded, because they were not art direction decisions."})
@@ -760,11 +858,15 @@ async def pipeline(brands_in):
         n_b = len(brands)
         lit_empty = [k for k in metrics["empty_ids"] if k[0] in "XH"]
         universal = [p["id"] for p in positions if p["n"] == n_b]
+        # Plain, and the numbers add up: shared + sole-held + unused = the whole
+        # list. The reader should not have to hold anything in their head.
+        both = "both brands" if n_b == 2 else "more than one brand"
         fallback_headline = (
-            f"{crw:.0%} of what these {n_b} brands say, they say together. "
-            f"{metrics['contested']} of the {metrics['occupied']} messaging territories in play are shared "
-            f"with a competitor, and {len(universal)} are used by every brand in the category. "
-            f"A further {len(lit_empty)}, each with published evidence behind it, are explored by nobody."
+            f"{crw:.0%} of the messaging in this category is shared. "
+            f"Of {metrics['space_size']} messaging territories, {metrics['contested']} are used by {both}, "
+            f"{metrics['sole_held']} by only one, and {metrics['empty']} by neither. "
+            f"{len(lit_empty)} of those unused territories come from published evidence on what patients and "
+            f"clinicians say is missing, rather than from anything these brands publish."
         )
         standfirst = (
             "Shared territory is the expensive part. Where several brands make the same argument, none of them "
