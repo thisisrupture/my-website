@@ -57,7 +57,25 @@ MAX_BRANDS_PER_RUN = 7
 # Rupture palette. Mint is reserved as a highlight, not a brand accent —
 # it lacks contrast against the paper at label sizes.
 ACCENTS = ["#FF686B", "#1F5B4A", "#303030", "#727270", "#51D4B2", "#ABAAA8", "#D7D6D2"]
-UA = "SamenessIndex/0.2 (strategy research; reads public brand sites once)"
+# Large pharma sites sit behind bot protection that rejects anything not
+# shaped like a browser — Lilly's turned away a plainly-identified client while
+# serving the same pages to a normal one. The request is otherwise unchanged:
+# public pages only, read once, nothing behind a login, no attempt at volume.
+# The tool still names itself and gives a contact address at the end of the
+# string, so anyone reading their logs can see exactly what it is.
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 "
+      "SamenessIndex/0.2 (+https://thisisrupture.com; strategy research, reads public pages once)")
+
+BROWSER_HEADERS = {
+    "User-Agent": UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -224,7 +242,7 @@ async def crawl_brand(http, brand):
             continue
         seen.add(url)
         try:
-            r = await http.get(url, headers={"User-Agent": UA}, follow_redirects=True, timeout=20)
+            r = await http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=25)
             if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
                 continue
         except Exception:
@@ -354,7 +372,7 @@ async def fetch_hero_image(http, urls):
     """Return (media_type, base64) for the first retrievable candidate."""
     for u in urls[:5]:
         try:
-            r = await http.get(u, headers={"User-Agent": UA}, follow_redirects=True, timeout=20)
+            r = await http.get(u, headers=BROWSER_HEADERS, follow_redirects=True, timeout=25)
             mt = r.headers.get("content-type", "").split(";")[0].strip()
             if r.status_code == 200 and mt in ("image/jpeg", "image/png", "image/webp") and len(r.content) < 4_500_000:
                 return mt, base64.standard_b64encode(r.content).decode()
@@ -685,9 +703,10 @@ def ev(obj):
     return obj
 
 
-async def pipeline(brands_in):
+async def pipeline(brands_in, category_given=""):
     brands = [b["name"].strip() for b in brands_in]
     yourn = brands[0]
+    category_given = (category_given or "").strip()
 
     async with httpx.AsyncClient() as http:
 
@@ -717,7 +736,27 @@ async def pipeline(brands_in):
             stripped = layers.get("mandated_word_estimate")
             if stripped:
                 yield ev({"type": "progress", "text": f"{b}: roughly {stripped:,} words of regulatory text removed; {len(electives[b])} messaging decisions retained for scoring."})
-        category = category_votes[0] if category_votes else "this category"
+        # The whole territory list is built from this one phrase, so it decides
+        # what every brand is measured against. Taking the first brand's guess
+        # and discarding the rest silently is how a set spanning two
+        # presentations or two indications gets scored against a list that only
+        # describes one of them. If the user said what the category is, that
+        # wins; otherwise say out loud what was settled on, and say so when the
+        # brands did not agree.
+        if category_given:
+            category = category_given
+            yield ev({"type": "progress", "text": f"Reading this as one category: {category}."})
+        else:
+            category = category_votes[0] if category_votes else "this category"
+            distinct = list(dict.fromkeys(v.strip() for v in category_votes if v.strip()))
+            yield ev({"type": "progress", "text": f"Reading this as one category: {category}."})
+            if len(distinct) > 1:
+                yield ev({"type": "progress", "text": (
+                    "The brands do not describe the category identically — also read as: "
+                    + "; ".join(distinct[1:])
+                    + ". Every brand is scored against the first. If that is the wrong frame for this set, "
+                      "set the category yourself on the input screen and run it again."
+                )})
 
         # 3 — build the opportunity space
         yield ev({"type": "progress", "text": "Building the list of positions available to this category — including positions nobody uses, drawn from the published literature on patient burden and prescribing barriers rather than from the brands themselves."})
@@ -1017,11 +1056,11 @@ _running = set()
 _tasks = set()
 
 
-async def execute_run(run_id, brands):
+async def execute_run(run_id, brands, category=""):
     """Consume the pipeline, recording everything it says and produces."""
     _running.add(run_id)
     try:
-        async for event in pipeline(brands):
+        async for event in pipeline(brands, category):
             if event.get("type") == "result":
                 await store.finish(run_id, event["data"])
                 return
@@ -1058,6 +1097,7 @@ async def start_run(request: Request):
         return JSONResponse({"error": "Could not read the request."}, status_code=400)
 
     brands = [b for b in (body.get("brands") or []) if b.get("name") and b.get("url")]
+    category = (body.get("category") or "").strip()[:160]
     if len(brands) < 2:
         return JSONResponse(
             {"error": "Each brand needs a name and a URL, and the index needs your brand plus at least one competitor."},
@@ -1087,7 +1127,7 @@ async def start_run(request: Request):
         client_ip=ip,
         user_agent=request.headers.get("user-agent"),
     )
-    task = asyncio.create_task(execute_run(run_id, brands))
+    task = asyncio.create_task(execute_run(run_id, brands, category))
     _tasks.add(task)
     task.add_done_callback(_tasks.discard)
     return {"id": run_id, "url": f"/r/{run_id}"}

@@ -27,7 +27,7 @@ STUB_RESULT = {
 }
 
 
-async def fake_pipeline(brands):
+async def fake_pipeline(brands, category=""):
     yield {"type": "progress", "text": "Reading the first site."}
     await asyncio.sleep(0.05)
     yield {"type": "progress", "text": "Reading the second site."}
@@ -35,12 +35,12 @@ async def fake_pipeline(brands):
     yield {"type": "result", "data": STUB_RESULT}
 
 
-async def failing_pipeline(brands):
+async def failing_pipeline(brands, category=""):
     yield {"type": "progress", "text": "Reading the first site."}
     yield {"type": "error", "text": "Could not read enough of that site."}
 
 
-async def exploding_pipeline(brands):
+async def exploding_pipeline(brands, category=""):
     yield {"type": "progress", "text": "Starting."}
     raise RuntimeError("something unforeseen")
 
@@ -165,7 +165,7 @@ async def test_stale_run_is_failed_on_read(client, monkeypatch):
     import store as store_mod
     monkeypatch.setattr(store_mod, "STALE_AFTER_SECONDS", 0)
 
-    async def hanging_pipeline(brands):
+    async def hanging_pipeline(brands, category=""):
         yield {"type": "progress", "text": "Working."}
         await asyncio.sleep(60)
 
@@ -180,3 +180,24 @@ async def test_stale_run_is_failed_on_read(client, monkeypatch):
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_category_is_passed_through(client, monkeypatch):
+    """A category typed on the form must reach the pipeline. Without it, the
+    territory list is built from one brand's guess and everything is measured
+    against that."""
+    seen = {}
+
+    async def capture(brands, category=""):
+        seen["category"] = category
+        yield {"type": "result", "data": STUB_RESULT}
+
+    monkeypatch.setattr(server, "pipeline", capture)
+    r = await client.post("/api/run", json={"brands": BRANDS, "category": "type 2 diabetes, adults, US"})
+    await drain(client, r.json()["id"])
+    assert seen["category"] == "type 2 diabetes, adults, US"
+
+    await client.post("/api/run", json={"brands": BRANDS})
+    await asyncio.sleep(0.05)
+    assert seen["category"] == ""
