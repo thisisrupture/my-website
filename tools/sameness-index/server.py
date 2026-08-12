@@ -211,10 +211,14 @@ async def crawl_brand(http, brand):
     start = brand["url"]
     if not start.startswith("http"):
         start = "https://" + start
+    # Provisional: replaced with wherever the first request actually lands.
     root = urlparse(start).netloc.replace("www.", "")
     queue, seen, texts, images = [start], set(), [], []
 
-    while queue and len(seen) < MAX_PAGES_PER_BRAND:
+    # Two separate limits. Pages captured is the real budget; attempts is a
+    # backstop so a run of redirects, timeouts or non-HTML responses cannot
+    # keep the crawler going indefinitely on a site that is not cooperating.
+    while queue and len(texts) < MAX_PAGES_PER_BRAND and len(seen) < MAX_PAGES_PER_BRAND * 3:
         url = queue.pop(0)
         if url in seen:
             continue
@@ -227,20 +231,31 @@ async def crawl_brand(http, brand):
             continue
         soup = BeautifulSoup(r.text, "html.parser")
 
-        if url == start:  # image candidates from the landing page only
+        # Brand URLs redirect constantly — www.trulicity.com lands on
+        # trulicity.lilly.com. Everything downstream has to work from where the
+        # request actually ended up: relative links resolve against it, the
+        # same-site test compares against it, and the quote links the reader
+        # follows have to point at the page that really served the wording.
+        landed = str(getattr(r, "url", url)) or url
+        if url == start:
+            host = urlparse(landed).netloc.replace("www.", "")
+            if host:
+                root = host
+
             og = soup.find("meta", property="og:image")
             if og and og.get("content"):
-                images.append(urljoin(url, og["content"]))
+                images.append(urljoin(landed, og["content"]))
             for img in soup.find_all("img", src=True)[:12]:
-                src = urljoin(url, img["src"])
+                src = urljoin(landed, img["src"])
                 if re.search(r"\.(jpe?g|png|webp)", src, re.I):
                     images.append(src)
 
-        texts.append(f"[PAGE {url}]\n" + visible_text(soup)[:12000])
+        seen.add(landed)
+        texts.append(f"[PAGE {landed}]\n" + visible_text(soup)[:12000])
 
         links = []
         for a in soup.find_all("a", href=True):
-            href = urljoin(url, a["href"]).split("#")[0]
+            href = urljoin(landed, a["href"]).split("#")[0]
             p = urlparse(href)
             if p.netloc.replace("www.", "") != root or not p.scheme.startswith("http"):
                 continue
@@ -254,7 +269,9 @@ async def crawl_brand(http, brand):
                 queue.append(href)
 
     corpus = "\n\n".join(texts)[:MAX_CHARS_PER_BRAND]
-    return corpus, images, len(seen)
+    # Pages actually read, not addresses tried — a redirect puts two addresses
+    # in `seen` for one page, and the reader is told this number.
+    return corpus, images, len(texts)
 
 
 # ---------------------------------------------------------------------------
