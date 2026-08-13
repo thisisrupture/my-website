@@ -661,13 +661,33 @@ Availability tiering — every position, with reasoning shown to the user:
 Elective-layer copy per brand:
 {brands_block}
 
+LENGTH — this is a list, not an essay, and the whole answer has to arrive in
+one piece. Never more than 42 concepts in total. Keep every field short:
+label at most 12 words, description one sentence of at most 25 words, source at
+most 25 words, tier_reasoning at most 30 words. Do not restate the label inside
+the description. Do not repeat a concept in different words.
+
 Return ONLY JSON — a list:
 [{{"id": "C01", "label": "<the move, one line>",
    "description": "<plain English, one sentence>",
    "source": "<for C: 'Observed in category.' For X/H: the specific literature basis>",
    "tier": "open|frame_only|constrained|closed",
    "tier_reasoning": "<1-2 sentences, specific to this category>"}}, ...]"""
-    return await llm_json(prompt, max_tokens=20000, stage="building the territory list")
+    try:
+        return await llm_json(prompt, max_tokens=32000, stage="building the territory list")
+    except RuntimeError as e:
+        # A category the prompt did not anticipate can make the model discursive
+        # enough to run out of room. Ask once more, harder, before giving up on
+        # a run that has already paid for the crawl and the layer separation.
+        if "cut off" not in str(e):
+            raise
+        tighter = prompt + """
+
+YOUR PREVIOUS ANSWER WAS TOO LONG AND ARRIVED CUT OFF. Produce the same
+structure with at most 30 concepts, and keep every description to a single
+short clause. Completeness of the JSON matters more than richness of the
+wording."""
+        return await llm_json(tighter, max_tokens=32000, stage="building the territory list")
 
 
 async def stage_code(brand, frags, positions):

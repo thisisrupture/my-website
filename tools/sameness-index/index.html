@@ -126,6 +126,34 @@
   .find-status.err { color: var(--coral); }
   .mode-link { display: block; margin-top: 18px; font-size: 14px; color: var(--label); }
 
+  /* the wait — three drawings of what the index is actually doing */
+  .stage { width: 100%; max-width: 300px; margin-bottom: 30px; }
+  .stage svg { width: 100%; height: auto; overflow: visible; }
+  .stage .ln { fill: none; stroke-width: 1.4; }
+  .aside {
+    font-family: var(--serif); font-weight: 900; font-size: 21px; line-height: 1.3;
+    letter-spacing: -.01em; max-width: 460px; min-height: 56px; margin-bottom: 26px;
+  }
+  .aside .sub {
+    display: block; font-family: var(--sans); font-weight: 500; font-size: 13.5px;
+    letter-spacing: 0; color: var(--label); margin-top: 7px;
+  }
+  @keyframes converge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--to)); } }
+  @keyframes peel { 0%, 55% { opacity: 1; transform: translateX(0); } 80%, 100% { opacity: 0; transform: translateX(26px); } }
+  @keyframes fillcell { 0%, 100% { opacity: .12; } 50% { opacity: 1; } }
+  @keyframes sweep { to { stroke-dashoffset: 0; } }
+  .cv1 { animation: converge 3.6s ease-in-out infinite; }
+  .cv2 { animation: converge 3.6s ease-in-out infinite .25s; }
+  .cv3 { animation: converge 3.6s ease-in-out infinite .5s; }
+  .pl1 { animation: peel 4.4s ease-in-out infinite; }
+  .pl2 { animation: peel 4.4s ease-in-out infinite .5s; }
+  .cell { animation: fillcell 3s ease-in-out infinite; }
+  .sweepln { stroke-dasharray: 300; stroke-dashoffset: 300; animation: sweep 2.6s ease-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .cv1, .cv2, .cv3, .pl1, .pl2, .cell, .sweepln { animation: none; }
+    .sweepln { stroke-dashoffset: 0; }
+  }
+
   /* the found set */
   .fb { border-top: 1px solid var(--divider); padding: 15px 0; }
   .fb:last-of-type { border-bottom: 1px solid var(--divider); }
@@ -144,12 +172,13 @@
   }
   .fb-tag.no { color: var(--coral); border-color: var(--coral); }
   .fb-none { font-size: 13.5px; color: var(--coral); margin-top: 6px; }
-  #f-category {
+  #f-category, #f-category-manual {
     font-family: var(--sans); font-size: 15px; color: var(--ink); width: 100%;
     background: transparent; border: none; border-bottom: 1px solid var(--divider);
     padding: 10px 2px; outline: none; transition: border-color .15s;
   }
-  #f-category:focus { border-bottom-color: var(--ink); }
+  #f-category { flex: 1 1 220px; width: auto; }
+  #f-category:focus, #f-category-manual:focus { border-bottom-color: var(--ink); }
   #f-category + .guidance { margin-top: 14px; margin-bottom: 0; }
   #add-competitor {
     background: none; border: none; font-family: var(--sans); font-size: 13px;
@@ -419,7 +448,7 @@
   <div class="input-wrap">
     <div class="eyebrow">Rupture</div>
     <h1>The Sameness Index</h1>
-    <p class="lede">How much of your category's messaging is shared with a competitor, and which territories nobody has taken. Read from the brands' own websites, with the regulatory content and everything the label determines set aside.</p>
+    <p class="lede">For branded prescription medicines. How much of your category's messaging is shared with a competitor, and which territories nobody has taken — read from the brands' own websites, with the regulatory content and everything the label determines set aside.</p>
 
     <!-- Start from a brand name. Finding four competitor URLs is the hardest
          thing this form can ask, and it asks before anyone has seen a reason
@@ -428,9 +457,10 @@
       <div class="group-label eyebrow">Your brand</div>
       <div class="find-row">
         <input id="f-brand" type="text" placeholder="Brand name, e.g. Ozempic" autocomplete="off">
+        <input id="f-category" type="text" placeholder="Therapy area, e.g. type 2 diabetes" autocomplete="off">
         <button id="find-btn" type="button">Find competitors</button>
       </div>
-      <p class="guidance">Name one brand. The index works out the category, who it competes with, and where their sites are — then you confirm the set before anything runs.</p>
+      <p class="guidance">Both are needed. The brand name on its own is often ambiguous — plenty of medicines are marketed in more than one indication, and the therapy area is what points the search at the right sites and decides what every brand is measured against.</p>
       <div class="find-status" id="find-status" hidden></div>
     </div>
 
@@ -447,6 +477,8 @@
       <div class="group-label eyebrow">Competitors</div>
       <div id="competitors"></div>
       <button id="add-competitor" type="button">Add another competitor</button>
+      <div class="group-label eyebrow">Therapy area</div>
+      <input id="f-category-manual" type="text" placeholder="e.g. type 2 diabetes" autocomplete="off">
       <a class="mode-link" id="to-find" href="#">Back to starting from a brand name</a>
     </div>
 
@@ -463,9 +495,7 @@
     <!-- Nothing below appears until there is a set to run. A first view of one
          field and one button converts; a wall of options does not. -->
     <div id="post" hidden>
-      <div class="group-label eyebrow">Category</div>
-      <input id="f-category" type="text" placeholder="e.g. type 2 diabetes, adults, US" autocomplete="off">
-      <p class="guidance">The list of available territories is built from this, so it decides what every brand is measured against. Worth correcting if the set spans more than one indication or presentation.</p>
+      <p class="guidance" id="analysing-as"></p>
       <button id="run-btn" type="button">Run the index</button>
       <p class="guidance run-note">Four to six brands gives the most reliable read. Takes two to five minutes; you can close the tab.</p>
       <div class="input-error" id="input-error"></div>
@@ -491,6 +521,8 @@
 <div id="screen-progress">
   <div class="progress-wrap">
     <div class="eyebrow">Running the index</div>
+    <div class="stage" id="stage"></div>
+    <p class="aside" id="aside"></p>
     <div id="progress-log"></div>
   </div>
 </div>
@@ -686,9 +718,13 @@ $("#find-btn").addEventListener("click", async () => {
   const brand = $("#f-brand").value.trim();
   const status = $("#find-status");
   if (OFFLINE) { $("#offline-note").style.display = "block"; return; }
-  if (brand.length < 2) {
+  const therapy = $("#f-category").value.trim();
+  if (brand.length < 2 || therapy.length < 3) {
     status.hidden = false; status.className = "find-status err";
-    status.textContent = "Enter the name of your brand."; return;
+    status.textContent = brand.length < 2
+      ? "Enter the name of your brand."
+      : "Enter the therapy area as well — the brand name alone is often ambiguous.";
+    return;
   }
   $("#find-btn").disabled = true;
   status.hidden = false; status.className = "find-status";
@@ -696,12 +732,15 @@ $("#find-btn").addEventListener("click", async () => {
   try {
     const r = await fetch("/api/find", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brand, category: $("#f-category").value.trim() }),
+      body: JSON.stringify({ brand, category: therapy }),
     });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || "Lookup failed.");
     FOUND = body;
-    if (body.category && !$("#f-category").value.trim()) $("#f-category").value = body.category;
+    if (body.category) $("#f-category").value = body.category;
+    $("#analysing-as").textContent =
+      `Analysing as: ${body.category || therapy}. Every brand is measured against the territories available in this ` +
+      `category, so correct it above if it is not right.`;
     renderFound(body);
     $("#post").hidden = false;
     status.hidden = true;
@@ -790,13 +829,18 @@ $("#run-btn").addEventListener("click", () => {
     }
   }
   const err = $("#input-error"); err.style.display = "none";
+  const therapy = (usingFinder ? $("#f-category").value : $("#f-category-manual").value).trim();
+  if (therapy.length < 3) {
+    err.textContent = "Enter the therapy area — it decides what every brand is measured against.";
+    err.style.display = "block"; return;
+  }
   if (brands.length < 2 || brands.some(b => !b.name || !b.url)) {
     err.textContent = usingFinder
       ? "Tick at least two brands, and choose a site to read for each one."
       : "Each brand needs a name and a URL, and the index needs your brand plus at least one competitor.";
     err.style.display = "block"; return;
   }
-  runIndex(brands, $("#f-category").value.trim());
+  runIndex(brands, therapy);
 });
 
 $("#load-example").addEventListener("click", async e => {
@@ -820,12 +864,82 @@ function showScreen(id) {
   const scr = document.getElementById(id);
   scr.style.display = id === "screen-result" ? "block" : "flex";
   window.scrollTo(0, 0);
+  if (id === "screen-progress") startWaiting(); else stopWaiting();
 }
 function logProgress(text, isError) {
   const log = $("#progress-log");
   log.appendChild(el("p", isError ? "perror" : "", esc(text)));
   if (log.children.length > 14) log.removeChild(log.firstChild);
 }
+/* ---------------------------------------------------- the wait
+   Three to eight minutes is a long time to watch a log scroll. Each drawing is
+   of something the index is genuinely doing — brands drifting toward the same
+   position, the regulatory layers being peeled away, the territory grid filling
+   with most cells claimed and a few never touched. The lines underneath are
+   dry rather than jokey: this is a report a brand lead may forward to their
+   boss, and a tool that mugs about is harder to believe afterwards. */
+const SCENES = [
+  // Four brands converging on one line.
+  `<svg viewBox="0 0 300 120" role="img" aria-label="Four brands drifting toward the same position">
+     <line x1="0" y1="60" x2="300" y2="60" stroke="var(--divider)" stroke-width="1"/>
+     <path class="ln cv1" style="--to:22px" d="M10 26 C 90 26, 180 30, 292 34" stroke="var(--coral)"/>
+     <path class="ln cv2" style="--to:12px" d="M10 44 C 90 44, 180 46, 292 48" stroke="var(--green)"/>
+     <path class="ln cv3" style="--to:-14px" d="M10 92 C 90 92, 180 84, 292 76" stroke="var(--ink)"/>
+     <path class="ln cv2" style="--to:-6px" d="M10 74 C 90 74, 180 70, 292 66" stroke="var(--label)"/>
+   </svg>`,
+  // The three layers, with the top two lifting off.
+  `<svg viewBox="0 0 300 120" role="img" aria-label="Regulatory and label-determined content being set aside">
+     <rect class="pl1" x="8" y="10" width="284" height="26" fill="var(--hairline)" opacity=".5"/>
+     <rect class="pl2" x="8" y="44" width="284" height="26" fill="var(--label)" opacity=".45"/>
+     <rect x="8" y="78" width="284" height="30" fill="none" stroke="var(--green)" stroke-width="1.5"/>
+     <text x="16" y="98" font-family="var(--mono)" font-size="11" fill="var(--green)" letter-spacing="1.4">WHAT THEY CHOSE</text>
+   </svg>`,
+  // The territory grid: most cells claimed, a few never touched.
+  `<svg viewBox="0 0 300 120" role="img" aria-label="The territory grid filling, with some cells left empty">
+     ${Array.from({ length: 24 }, (_, i) => {
+       const x = 8 + (i % 8) * 36, y = 14 + Math.floor(i / 8) * 34;
+       const empty = [3, 9, 14, 20, 22].includes(i);
+       return empty
+         ? `<rect x="${x}" y="${y}" width="30" height="26" fill="none" stroke="var(--coral)" stroke-width="1.2"/>`
+         : `<rect class="cell" style="animation-delay:${(i % 9) * .18}s" x="${x}" y="${y}" width="30" height="26" fill="var(--green)"/>`;
+     }).join("")}
+     <line class="sweepln" x1="8" y1="118" x2="292" y2="118" stroke="var(--ink)" stroke-width="1.2"/>
+   </svg>`,
+];
+
+const ASIDES = [
+  ["Reading what four brands decided to say.", "The regulator wrote the rest."],
+  ["Counting how many of them put the patient at the centre.", "So far, all of them."],
+  ["Setting aside every sentence the label made compulsory.", "Nobody chose a word of it."],
+  ["Looking for a claim only one brand could make.", "This is usually the short list."],
+  ["Declining to score the cookie banner.", "Or the actor portrayal disclaimer."],
+  ["Measuring the distance between reimagine and redefine.", "It is not far."],
+  ["Working out who else is having the conversation you are having.", "Usually more people than you would like."],
+  ["Ignoring the stock photograph of somebody laughing at a salad.", "Commissioned imagery only."],
+  ["Checking whether a new era in care means anything.", "Three brands have declared one."],
+  ["Finding the arguments nobody in this category has made yet.", "There are always more than people expect."],
+  ["Reading the published evidence on what patients actually struggle with.", "Then checking who mentions it."],
+  ["Separating the molecule from the marketing.", "Only one of them was a decision."],
+  ["Quietly noting every use of the word journey.", "Not scored. Simply noted."],
+  ["Asking what your competitors would have to stop saying.", "For you to be the only one saying it."],
+];
+
+let sceneTimer = null;
+function startWaiting() {
+  let i = Math.floor(Math.random() * ASIDES.length);
+  let s = 0;
+  const paint = () => {
+    $("#stage").innerHTML = SCENES[s % SCENES.length];
+    const [line, sub] = ASIDES[i % ASIDES.length];
+    $("#aside").innerHTML = `${esc(line)}<span class="sub">${esc(sub)}</span>`;
+    i++; s++;
+  };
+  paint();
+  clearInterval(sceneTimer);
+  sceneTimer = setInterval(paint, 7000);
+}
+function stopWaiting() { clearInterval(sceneTimer); sceneTimer = null; }
+
 // A run takes two to five minutes, so the server does not answer the request
 // that starts it. It hands back an id, gets on with the work, and this page
 // asks every couple of seconds what has happened since it last looked. The
@@ -1281,33 +1395,41 @@ function renderLiterature() {
   sec.style.display = "";
 
   const unused = lit.filter(p => p.n === 0);
-  const burden = lit.filter(p => p.provenance === "patient burden literature");
-  const barrier = lit.filter(p => p.provenance === "clinical barrier literature");
   const nBrands = DATA.meta.brands.length;
+
+  // Grouped by whatever provenances the run actually produced, not by a fixed
+  // pair — the evidence layer is named differently outside pharma, and older
+  // stored results carry the earlier names.
+  const prov = [];
+  lit.forEach(p => { if (!prov.includes(p.provenance)) prov.push(p.provenance); });
+  const meta = k => (DATA.provenance_breakdown || []).find(x => x.key === k) || {};
 
   $("#lit-intro").textContent =
     `${lit.length} of the ${DATA.metrics.space_size} territories on this list were not read off the brands' websites. ` +
-    `${burden.length} come from published research on what patients with this condition actually live with, and ` +
-    `${barrier.length} from research on what stops clinicians prescribing. They were identified without reference to ` +
-    `anything these brands say, which is why ${unused.length} of them turn out to be used by ` +
+    `They were established from published evidence about this category, identified without reference to anything ` +
+    `these brands say — which is why ${unused.length} of them turn out to be used by ` +
     `${nBrands === 2 ? "neither brand" : "no brand in this set"}.`;
-  $("#lit-summary").textContent = `Show all ${lit.length}, and the research behind each`;
+  $("#lit-summary").textContent = `Show all ${lit.length}, and the evidence behind each`;
 
-  const group = (title, note, items) => items.length ? `
-    <h2>${esc(title)}</h2>
-    <p class="sec-sub">${esc(note)}</p>
-    ${items.map(p => `<div class="lit-item" data-ref="${p.id}">
-        <div>
-          <div class="d-label">${esc(p.label)}</div>
-          <div class="d-desc">${esc(p.description)}</div>
-          <div class="lit-src">${esc(p.source || "")}</div>
-        </div>
-        <div class="lit-use ${p.n ? "" : "none"}">${p.n ? "used by " + esc(p.claimers.join(", ")) : "used by nobody"}</div>
-      </div>`).join("")}` : "";
+  const group = (key) => {
+    const items = lit.filter(p => p.provenance === key);
+    if (!items.length) return "";
+    const m = meta(key);
+    return `
+      <h2>${esc(m.label || key)}</h2>
+      ${m.note ? `<p class="sec-sub">${esc(m.note)}</p>` : ""}
+      ${items.map(p => `<div class="lit-item" data-ref="${p.id}">
+          <div>
+            <div class="d-label">${esc(p.label)}</div>
+            <div class="d-desc">${esc(p.description)}</div>
+            <div class="lit-src">${esc(p.source || "")}</div>
+          </div>
+          <div class="lit-use ${p.n ? "" : "none"}">${p.n ? "used by " + esc(p.claimers.join(", ")) : "used by nobody"}</div>
+        </div>`).join("")}`;
+  };
 
   $("#r-literature").innerHTML =
-    group("What patients live with", "Established from burden-of-illness and quality-of-life research in this condition.", burden) +
-    group("What stops clinicians prescribing", "Established from treatment-barrier, adherence and guideline research, and from the questions clinicians raise at congress.", barrier) +
+    prov.map(group).join("") +
     `<p class="sec-sub" style="margin-top:26px;max-width:730px">These are described at the level of the kind of evidence they rest on rather than by individual citation. The full source list sits behind the paid version of this analysis.</p>`;
 
   $("#r-literature").querySelectorAll("[data-ref]").forEach(d =>
