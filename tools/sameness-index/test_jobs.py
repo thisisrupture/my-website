@@ -208,6 +208,7 @@ class _NoHTTP:
     and the sandbox's proxy environment makes a real client fail to construct."""
     async def __aenter__(self): return self
     async def __aexit__(self, *a): return False
+    async def close(self): return None
 
 
 @pytest.mark.anyio
@@ -215,10 +216,10 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
     """One site behind bot protection must not throw away the whole run —
     but the result has to say the brand is missing."""
     import server as s
-    async def crawl(http, brand):
+    async def crawl(fetcher, brand):
         if brand["name"] == "Blocked":
-            return "", [], 0                      # too short: unreadable
-        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1
+            return "", [], 0, ""                  # nothing readable came back
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, ""
     monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
     monkeypatch.setattr(s, "crawl_brand", crawl)
     monkeypatch.setattr(s, "stage_layers", lambda b, c: _layers())
@@ -245,8 +246,8 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
 @pytest.mark.anyio
 async def test_own_brand_unreadable_stops_the_run(monkeypatch):
     import server as s
-    async def crawl(http, brand):
-        return ("", [], 0) if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1)
+    async def crawl(fetcher, brand):
+        return ("", [], 0, "") if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1, "")
     monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
     monkeypatch.setattr(s, "crawl_brand", crawl)
     errs = [e async for e in s.pipeline([{"name": "Mine", "url": "https://a.test"},
@@ -306,3 +307,69 @@ async def test_find_only_offers_addresses_that_actually_answered(client, monkeyp
 @pytest.mark.anyio
 async def test_find_needs_a_brand_name(client):
     assert (await client.post("/api/find", json={"brand": "x"})).status_code == 400
+
+
+@pytest.mark.anyio
+async def test_robots_is_honoured_and_named_as_such(monkeypatch):
+    """A site that asks not to be read is left alone, and the report says that
+    is why — not that the site was unreadable."""
+    import server as s
+
+    async def crawl(fetcher, brand):
+        if brand["name"] == "Private":
+            return "", [], 0, "robots"
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, ""
+
+    monkeypatch.setattr(s, "crawl_brand", crawl)
+    monkeypatch.setattr(s, "stage_layers", lambda b, c: _layers())
+    monkeypatch.setattr(s, "stage_space", lambda cat, e: _space())
+    monkeypatch.setattr(s, "stage_code", lambda b, f, p: _code())
+    monkeypatch.setattr(s, "stage_findings", lambda *a: _findings())
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+    monkeypatch.setattr(s, "Fetcher", lambda http: _NoHTTP())
+
+    brands = [{"name": "Mine", "url": "https://a.test"},
+              {"name": "Private", "url": "https://b.test"},
+              {"name": "Other", "url": "https://c.test"}]
+    result, notes = None, []
+    async for e in s.pipeline(brands):
+        if e["type"] == "result": result = e["data"]
+        if e["type"] == "progress": notes.append(e["text"])
+
+    assert result is not None
+    assert result["meta"]["unreadable"] == [
+        {"name": "Private", "url": "https://b.test", "reason": "asked not to be read"}]
+    assert any("asks automated readers not to read it" in n for n in notes)
+
+
+def test_robots_parsing_matches_the_real_lilly_files():
+    """The two files that prompted this, verbatim. Both permit the pages the
+    index reads; Mounjaro withholds only its drafts."""
+    from urllib.robotparser import RobotFileParser
+
+    mounjaro = RobotFileParser()
+    mounjaro.parse("""User-agent: *
+Disallow: /drafts/
+Disallow: /eds/
+Disallow: /es/drafts/
+Disallow: /es/eds/
+
+Sitemap: https://mounjaro.lilly.com/sitemap.xml""".splitlines())
+    assert mounjaro.can_fetch("*", "https://mounjaro.lilly.com/")
+    assert mounjaro.can_fetch("*", "https://mounjaro.lilly.com/how-to-take-mounjaro")
+    assert not mounjaro.can_fetch("*", "https://mounjaro.lilly.com/drafts/x")
+
+    trulicity = RobotFileParser()
+    trulicity.parse("""User-agent: *
+Disallow:
+
+Sitemap: https://trulicity.lilly.com/sitemap.xml""".splitlines())
+    assert trulicity.can_fetch("*", "https://trulicity.lilly.com/what-is-trulicity")
+
+    silent = RobotFileParser()
+    silent.parse([])                      # no robots.txt at all
+    assert silent.can_fetch("*", "https://anything.example/page")
+
+    closed = RobotFileParser()
+    closed.parse(["User-agent: *", "Disallow: /"])
+    assert not closed.can_fetch("*", "https://anything.example/page")

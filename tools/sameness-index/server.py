@@ -34,6 +34,7 @@ from collections import Counter
 from contextlib import asynccontextmanager
 from itertools import combinations
 from urllib.parse import urljoin, urlparse
+from urllib.robotparser import RobotFileParser
 
 import httpx
 from anthropic import AsyncAnthropic
@@ -199,6 +200,92 @@ PROVENANCE_LABELS = {
 # Crawling
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Fetching, and asking permission first
+#
+# Two separate questions, and they are easy to confuse.
+#
+# May we read this? Answered by robots.txt, which is where a site states in
+# machine-readable form what it wants crawlers to do. It is honoured here
+# without exception: a path a site has asked us not to read is not read, and a
+# site that disallows us entirely is reported as such rather than worked around.
+#
+# Can we read this? A different matter. Large pharma sites sit behind
+# protection that fingerprints the TLS handshake, so a Python client is turned
+# away no matter what its headers say — including on sites whose own robots.txt
+# explicitly invites crawlers and publishes a sitemap. Where permission has been
+# given, the connection is made to look like the browser it would have to be to
+# read the same page by hand.
+#
+# Permission first, capability second. Never the other way round.
+# ---------------------------------------------------------------------------
+
+try:
+    from curl_cffi.requests import AsyncSession as _ImpersonatingSession
+except Exception:
+    _ImpersonatingSession = None
+
+IMPERSONATE = os.environ.get("SAMENESS_IMPERSONATE", "chrome")
+
+
+class Fetcher:
+    """One interface over two clients, with robots.txt consulted once per host.
+
+    curl_cffi presents a real browser's TLS fingerprint; httpx is the fallback
+    when it is not installed. Responses are normalised to the few attributes
+    the crawler needs.
+    """
+
+    def __init__(self, http):
+        self.http = http
+        self.session = _ImpersonatingSession() if _ImpersonatingSession else None
+        self.robots = {}
+
+    async def close(self):
+        if self.session is not None:
+            try:
+                await self.session.close()
+            except Exception:
+                pass
+
+    async def get(self, url, timeout=25):
+        if self.session is not None:
+            try:
+                r = await self.session.get(
+                    url, impersonate=IMPERSONATE, timeout=timeout,
+                    allow_redirects=True, headers={"Accept-Language": BROWSER_HEADERS["Accept-Language"]},
+                )
+                return SimpleResponse(str(r.url), r.status_code, r.headers, r.text)
+            except Exception:
+                pass  # fall through to httpx rather than fail the page
+        r = await self.http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=timeout)
+        return SimpleResponse(str(r.url), r.status_code, r.headers, r.text)
+
+    async def allowed(self, url):
+        """What robots.txt says. A site with no robots.txt, or one we cannot
+        fetch, is treated as permitting — that is what the standard says, and
+        assuming refusal would silently exclude most of the web."""
+        p = urlparse(url)
+        host = f"{p.scheme}://{p.netloc}"
+        if host not in self.robots:
+            rp = RobotFileParser()
+            try:
+                r = await self.get(f"{host}/robots.txt", timeout=12)
+                rp.parse(r.text.splitlines() if r.status_code == 200 else [])
+            except Exception:
+                rp.parse([])
+            self.robots[host] = rp
+        return self.robots[host].can_fetch("*", url)
+
+
+class SimpleResponse:
+    __slots__ = ("url", "status_code", "headers", "text")
+
+    def __init__(self, url, status_code, headers, text):
+        self.url, self.status_code, self.text = url, status_code, text
+        self.headers = {k.lower(): v for k, v in dict(headers).items()}
+
+
 PRIORITY_HINTS = [
     "about", "why", "how", "what-is", "efficacy", "results", "safety",
     "patients", "hcp", "dosing", "getting-started", "science", "support",
@@ -223,9 +310,10 @@ def visible_text(soup):
     return "\n".join(out)
 
 
-async def crawl_brand(http, brand):
-    """Fetch the given URL plus a handful of same-domain pages. Returns
-    (pages_text, image_candidates, pages_fetched)."""
+async def crawl_brand(fetcher, brand):
+    """Fetch the given URL plus a handful of same-site pages, within whatever
+    robots.txt permits. Returns (pages_text, image_candidates, pages_fetched,
+    reason) where reason explains an empty result."""
     start = brand["url"]
     if not start.startswith("http"):
         start = "https://" + start
@@ -242,7 +330,11 @@ async def crawl_brand(http, brand):
             continue
         seen.add(url)
         try:
-            r = await http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=25)
+            if not await fetcher.allowed(url):
+                if url == start:
+                    return "", [], 0, "robots"
+                continue
+            r = await fetcher.get(url)
             if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
                 continue
         except Exception:
@@ -289,7 +381,7 @@ async def crawl_brand(http, brand):
     corpus = "\n\n".join(texts)[:MAX_CHARS_PER_BRAND]
     # Pages actually read, not addresses tried — a redirect puts two addresses
     # in `seen` for one page, and the reader is told this number.
-    return corpus, images, len(texts)
+    return corpus, images, len(texts), ""
 
 
 # ---------------------------------------------------------------------------
@@ -799,6 +891,8 @@ async def pipeline(brands_in, category_given=""):
     category_given = (category_given or "").strip()
 
     async with httpx.AsyncClient() as http:
+      fetcher = Fetcher(http)
+      try:
 
         # 1 — read the sites
         #
@@ -813,7 +907,26 @@ async def pipeline(brands_in, category_given=""):
         for b in brands_in:
             host = urlparse(b["url"] if b["url"].startswith("http") else "https://" + b["url"]).netloc or b["url"]
             yield ev({"type": "progress", "text": f"Reading {host} — the public website, as a patient or prescriber would find it."})
-            corpus, images, n_pages = await crawl_brand(http, b)
+            corpus, images, n_pages, why = await crawl_brand(fetcher, b)
+            if why == "robots":
+                # Not a failure. The site has asked crawlers not to read it,
+                # and that is the end of the matter — there is no version of
+                # this tool that overrides it.
+                if b["name"] == yourn:
+                    yield ev({"type": "error", "text": (
+                        f"{b['name']}'s site asks automated readers not to read it, in its robots.txt. "
+                        "The index honours that, and the report is built around your own brand, so there is "
+                        "nothing to run. If this is your brand and you want it analysed, your web team can "
+                        "permit it."
+                    )})
+                    return
+                unreadable.append({"name": b["name"], "url": b["url"], "reason": "asked not to be read"})
+                yield ev({"type": "progress", "text": (
+                    f"{b['name']}'s site asks automated readers not to read it, in its robots.txt. "
+                    "Leaving it out; the report will say so."
+                )})
+                continue
+
             if len(corpus) < 400:
                 if b["name"] == yourn:
                     yield ev({"type": "error", "text": (
@@ -1153,6 +1266,7 @@ async def pipeline(brands_in, category_given=""):
                 "The percentages depend on how many territories were identified. Those read off the websites have a user by definition, and those established from the literature are largely unused, also close to by definition. A longer literature list lowers the usage figure without anything changing in the market. Treat the percentages as a description of this list, not as a property of the category; the count of named, evidenced, unused territories does not move when the list length does, which is why it leads.",
                 "Deciding what was determined by the label and what was a marketing decision is a judgement. The rules are published on this page, applied identically to every brand, and open to challenge. Different reasonable rules would change the numbers.",
                 "Websites only. Congress activity, sales aids, field and MSL messaging, paid media and social are not included. This measures the public messaging each brand publishes, not its full commercial message.",
+                "Every site's robots.txt was read before anything else, and honoured. Pages a brand asks automated readers to leave alone were not read, and a brand that declines entirely is named above rather than worked around. Each page was requested once, as a person following the same links would.",
                 f"{len(brands)} brands were analysed. The comparison is meaningful but sensitive to any one brand being unusual."
                 + (" With fewer than four brands, treat the shared-position figure as indicative only." if len(brands) < 4 else ""),
                 "A single capture, taken once. This is a snapshot, not a trend.",
@@ -1162,6 +1276,8 @@ async def pipeline(brands_in, category_given=""):
             ],
         }
         yield ev({"type": "result", "data": result})
+      finally:
+        await fetcher.close()
 
 
 # ---------------------------------------------------------------------------
@@ -1312,13 +1428,16 @@ def audience_of(url, title, text):
     return "patient"
 
 
-async def check_site(http, url, sem):
+async def check_site(fetcher, url, sem):
     """Fetch one candidate. Returns None if there is nothing really there."""
     if not url.startswith("http"):
         url = "https://" + url
     async with sem:
         try:
-            r = await http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=20)
+            if not await fetcher.allowed(url):
+                return {"url": url, "title": "", "readable": False, "chars": 0,
+                        "status": 0, "audience": "patient", "reason": "asked not to be read"}
+            r = await fetcher.get(url, timeout=20)
         except Exception:
             return None
         if "text/html" not in r.headers.get("content-type", ""):
@@ -1367,10 +1486,14 @@ async def find_sites(request: Request):
     raw = [b for b in (proposed.get("brands") or []) if b.get("name")][:7]
     sem = asyncio.Semaphore(8)
     async with httpx.AsyncClient() as http:
-        checks = await asyncio.gather(*[
-            asyncio.gather(*[check_site(http, u, sem) for u in (b.get("candidates") or [])[:4]])
-            for b in raw
-        ])
+        fetcher = Fetcher(http)
+        try:
+            checks = await asyncio.gather(*[
+                asyncio.gather(*[check_site(fetcher, u, sem) for u in (b.get("candidates") or [])[:4]])
+                for b in raw
+            ])
+        finally:
+            await fetcher.close()
 
     out = []
     for b, results in zip(raw, checks):
