@@ -534,10 +534,20 @@ RETRY_WAITS = [4, 10, 25, 45, 60]
 
 
 async def call_model(**kwargs):
+    """Always streamed.
+
+    The territory list can legitimately run to tens of thousands of tokens, and
+    the SDK refuses an ordinary request whose ceiling implies more than ten
+    minutes of generation. Streaming also means a long answer arrives steadily
+    rather than sitting on one connection waiting to time out. Nothing here
+    consumes the stream incrementally — the whole message is still assembled
+    before it is parsed — so callers are unaffected.
+    """
     last = None
     for attempt in range(len(RETRY_WAITS) + 1):
         try:
-            return await get_client().messages.create(**kwargs)
+            async with get_client().messages.stream(**kwargs) as stream:
+                return await stream.get_final_message()
         except Exception as e:
             status = getattr(e, "status_code", None)
             if status not in RETRY_STATUSES or attempt == len(RETRY_WAITS):

@@ -38,6 +38,29 @@
      without scrolling. Below the fold it goes back to being a document, which
      is what the territory lists and the working want to be. Everything
      collapses to one column below 900px, in the same reading order. */
+  /* The summary stands alone at the top; the breakdown begins below it. */
+  .see-more {
+    font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--paper);
+    background: var(--green); border: none; padding: 14px 28px; cursor: pointer;
+    margin-top: 40px; transition: background .15s;
+  }
+  .see-more:hover { background: var(--ink); }
+  #dash { margin-top: 84px; padding-top: 44px; border-top: 1px solid var(--ink); scroll-margin-top: 24px; }
+  .dash-grid {
+    display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    gap: 52px; align-items: start;
+  }
+  .dash-side .four-numbers { margin-top: 0; display: grid; grid-template-columns: 1fr 1fr; border-top: none; }
+  .dash-side .four-numbers > div { padding: 16px 12px 14px 0; border-top: 1px solid var(--ink); }
+  .dash-side .four-numbers > div + div { border-left: none; padding-left: 0; }
+  .dash-side .four-numbers .n { font-size: 38px; }
+  .dash-side #sec-plot { margin: 34px 0 0; }
+  .dash-main #map { margin-top: 6px; }
+  @media (max-width: 900px) {
+    .dash-grid { grid-template-columns: 1fr; gap: 44px; }
+    .dash-side .four-numbers { grid-template-columns: 1fr 1fr; }
+  }
+
   .pair {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 46px; align-items: start; margin: 56px 0;
@@ -127,16 +150,25 @@
   .mode-link { display: block; margin-top: 18px; font-size: 14px; color: var(--label); }
 
   /* the wait — three drawings of what the index is actually doing */
-  .stage { width: 100%; max-width: 300px; margin-bottom: 30px; }
+  .wait-pair {
+    display: grid; grid-template-columns: 300px minmax(0, 1fr);
+    gap: 48px; align-items: start; width: 100%;
+  }
+  @media (max-width: 780px) {
+    .wait-pair { grid-template-columns: 1fr; gap: 26px; }
+    .stage { max-width: 240px; }
+  }
+  .stage { width: 100%; max-width: 300px; position: sticky; top: 40px; }
   .stage svg { width: 100%; height: auto; overflow: visible; }
   .stage .ln { fill: none; stroke-width: 1.4; }
-  .aside {
-    font-family: var(--serif); font-weight: 900; font-size: 21px; line-height: 1.3;
-    letter-spacing: -.01em; max-width: 460px; min-height: 56px; margin-bottom: 26px;
+  #progress-log p.aside {
+    font-family: var(--serif); font-weight: 900; font-size: 18px; line-height: 1.35;
+    letter-spacing: -.01em; color: var(--ink); margin: 16px 0 4px;
   }
-  .aside .sub {
-    display: block; font-family: var(--sans); font-weight: 500; font-size: 13.5px;
-    letter-spacing: 0; color: var(--label); margin-top: 7px;
+  #progress-log p.aside::after { display: none; }
+  #progress-log p.aside .sub {
+    display: block; font-family: var(--sans); font-weight: 500; font-size: 13px;
+    letter-spacing: 0; color: var(--label); margin-top: 4px;
   }
   @keyframes converge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--to)); } }
   @keyframes peel { 0%, 55% { opacity: 1; transform: translateX(0); } 80%, 100% { opacity: 0; transform: translateX(26px); } }
@@ -521,9 +553,10 @@
 <div id="screen-progress">
   <div class="progress-wrap">
     <div class="eyebrow">Running the index</div>
-    <div class="stage" id="stage"></div>
-    <p class="aside" id="aside"></p>
-    <div id="progress-log"></div>
+    <div class="wait-pair">
+      <div class="stage" id="stage"></div>
+      <div id="progress-log"></div>
+    </div>
   </div>
 </div>
 
@@ -539,33 +572,40 @@
       <button class="share-btn" id="copy-link" hidden>Copy the link to this result</button>
     </div>
 
-    <div class="four-numbers" id="r-numbers"></div>
+    <button class="see-more" id="see-breakdown" type="button">See the breakdown</button>
 
-    <div class="pair">
-      <section id="sec-plot">
-        <div class="panel-head">
-          <h2>Convergence and daylight</h2>
-          <button class="why" id="why-plot">How this is measured</button>
-        </div>
-        <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight. Right is messaging, up is imagery. Dot size is how much each brand claims, so a small dot far out is distinct mainly because it says very little.</p>
-        <div id="plot"></div>
-      </section>
+    <!-- The map is the thing people look at, so it sits in the middle with
+         everything else arranged around it rather than stacked above it. -->
+    <div id="dash">
+      <div class="dash-grid">
+        <aside class="dash-side">
+          <div class="four-numbers" id="r-numbers"></div>
+          <section id="sec-plot">
+            <div class="panel-head">
+              <h2>Convergence and daylight</h2>
+              <button class="why" id="why-plot">How this is measured</button>
+            </div>
+            <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight.</p>
+            <div id="plot"></div>
+          </section>
+        </aside>
 
-      <section>
-        <h2>What the analysis found</h2>
-        <p class="sec-sub">Each finding links to the evidence behind it.</p>
-        <div id="r-findings"></div>
-      </section>
+        <section class="dash-main">
+          <div class="sec-head">
+            <h2>The messaging territory map</h2>
+            <button class="why" id="why-map">Where this list came from</button>
+          </div>
+          <p class="sec-sub">Each cell is one territory. Darker means more brands are using it. Outlined cells are used by nobody. Click any cell for the evidence.</p>
+          <div id="map"></div>
+          <div class="map-legend" id="map-legend"></div>
+        </section>
+      </div>
     </div>
 
     <section>
-      <div class="sec-head">
-        <h2>The messaging territory map</h2>
-        <button class="why" id="why-map">Where this list came from</button>
-      </div>
-      <p class="sec-sub">Each cell is one territory. Darker means more brands are using it. Outlined cells are used by nobody. Click any cell for the evidence.</p>
-      <div id="map"></div>
-      <div class="map-legend" id="map-legend"></div>
+      <h2>What the analysis found</h2>
+      <p class="sec-sub">Each finding links to the evidence behind it.</p>
+      <div id="r-findings"></div>
     </section>
 
     <section id="sec-lit">
@@ -926,17 +966,23 @@ const ASIDES = [
 
 let sceneTimer = null;
 function startWaiting() {
-  let i = Math.floor(Math.random() * ASIDES.length);
-  let s = 0;
-  const paint = () => {
+  // Shuffle so a second run does not read like a repeat of the first.
+  const order = ASIDES.map((_, n) => n).sort(() => Math.random() - .5);
+  let i = 0, s = 0;
+  $("#stage").innerHTML = SCENES[0];
+  const tick = () => {
+    s++;
     $("#stage").innerHTML = SCENES[s % SCENES.length];
-    const [line, sub] = ASIDES[i % ASIDES.length];
-    $("#aside").innerHTML = `${esc(line)}<span class="sub">${esc(sub)}</span>`;
-    i++; s++;
+    // The aside goes into the log rather than above it, so there is one column
+    // of copy and the reader's eye stays in one place.
+    const [line, sub] = ASIDES[order[i++ % order.length]];
+    const p = el("p", "aside", `${esc(line)}<span class="sub">${esc(sub)}</span>`);
+    const log = $("#progress-log");
+    log.appendChild(p);
+    while (log.children.length > 14) log.removeChild(log.firstChild);
   };
-  paint();
   clearInterval(sceneTimer);
-  sceneTimer = setInterval(paint, 7000);
+  sceneTimer = setInterval(tick, 7000);
 }
 function stopWaiting() { clearInterval(sceneTimer); sceneTimer = null; }
 
@@ -1053,6 +1099,8 @@ function render(data) {
   ].map(([k, n, l, cls]) => `<div class="${cls}" data-num="${k}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
   $("#r-numbers").querySelectorAll("[data-num]").forEach(d =>
     d.addEventListener("click", () => openNumberDrawer(d.dataset.num)));
+
+  $("#see-breakdown").onclick = () => $("#dash").scrollIntoView({ behavior: "smooth", block: "start" });
 
   renderPlot(); renderMap(); renderFindings(); renderLiterature(); renderDaylight();
   renderCentre(); renderProvenance(); renderWorking();
