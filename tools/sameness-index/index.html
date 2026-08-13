@@ -179,10 +179,10 @@
   .cv3 { animation: converge 3.6s ease-in-out infinite .5s; }
   .pl1 { animation: peel 4.4s ease-in-out infinite; }
   .pl2 { animation: peel 4.4s ease-in-out infinite .5s; }
-  .cell { animation: fillcell 3s ease-in-out infinite; }
+  .stage .sq { animation: fillcell 3s ease-in-out infinite; }
   .sweepln { stroke-dasharray: 300; stroke-dashoffset: 300; animation: sweep 2.6s ease-out infinite; }
   @media (prefers-reduced-motion: reduce) {
-    .cv1, .cv2, .cv3, .pl1, .pl2, .cell, .sweepln { animation: none; }
+    .cv1, .cv2, .cv3, .pl1, .pl2, .stage .sq, .sweepln { animation: none; }
     .sweepln { stroke-dashoffset: 0; }
   }
 
@@ -941,7 +941,7 @@ const SCENES = [
        const empty = [3, 9, 14, 20, 22].includes(i);
        return empty
          ? `<rect x="${x}" y="${y}" width="30" height="26" fill="none" stroke="var(--coral)" stroke-width="1.2"/>`
-         : `<rect class="cell" style="animation-delay:${(i % 9) * .18}s" x="${x}" y="${y}" width="30" height="26" fill="var(--green)"/>`;
+         : `<rect class="sq" style="animation-delay:${(i % 9) * .18}s" x="${x}" y="${y}" width="30" height="26" fill="var(--green)"/>`;
      }).join("")}
      <line class="sweepln" x1="8" y1="118" x2="292" y2="118" stroke="var(--ink)" stroke-width="1.2"/>
    </svg>`,
