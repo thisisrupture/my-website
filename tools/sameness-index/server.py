@@ -321,6 +321,39 @@ def _norm(s):
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
+def best_line_match(quote, text):
+    """Closest actual wording on the page to a quote that has been tidied.
+
+    The coding step is asked for an exact copy and mostly obliges, but it will
+    sometimes smooth punctuation or join two nearby phrases. Requiring a
+    character-perfect match then drops the link on roughly a third of quotes.
+    This finds the closest run of real text instead, and only accepts a close
+    one — a link that lands on the wrong sentence is worse than no link.
+    """
+    from difflib import SequenceMatcher
+
+    q = _norm(quote)
+    lines = [ln for ln in text.split("\n") if len(ln.strip()) > 8]
+    best, best_score = None, 0.0
+    for i, line in enumerate(lines):
+        # Compare against this line, and against it joined with the next one or
+        # two — a stitched quote spans consecutive lines on the page.
+        for span in (1, 2, 3):
+            if i + span > len(lines):
+                break
+            candidate = " ".join(lines[i:i + span])
+            c = _norm(candidate)
+            if abs(len(c) - len(q)) > max(60, len(q)):
+                continue
+            m = SequenceMatcher(None, q, c)
+            if m.quick_ratio() < 0.6:
+                continue
+            score = m.ratio()
+            if score > best_score:
+                best, best_score = candidate.strip(), score
+    return (best, best_score) if best_score >= 0.68 else (None, best_score)
+
+
 def locate_quote(quote, pages):
     """Find the page carrying this wording, and the exact text as the page has
     it. Returns (url, exact_text) or (None, None).
@@ -360,6 +393,19 @@ def locate_quote(quote, pages):
             if len(exact) > FRAGMENT_MAX:
                 exact = exact[:FRAGMENT_MAX].rsplit(" ", 1)[0]
             return page_url, exact
+
+    # Nothing matched character for character. Fall back to the closest real
+    # wording on each page, taking the best across all of them.
+    best_url, best_text, best_score = None, None, 0.0
+    for page_url, text in pages:
+        candidate, score = best_line_match(quote, text)
+        if candidate and score > best_score:
+            best_url, best_text, best_score = page_url, candidate, score
+    if best_url:
+        frag = re.sub(r"\s+", " ", best_text).strip()
+        if len(frag) > FRAGMENT_MAX:
+            frag = frag[:FRAGMENT_MAX].rsplit(" ", 1)[0]
+        return best_url, frag
     return None, None
 
 
@@ -537,10 +583,18 @@ async def stage_code(brand, frags, positions):
     frag_block = "\n".join(f"- {x}" for x in frags)
     prompt = f"""Code one brand's elective-layer copy against a fixed list of positions.
 
-A position is TAKEN only if the copy clearly makes that move. Be strict: the
-evidence string must be the verbatim fragment (or near-verbatim) that triggers
-the code, quoted from the copy below. Do not infer from molecule facts. If in
-doubt, do not code it — under-coding is the conservative direction.
+A position is TAKEN only if the copy clearly makes that move. Do not infer from
+molecule facts. If in doubt, do not code it — under-coding is the conservative
+direction.
+
+THE EVIDENCE STRING IS A COPY, NOT A SUMMARY. Reproduce one continuous run of
+wording exactly as it appears below, character for character, including its
+capitalisation and punctuation. Do not tidy it, do not shorten it to its sense,
+do not join two phrases from different places, and never describe what the site
+does instead of quoting it. Every quote is looked up on the brand's own page
+afterwards so the reader can go and see it in place, and a quote that has been
+smoothed cannot be found again. If no single continuous run of wording makes
+the move on its own, the position is not taken — leave it out.
 
 Positions:
 {plist}

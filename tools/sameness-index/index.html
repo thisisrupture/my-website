@@ -164,7 +164,13 @@
     padding: 14px 34px; cursor: pointer; transition: background .15s, border-color .15s;
   }
   #run-btn:hover { background: var(--coral); border-color: var(--coral); }
-  .example-link { display: block; margin-top: 20px; font-size: 14px; color: var(--label); }
+  .quiet-row {
+    display: flex; gap: 26px; flex-wrap: wrap; margin-top: 46px;
+    padding-top: 20px; border-top: 1px solid var(--divider);
+  }
+  .quiet-row a { font-size: 13.5px; color: var(--label); text-decoration: none; border-bottom: 1px solid var(--divider); padding-bottom: 1px; }
+  .quiet-row a:hover { color: var(--coral); border-bottom-color: var(--coral); }
+  .run-note { margin: 16px 0 0; font-size: 13.5px; }
   .input-error { font-family: var(--sans); font-size: 14px; color: var(--coral); margin-top: 16px; display: none; }
   .offline-note {
     display: none; font-family: var(--sans); font-size: 13.5px; line-height: 1.65;
@@ -413,7 +419,7 @@
   <div class="input-wrap">
     <div class="eyebrow">Rupture</div>
     <h1>The Sameness Index</h1>
-    <p class="lede">Enter your brand and your competitors. The index reads each brand's public website, sets aside the regulatory content and everything the label determines, and compares what is left — the messaging each brand chose.</p>
+    <p class="lede">How much of your category's messaging is shared with a competitor, and which territories nobody has taken. Read from the brands' own websites, with the regulatory content and everything the label determines set aside.</p>
 
     <!-- Start from a brand name. Finding four competitor URLs is the hardest
          thing this form can ask, and it asks before anyone has seen a reason
@@ -424,9 +430,8 @@
         <input id="f-brand" type="text" placeholder="Brand name, e.g. Ozempic" autocomplete="off">
         <button id="find-btn" type="button">Find competitors</button>
       </div>
-      <p class="guidance">Name one brand and the index works out the category, who it competes with, and where their websites are. Every address is checked before it is offered — including whether it can be read at all. Nothing runs until you have confirmed the set.</p>
+      <p class="guidance">Name one brand. The index works out the category, who it competes with, and where their sites are — then you confirm the set before anything runs.</p>
       <div class="find-status" id="find-status" hidden></div>
-      <a class="mode-link" id="to-manual" href="#">Or enter the addresses yourself</a>
     </div>
 
     <div id="manual-mode" hidden>
@@ -442,7 +447,7 @@
       <div class="group-label eyebrow">Competitors</div>
       <div id="competitors"></div>
       <button id="add-competitor" type="button">Add another competitor</button>
-      <a class="mode-link" id="to-find" href="#">Or start from a brand name instead</a>
+      <a class="mode-link" id="to-find" href="#">Back to starting from a brand name</a>
     </div>
 
     <!-- What the finder came back with. Nothing is pre-run: the set has to be
@@ -455,13 +460,16 @@
       <a class="mode-link" id="found-again" href="#">Start again from a different brand</a>
     </div>
 
-    <div class="group-label eyebrow">Category <span class="optional">optional</span></div>
-    <input id="f-category" type="text" placeholder="e.g. type 2 diabetes, adults, US" autocomplete="off">
-    <p class="guidance">Leave this blank and the index works the category out from the sites. Set it if the brands span more than one presentation or indication — the list of available territories is built from this, so it decides what every brand is measured against.</p>
-
-    <p class="guidance">Four to six brands gives the most reliable read. Two cannot produce a meaningful comparison.</p>
-    <button id="run-btn" type="button">Run the index</button>
-    <div class="input-error" id="input-error"></div>
+    <!-- Nothing below appears until there is a set to run. A first view of one
+         field and one button converts; a wall of options does not. -->
+    <div id="post" hidden>
+      <div class="group-label eyebrow">Category</div>
+      <input id="f-category" type="text" placeholder="e.g. type 2 diabetes, adults, US" autocomplete="off">
+      <p class="guidance">The list of available territories is built from this, so it decides what every brand is measured against. Worth correcting if the set spans more than one indication or presentation.</p>
+      <button id="run-btn" type="button">Run the index</button>
+      <p class="guidance run-note">Four to six brands gives the most reliable read. Takes two to five minutes; you can close the tab.</p>
+      <div class="input-error" id="input-error"></div>
+    </div>
     <div class="offline-note" id="offline-note">
       <strong>This page is open as a file, so live runs are not available.</strong>
       Reading competitor websites needs the local analysis server — a browser cannot fetch other people's
@@ -471,8 +479,11 @@
       <code>uvicorn server:app</code>
       then open <strong>http://127.0.0.1:8000</strong>. The worked example below needs none of that.
     </div>
-    <a class="example-link" id="load-example" href="#">Or load the worked example — US non-steroidal topical atopic dermatitis</a>
-    <a class="example-link" href="mailto:hello@thisisrupture.com?subject=Sameness%20Index">Questions, or want this run on your own category? hello@thisisrupture.com</a>
+    <div class="quiet-row">
+      <a id="load-example" href="#">See a worked example</a>
+      <a id="to-manual" href="#">Enter addresses yourself</a>
+      <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index">hello@thisisrupture.com</a>
+    </div>
   </div>
 </div>
 
@@ -657,11 +668,15 @@ function setMode(mode) {
   $("#find-mode").hidden = mode !== "find";
   $("#manual-mode").hidden = mode !== "manual";
   $("#found").hidden = !(mode === "find" && FOUND);
+  // The category, the run button and the caveats only exist once there is
+  // something to run. Manual entry is a deliberate choice, so it shows them
+  // immediately; the finder reveals them when it comes back with a set.
+  $("#post").hidden = !(mode === "manual" || FOUND);
 }
 $("#to-manual").addEventListener("click", e => { e.preventDefault(); setMode("manual"); });
 $("#to-find").addEventListener("click", e => { e.preventDefault(); setMode("find"); });
 $("#found-again").addEventListener("click", e => {
-  e.preventDefault(); FOUND = null; $("#found-list").innerHTML = "";
+  e.preventDefault(); FOUND = null; $("#found-list").innerHTML = ""; $("#post").hidden = true;
   $("#f-brand").value = ""; setMode("find"); $("#f-brand").focus();
 });
 
@@ -688,6 +703,7 @@ $("#find-btn").addEventListener("click", async () => {
     FOUND = body;
     if (body.category && !$("#f-category").value.trim()) $("#f-category").value = body.category;
     renderFound(body);
+    $("#post").hidden = false;
     status.hidden = true;
   } catch (e) {
     status.className = "find-status err";
