@@ -107,6 +107,43 @@
   .field-row .f-x:hover { color: var(--coral); }
   .group-label { margin: 28px 0 8px; }
   .optional { color: var(--hairline); letter-spacing: .08em; }
+
+  /* finder */
+  .find-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  #f-brand {
+    flex: 1 1 260px; font-family: var(--sans); font-size: 17px; color: var(--ink);
+    background: transparent; border: none; border-bottom: 1px solid var(--divider);
+    padding: 10px 2px; outline: none;
+  }
+  #f-brand:focus { border-bottom-color: var(--ink); }
+  #find-btn {
+    font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--paper);
+    background: var(--ink); border: none; padding: 12px 22px; cursor: pointer;
+  }
+  #find-btn:hover { background: var(--green); }
+  #find-btn[disabled] { opacity: .5; cursor: default; }
+  .find-status { font-family: var(--sans); font-size: 14px; color: var(--label); margin-top: 16px; }
+  .find-status.err { color: var(--coral); }
+  .mode-link { display: block; margin-top: 18px; font-size: 14px; color: var(--label); }
+
+  /* the found set */
+  .fb { border-top: 1px solid var(--divider); padding: 15px 0; }
+  .fb:last-of-type { border-bottom: 1px solid var(--divider); }
+  .fb-head { display: flex; align-items: baseline; gap: 10px; }
+  .fb-name { font-family: var(--serif); font-weight: 900; font-size: 19px; }
+  .fb-co { font-family: var(--sans); font-size: 12.5px; color: var(--label); }
+  .fb-own { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--coral); }
+  .fb-sites { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .fb-site { display: flex; align-items: flex-start; gap: 9px; font-size: 14px; }
+  .fb-site input { margin-top: 3px; }
+  .fb-site.blocked { color: var(--hairline); }
+  .fb-url { font-family: var(--mono); font-size: 12px; color: var(--label); word-break: break-all; }
+  .fb-tag {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid var(--divider); padding: 1px 5px; margin-left: 7px; white-space: nowrap;
+  }
+  .fb-tag.no { color: var(--coral); border-color: var(--coral); }
+  .fb-none { font-size: 13.5px; color: var(--coral); margin-top: 6px; }
   #f-category {
     font-family: var(--sans); font-size: 15px; color: var(--ink); width: 100%;
     background: transparent; border: none; border-bottom: 1px solid var(--divider);
@@ -378,18 +415,45 @@
     <h1>The Sameness Index</h1>
     <p class="lede">Enter your brand and your competitors. The index reads each brand's public website, sets aside the regulatory content and everything the label determines, and compares what is left — the messaging each brand chose.</p>
 
-    <div class="group-label eyebrow">Your brand</div>
-    <div id="your-brand">
-      <div class="field-row">
-        <input class="f-name" type="text" placeholder="Brand name">
-        <input class="f-url" type="url" placeholder="https://www.yourbrand.com">
-        <button class="f-x" tabindex="-1">×</button>
+    <!-- Start from a brand name. Finding four competitor URLs is the hardest
+         thing this form can ask, and it asks before anyone has seen a reason
+         to bother. -->
+    <div id="find-mode">
+      <div class="group-label eyebrow">Your brand</div>
+      <div class="find-row">
+        <input id="f-brand" type="text" placeholder="Brand name, e.g. Ozempic" autocomplete="off">
+        <button id="find-btn" type="button">Find competitors</button>
       </div>
+      <p class="guidance">Name one brand and the index works out the category, who it competes with, and where their websites are. Every address is checked before it is offered — including whether it can be read at all. Nothing runs until you have confirmed the set.</p>
+      <div class="find-status" id="find-status" hidden></div>
+      <a class="mode-link" id="to-manual" href="#">Or enter the addresses yourself</a>
     </div>
 
-    <div class="group-label eyebrow">Competitors</div>
-    <div id="competitors"></div>
-    <button id="add-competitor" type="button">Add another competitor</button>
+    <div id="manual-mode" hidden>
+      <div class="group-label eyebrow">Your brand</div>
+      <div id="your-brand">
+        <div class="field-row">
+          <input class="f-name" type="text" placeholder="Brand name">
+          <input class="f-url" type="url" placeholder="https://www.yourbrand.com">
+          <button class="f-x" tabindex="-1">×</button>
+        </div>
+      </div>
+
+      <div class="group-label eyebrow">Competitors</div>
+      <div id="competitors"></div>
+      <button id="add-competitor" type="button">Add another competitor</button>
+      <a class="mode-link" id="to-find" href="#">Or start from a brand name instead</a>
+    </div>
+
+    <!-- What the finder came back with. Nothing is pre-run: the set has to be
+         confirmed, because who counts as a competitor is a judgement the tool
+         will sometimes get wrong. -->
+    <div id="found" hidden>
+      <div class="group-label eyebrow">The set to analyse</div>
+      <p class="guidance" id="found-intro"></p>
+      <div id="found-list"></div>
+      <a class="mode-link" id="found-again" href="#">Start again from a different brand</a>
+    </div>
 
     <div class="group-label eyebrow">Category <span class="optional">optional</span></div>
     <input id="f-category" type="text" placeholder="e.g. type 2 diabetes, adults, US" autocomplete="off">
@@ -582,20 +646,138 @@ if (OFFLINE) {
   $("#run-btn").title = "Live runs need the local analysis server";
 }
 
+/* ---------------------------------------------------- finder
+   Name one brand; the server proposes the category, the competitors and their
+   addresses, having fetched every address first. Nothing here is applied
+   automatically — who counts as a competitor is a judgement, and the tool will
+   sometimes get it wrong. */
+let FOUND = null;
+
+function setMode(mode) {
+  $("#find-mode").hidden = mode !== "find";
+  $("#manual-mode").hidden = mode !== "manual";
+  $("#found").hidden = !(mode === "find" && FOUND);
+}
+$("#to-manual").addEventListener("click", e => { e.preventDefault(); setMode("manual"); });
+$("#to-find").addEventListener("click", e => { e.preventDefault(); setMode("find"); });
+$("#found-again").addEventListener("click", e => {
+  e.preventDefault(); FOUND = null; $("#found-list").innerHTML = "";
+  $("#f-brand").value = ""; setMode("find"); $("#f-brand").focus();
+});
+
+$("#f-brand").addEventListener("keydown", e => { if (e.key === "Enter") $("#find-btn").click(); });
+
+$("#find-btn").addEventListener("click", async () => {
+  const brand = $("#f-brand").value.trim();
+  const status = $("#find-status");
+  if (OFFLINE) { $("#offline-note").style.display = "block"; return; }
+  if (brand.length < 2) {
+    status.hidden = false; status.className = "find-status err";
+    status.textContent = "Enter the name of your brand."; return;
+  }
+  $("#find-btn").disabled = true;
+  status.hidden = false; status.className = "find-status";
+  status.textContent = "Working out the category, then checking each site can actually be read…";
+  try {
+    const r = await fetch("/api/find", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brand, category: $("#f-category").value.trim() }),
+    });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error || "Lookup failed.");
+    FOUND = body;
+    if (body.category && !$("#f-category").value.trim()) $("#f-category").value = body.category;
+    renderFound(body);
+    status.hidden = true;
+  } catch (e) {
+    status.className = "find-status err";
+    status.textContent = e.message || "Could not look that up.";
+  } finally {
+    $("#find-btn").disabled = false;
+  }
+});
+
+function renderFound(data) {
+  const list = $("#found-list"); list.innerHTML = "";
+  const usable = data.brands.filter(b => b.any_readable).length;
+  const blocked = data.brands.filter(b => !b.any_readable).map(b => b.name);
+
+  $("#found-intro").textContent =
+    `${data.brands.length} brands in ${data.category || "this category"}. ` +
+    `Tick the ones to include and choose which site to read for each — the patient site and the professional site ` +
+    `say different things to different people, so keep the set consistent.` +
+    (blocked.length
+      ? ` ${blocked.join(" and ")} could not be read: ${blocked.length === 1 ? "that site turns" : "those sites turn"} away automated readers. ` +
+        `You can still run without ${blocked.length === 1 ? "it" : "them"}, and the report will say so.`
+      : "");
+
+  data.brands.forEach((b, i) => {
+    const row = el("div", "fb");
+    const sites = b.sites.map((s, j) => {
+      const id = `s${i}_${j}`;
+      const tag = s.readable
+        ? `<span class="fb-tag">${s.audience === "hcp" ? "professionals" : "patients"}</span>`
+        : `<span class="fb-tag no">cannot be read</span>`;
+      return `<label class="fb-site ${s.readable ? "" : "blocked"}">
+        <input type="radio" name="site${i}" value="${esc(s.url)}" ${s.readable ? "" : "disabled"}
+               ${s.readable && !b._picked ? ((b._picked = true), "checked") : ""}>
+        <span><span>${esc(s.title || s.url)}</span>${tag}<br><span class="fb-url">${esc(s.url)}</span></span>
+      </label>`;
+    }).join("");
+    row.innerHTML = `
+      <div class="fb-head">
+        <label class="fb-site" style="gap:9px">
+          <input type="checkbox" class="fb-use" ${b.any_readable ? "checked" : "disabled"}>
+          <span class="fb-name">${esc(b.name)}</span>
+        </label>
+        ${b.company ? `<span class="fb-co">${esc(b.company)}</span>` : ""}
+        ${i === 0 ? `<span class="fb-own">your brand</span>` : ""}
+      </div>
+      ${b.sites.length ? `<div class="fb-sites">${sites}</div>`
+                       : `<div class="fb-none">No working website could be found for this brand.</div>`}`;
+    row.dataset.name = b.name;
+    list.appendChild(row);
+  });
+
+  $("#found").hidden = false;
+  if (!usable) {
+    $("#found-intro").textContent =
+      "None of these sites could be read. They turn away automated readers or build their pages in the browser. " +
+      "Try the professional sites, a different market, or enter addresses yourself.";
+  }
+}
+
+function brandsFromFound() {
+  const out = [];
+  $("#found-list").querySelectorAll(".fb").forEach(row => {
+    if (!row.querySelector(".fb-use").checked) return;
+    const picked = row.querySelector("input[type=radio]:checked");
+    if (picked) out.push({ name: row.dataset.name, url: picked.value });
+  });
+  return out;
+}
+
 $("#run-btn").addEventListener("click", () => {
   if (OFFLINE) {
     $("#offline-note").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
-  const rows = [$("#your-brand .field-row"), ...$("#competitors").children];
-  const brands = [];
-  for (const r of rows) {
-    const name = r.querySelector(".f-name").value.trim(), url = r.querySelector(".f-url").value.trim();
-    if (name || url) brands.push({ name, url });
+  const usingFinder = FOUND && !$("#found").hidden;
+  let brands;
+  if (usingFinder) {
+    brands = brandsFromFound();
+  } else {
+    brands = [];
+    for (const r of [$("#your-brand .field-row"), ...$("#competitors").children]) {
+      const name = r.querySelector(".f-name").value.trim(), url = r.querySelector(".f-url").value.trim();
+      if (name || url) brands.push({ name, url });
+    }
   }
   const err = $("#input-error"); err.style.display = "none";
   if (brands.length < 2 || brands.some(b => !b.name || !b.url)) {
-    err.textContent = "Each brand needs a name and a URL, and the index needs your brand plus at least one competitor.";
+    err.textContent = usingFinder
+      ? "Tick at least two brands, and choose a site to read for each one."
+      : "Each brand needs a name and a URL, and the index needs your brand plus at least one competitor.";
     err.style.display = "block"; return;
   }
   runIndex(brands, $("#f-category").value.trim());

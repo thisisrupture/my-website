@@ -574,6 +574,42 @@ Return ONLY JSON: {{"human_configuration": "...", ..., "child_present": true/fal
     return await llm_json(prompt, max_tokens=2000, images=[(mt, b64)], stage="reading the hero image")
 
 
+async def stage_find(brand, category_hint):
+    """Propose the category, the competing brands, and candidate addresses.
+
+    Everything here is a proposal. A model asked for a URL will produce
+    something plausible whether or not it exists, so nothing this returns is
+    shown to anyone until the server has fetched it and seen a real page come
+    back. That is why the prompt asks for several guesses per brand rather than
+    one confident answer — breadth is useful when the verification step is
+    doing the deciding.
+    """
+    hint = f"\nThe user says the category is: {category_hint}" if category_hint else ""
+    prompt = f"""A brand manager has named one pharmaceutical brand: "{brand}".{hint}
+
+Identify the category it competes in, and the brands it competes against.
+
+Rules:
+- The category is one line, as a commercial team would say it: the indication,
+  the population and the market. For example "type 2 diabetes, adults, US".
+- List 3 to 6 competitors: brands a marketing team at "{brand}" would name in
+  the room. Same indication and same market. Do not list the same company's
+  other products unless they genuinely compete for the same prescription.
+- Include the named brand itself as the first entry.
+- For each brand give candidate website addresses: the direct-to-patient site
+  and the healthcare professional site where you believe both exist. Guess the
+  conventional patterns as well as any address you recall — every address is
+  checked before it is shown to anyone, so a wrong guess costs nothing and a
+  missing one costs a brand. Give 2 to 4 candidates per brand.
+- Only real, marketed, branded products. No pipeline compounds, no generics.
+
+Return ONLY JSON:
+{{"category": "<one line>",
+  "brands": [{{"name": "<brand>", "company": "<company>",
+               "candidates": ["https://...", "https://..."]}}]}}"""
+    return await llm_json(prompt, max_tokens=3000, stage="finding the category and competitors")
+
+
 async def stage_findings(category, metrics, positions, brands, cross_check):
     pos_lines = "\n".join(
         f'{p["id"]} [{p["tier"]}] ({p["n"]} of {len(brands)}: {", ".join(p["claimers"]) or "nobody"}) {p["label"]}'
@@ -1114,6 +1150,11 @@ async def execute_run(run_id, brands, category=""):
         _running.discard(run_id)
 
 
+def now_seconds():
+    import time
+    return time.time()
+
+
 def client_ip(request):
     """Render, Fly and Cloudflare all put the real address in X-Forwarded-For
     and terminate TLS themselves, so request.client is the proxy."""
@@ -1185,6 +1226,123 @@ async def permalink(run_id: str):
     for the stored run — so this is the same front end, with no login and
     nothing to set up."""
     return FileResponse(os.path.join(HERE, "index.html"))
+
+
+# ---------------------------------------------------------------------------
+# Finding the sites
+#
+# Pasting four competitor URLs is the hardest thing this tool asks of anyone,
+# and it is asked before they have seen a single reason to bother. So: name one
+# brand, and the tool proposes the category, the competitors and their
+# addresses — every address fetched and confirmed before it is offered.
+#
+# The check that proves an address is real also reveals whether it can be read
+# at all, which is worth as much as the convenience. Sites behind bot
+# protection are shown as unavailable up front, instead of failing three
+# minutes into a run that has already cost money.
+# ---------------------------------------------------------------------------
+
+MAX_FINDS_PER_IP_PER_DAY = int(os.environ.get("SAMENESS_FINDS_PER_IP", "40"))
+MIN_READABLE_CHARS = 500
+_finds = {}
+
+
+def audience_of(url, title, text):
+    """Patient site or professional site. Read from the address first, since
+    brands are consistent about it, then from what the page says about itself."""
+    blob = f"{url} {title}".lower()
+    if re.search(r"\b(hcp|pro|professional|medlink|medinfo)\b|hcp\.|/hcp|pro\.", blob):
+        return "hcp"
+    if re.search(r"health care professional|healthcare professional|for us healthcare professionals|prescribing information for professionals", text[:4000].lower()):
+        return "hcp"
+    return "patient"
+
+
+async def check_site(http, url, sem):
+    """Fetch one candidate. Returns None if there is nothing really there."""
+    if not url.startswith("http"):
+        url = "https://" + url
+    async with sem:
+        try:
+            r = await http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=20)
+        except Exception:
+            return None
+        if "text/html" not in r.headers.get("content-type", ""):
+            return None
+        soup = BeautifulSoup(r.text, "html.parser")
+        title = (soup.title.string or "").strip() if soup.title else ""
+        text = visible_text(soup)
+        blocked = r.status_code in (401, 403, 405, 429) or r.status_code >= 500
+        return {
+            "url": str(r.url),
+            "title": re.sub(r"\s+", " ", title)[:120],
+            "readable": (not blocked) and r.status_code == 200 and len(text) >= MIN_READABLE_CHARS,
+            "chars": len(text),
+            "status": r.status_code,
+            "audience": audience_of(str(r.url), title, text),
+        }
+
+
+@app.post("/api/find")
+async def find_sites(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Could not read the request."}, status_code=400)
+
+    brand = (body.get("brand") or "").strip()[:80]
+    hint = (body.get("category") or "").strip()[:160]
+    if len(brand) < 2:
+        return JSONResponse({"error": "Enter the name of your brand."}, status_code=400)
+
+    ip = client_ip(request)
+    today = int(now_seconds() // 86400)
+    key = (ip, today)
+    if MAX_FINDS_PER_IP_PER_DAY and _finds.get(key, 0) >= MAX_FINDS_PER_IP_PER_DAY:
+        return JSONResponse({"error": "That is a lot of lookups from this connection today. Try again tomorrow, or get in touch."}, status_code=429)
+    _finds[key] = _finds.get(key, 0) + 1
+    for k in list(_finds):
+        if k[1] != today:
+            del _finds[k]
+
+    try:
+        proposed = await stage_find(brand, hint)
+    except Exception as e:
+        return JSONResponse({"error": f"Could not look that up. {e}"}, status_code=502)
+
+    raw = [b for b in (proposed.get("brands") or []) if b.get("name")][:7]
+    sem = asyncio.Semaphore(8)
+    async with httpx.AsyncClient() as http:
+        checks = await asyncio.gather(*[
+            asyncio.gather(*[check_site(http, u, sem) for u in (b.get("candidates") or [])[:4]])
+            for b in raw
+        ])
+
+    out = []
+    for b, results in zip(raw, checks):
+        sites, seen_urls = [], set()
+        for s in results:
+            if not s:
+                continue
+            tidy = s["url"].rstrip("/")
+            if tidy in seen_urls:
+                continue
+            seen_urls.add(tidy)
+            sites.append(s)
+        # Readable first, then patient before professional — the patient site
+        # carries more of the messaging that actually gets scored.
+        sites.sort(key=lambda s: (not s["readable"], s["audience"] != "patient"))
+        out.append({
+            "name": b["name"].strip()[:60],
+            "company": (b.get("company") or "").strip()[:60],
+            "sites": sites[:4],
+            "any_readable": any(s["readable"] for s in sites),
+        })
+
+    return {
+        "category": (proposed.get("category") or hint or "").strip()[:160],
+        "brands": out,
+    }
 
 
 @app.get("/api/health")

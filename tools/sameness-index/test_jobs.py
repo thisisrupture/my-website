@@ -263,3 +263,46 @@ async def _space(): return [{"id": "C01", "label": "L", "description": "D", "sou
                              "tier": "open", "tier_reasoning": "R2"}]
 async def _code(): return {"C01": "an elective fragment"}
 async def _findings(): return {"headline": "", "findings": [], "brand_comments": {}}
+
+
+@pytest.mark.anyio
+async def test_find_only_offers_addresses_that_actually_answered(client, monkeypatch):
+    """The model proposes; the server verifies. An address that does not
+    respond, or responds with nothing, must never reach the user."""
+    import server as s
+
+    async def proposal(brand, hint):
+        return {"category": "type 2 diabetes, adults, US", "brands": [
+            {"name": "Ozempic", "company": "Novo Nordisk",
+             "candidates": ["https://www.ozempic.com/", "https://invented.example/", "https://www.ozempicpro.com/"]},
+            {"name": "Mounjaro", "company": "Eli Lilly", "candidates": ["https://mounjaro.lilly.com/"]},
+        ]}
+
+    async def check(http, url, sem):
+        if "invented" in url:
+            return None                                   # does not resolve
+        if "mounjaro" in url:
+            return {"url": url, "title": "", "readable": False, "chars": 0,
+                    "status": 403, "audience": "patient"}  # bot-protected
+        return {"url": url, "title": "Ozempic", "readable": True, "chars": 9000,
+                "status": 200, "audience": "hcp" if "pro" in url else "patient"}
+
+    monkeypatch.setattr(s, "stage_find", proposal)
+    monkeypatch.setattr(s, "check_site", check)
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+
+    r = await client.post("/api/find", json={"brand": "Ozempic"})
+    body = r.json()
+    assert body["category"] == "type 2 diabetes, adults, US"
+
+    oz, mj = body["brands"]
+    urls = [x["url"] for x in oz["sites"]]
+    assert "https://invented.example/" not in urls, "an unverified address reached the user"
+    assert oz["any_readable"] is True
+    assert oz["sites"][0]["audience"] == "patient", "readable patient site should be offered first"
+    assert mj["any_readable"] is False, "a bot-protected site must be flagged, not hidden"
+
+
+@pytest.mark.anyio
+async def test_find_needs_a_brand_name(client):
+    assert (await client.post("/api/find", json={"brand": "x"})).status_code == 400
