@@ -694,6 +694,7 @@
     text-decoration: none; border-bottom: 1px solid var(--divider); padding-bottom: 1px;
   }
   .r-see:hover { color: var(--green); border-bottom-color: var(--green); }
+  .r-note { display: block; margin-top: 5px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; line-height: 1.6; color: var(--fg-faint); }
   .r-shot { display: block; width: 100%; margin-top: 8px; border: 1px solid var(--divider); }
   .ti { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--fg-faint); cursor: pointer; align-items: baseline; }
   .ti:hover { color: var(--green); }
@@ -2176,7 +2177,18 @@ function detail(id) {
         (link ? (t.visual
           ? `<img class="r-shot" src="${esc(link)}" alt="${esc(b)} — the image this was coded from" loading="lazy">
              <a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the image →</a>`
-          : `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, highlighted →</a>`) : "") +
+          // Three states, and the link says which. Promising a highlight that
+          // will not appear is how an evidence trail stops being believed;
+          // hiding that a highlight landed on the nearest sentence rather than
+          // the quoted one is the same mistake in the other direction.
+          : (() => {
+              const how = (t.receipt_match || {})[b] || "exact";
+              if (how === "near") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, nearest wording highlighted →</a>
+                <span class="r-note">the quote was tidied on its way here, so the highlight lands on the page's own version of it</span>`;
+              if (how === "page") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page →</a>
+                <span class="r-note">this wording could not be located again to highlight it</span>`;
+              return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, highlighted →</a>`;
+            })()) : "") +
         `</div>`;
     });
   }
