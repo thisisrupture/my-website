@@ -281,6 +281,14 @@
   .step-card h3 { font-family: var(--sans); font-weight: 700; font-size: 1.05rem; line-height: 1.25; margin: 0 0 10px; }
   .step-card p { font-family: var(--sans); font-size: .93rem; line-height: 1.6; color: var(--fg-muted); margin: 0; }
 
+  .vread { border-top: 1px solid var(--fg-faint); padding: 22px 0; }
+  .vread-brand { font-family: var(--serif); font-weight: 900; font-size: 19px; margin-bottom: 8px; }
+  .vread-sum { font-family: var(--sans); font-size: 15.5px; line-height: 1.55; margin: 0 0 14px; max-width: 70ch; }
+  .vread-shots { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .vread-shots img { width: 148px; height: 100px; object-fit: cover; border: 1px solid var(--divider); }
+  .vread-obs { margin: 0; padding-left: 18px; }
+  .vread-obs li { font-family: var(--sans); font-size: 14.5px; line-height: 1.6; color: var(--fg-muted); margin-bottom: 5px; }
+
   /* the dark band — what it will not do */
   .band-dark { border: var(--line); background: var(--ink-2); color: var(--paper); padding: 44px 52px; }
   @media (max-width: 900px) { .band-dark { padding: 32px 24px; } }
@@ -1049,10 +1057,11 @@
       <summary>Show the full working</summary>
       <div class="working-body">
 
-        <h3>The art direction, territory by territory</h3>
+        <h3 id="visual-h">The art direction</h3>
         <p class="sec-sub" id="visual-exclusions"></p>
         <div class="gcap" id="vmap-legend"></div>
         <div id="vmap"></div>
+        <div id="vread"></div>
         <table id="t-visual" style="margin-top:34px"></table>
 
         <h3>What each brand does differently</h3>
@@ -1920,7 +1929,26 @@ function drawMap(target, items, pool, legend) {
 }
 function renderMap() {
   drawMap("#map", MSG(), SEL, "#map-legend");
-  if (VT().length) drawMap("#vmap", VT(), visPool(), "#vmap-legend");
+  if (VT().length) {
+    drawMap("#vmap", VT(), visPool(), "#vmap-legend");
+    $("#vread").innerHTML = "";
+  } else {
+    // Not enough brands to compare art direction, but the reading still
+    // happened — so it is described. One brand's photography, said plainly,
+    // is worth more than a blank space where a comparison would have been.
+    $("#vmap-legend").textContent = "";
+    $("#vread").innerHTML = ((DATA.visual || {}).read || []).map(r => `
+      <div class="vread">
+        <div class="vread-brand">${dot(r.brand)}${esc(r.brand)}</div>
+        ${r.summary ? `<p class="vread-sum">${esc(r.summary)}</p>` : ""}
+        ${r.images && r.images.length ? `<div class="vread-shots">${
+          r.images.slice(0, 4).map(u => `<img src="${esc(u)}" alt="${esc(r.brand)} — art direction read from this image" loading="lazy">`).join("")
+        }</div>` : ""}
+        <ul class="vread-obs">${
+          (r.observations || []).map(o => `<li>${esc(o.note)}</li>`).join("")
+        }</ul>
+      </div>`).join("");
+  }
 }
 
 /* ---- findings ---- */
@@ -2094,6 +2122,7 @@ function renderWorking() {
 
   const v = VT();
   $("#visual-exclusions").textContent = (DATA.visual || {}).exclusions || "";
+  $("#visual-h").textContent = v.length ? "The art direction, territory by territory" : "The art direction, as read";
   $("#t-visual").innerHTML = v.length
     ? `<thead><tr><th>Id</th><th>Visual territory</th>${brandCols}<th class="num">Availability</th></tr></thead><tbody>` +
       v.map(rowFor).join("") + "</tbody>"
