@@ -2033,6 +2033,15 @@ PUBLIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "worked_example.json": "application/json",
     "favicon.ico": "image/x-icon",
+    # The brand's own cut of Fraunces — the 72pt Soft, with the rounded stem
+    # terminals. Google Fonts serves the standard 72pt, which is a different
+    # typeface at display size and the first thing that makes a page look
+    # nearly-but-not-quite like the site. Bundled rather than linked to
+    # thisisrupture.com, because a cross-origin font needs a CORS header the
+    # site does not send.
+    "fonts/Fraunces_72pt_Soft-Regular.ttf": "font/ttf",
+    "fonts/Fraunces_72pt_Soft-Bold.ttf": "font/ttf",
+    "fonts/Fraunces_72pt_Soft-Black.ttf": "font/ttf",
 }
 
 
@@ -2041,10 +2050,17 @@ async def home():
     return FileResponse(os.path.join(HERE, "index.html"))
 
 
-@app.get("/{filename}")
+# `:path` so the bundled fonts under fonts/ can be reached. It is still an
+# allowlist and nothing else: an address that is not a key of PUBLIC_FILES is a
+# 404 before the filesystem is touched, so a path with .. in it cannot resolve
+# to anything, and this route is declared last so it never shadows the API.
+@app.get("/{filename:path}")
 async def public_file(filename: str):
     media_type = PUBLIC_FILES.get(filename)
-    path = os.path.join(HERE, filename)
-    if media_type is None or not os.path.isfile(path):
+    if media_type is None:
         return JSONResponse({"error": "Not found."}, status_code=404)
-    return FileResponse(path, media_type=media_type)
+    path = os.path.join(HERE, filename)
+    if not os.path.isfile(path):
+        return JSONResponse({"error": "Not found."}, status_code=404)
+    headers = {"Cache-Control": "public, max-age=31536000, immutable"} if filename.startswith("fonts/") else None
+    return FileResponse(path, media_type=media_type, headers=headers)

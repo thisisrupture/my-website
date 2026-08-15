@@ -6,7 +6,16 @@
 <title>The Sameness Index</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Epilogue:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Fraunces 72pt Soft — the brand's cut, with the rounded stem terminals.
+     Google Fonts serves the standard 72pt, which is a visibly different face at
+     display size and the first thing that makes a page look nearly-but-not-
+     quite like thisisrupture.com. Served from this tool's own directory. */
+  @font-face { font-family:"Fraunces"; font-style:normal; font-weight:400; font-display:swap; src:url("/fonts/Fraunces_72pt_Soft-Regular.ttf") format("truetype"); }
+  @font-face { font-family:"Fraunces"; font-style:normal; font-weight:700; font-display:swap; src:url("/fonts/Fraunces_72pt_Soft-Bold.ttf") format("truetype"); }
+  @font-face { font-family:"Fraunces"; font-style:normal; font-weight:900; font-display:swap; src:url("/fonts/Fraunces_72pt_Soft-Black.ttf") format("truetype"); }
+</style>
 <style>
   :root {
     --paper:    #EFEEEA;
@@ -27,11 +36,20 @@
     --on-dark-muted: rgba(239,238,234,.72);
     --on-dark-faint: rgba(239,238,234,.48);
     --line: 1.5px solid var(--ink);
+    --border-faint: rgba(48,48,48,.35);
+    --ease: cubic-bezier(.2,.7,.2,1);
     --serif: "Fraunces", Georgia, serif;
     --sans:  "Epilogue", -apple-system, sans-serif;
     --mono:  "JetBrains Mono", "Courier New", monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* The paper surface from thisisrupture.com. Cheap, and it is most of why the
+     site does not read as a white page with type on it. */
+  .grain {
+    position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: .045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  @media (prefers-reduced-motion: reduce) { .grain { display: none; } }
   html { scroll-behavior: smooth; }
   body {
     background: var(--paper); color: var(--ink);
@@ -115,147 +133,219 @@
   .share-btn:hover { background: var(--ink); }
   .share-btn.done { background: var(--ink); }
 
-  /* ---------------------------------------------------------- input */
-  #screen-input { min-height: 100vh; display: flex; align-items: center; }
-  .input-wrap { width: 100%; max-width: 540px; margin: 0 auto; padding: 60px 28px; }
-  .input-wrap h1 { margin: 12px 0 16px; }
-  .lede { font-size: 19px; color: var(--ink); margin-bottom: 38px; }
-
-  .field-row { display: flex; gap: 10px; margin-bottom: 8px; }
-  .field-row input {
-    font-family: var(--sans); font-size: 15px; color: var(--ink);
-    background: transparent; border: none; border-bottom: 1px solid var(--divider);
-    padding: 10px 2px; outline: none; transition: border-color .15s;
+  /* ---------------------------------------------------------- input
+     The landing screen is built from the same parts as thisisrupture.com:
+     ruled rectangles inside a 1180 wrap, a sticky bar, Fraunces for display,
+     mono small-caps for labels, and the one coral dot. Nothing here is a new
+     idea — it is the site's own vocabulary applied to a form. */
+  #screen-input { padding: 12px 0 0; }
+  #screen-input section, #screen-input footer { margin: 0; }
+  .wrap {
+    width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 32px;
+    display: flex; flex-direction: column; gap: 32px;
   }
-  .field-row input:focus { border-bottom-color: var(--green); }
-  .field-row input::placeholder { color: var(--hairline); }
+  @media (max-width: 720px) { .wrap { padding: 0 16px; gap: 16px; } }
+
+  /* the bar */
+  header.site {
+    position: sticky; top: 12px; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    background: color-mix(in srgb, var(--paper) 97%, transparent);
+    border: var(--line); padding: 16px 26px;
+  }
+  header.site::before {
+    content: ""; position: fixed; top: 0; left: 0; right: 0;
+    height: calc(env(safe-area-inset-top, 0px) + 12px); background: var(--paper); z-index: 1;
+  }
+  header.site .mark {
+    display: flex; align-items: baseline; font-family: var(--mono); font-size: 15px;
+    letter-spacing: .14em; font-weight: 600; text-transform: uppercase;
+    color: var(--ink); text-decoration: none; position: relative; z-index: 2;
+  }
+  .r-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--coral);
+    display: inline-block; margin-left: 5px; transform: translateY(-1px);
+    transition: transform .24s var(--ease);
+  }
+  header.site .mark:hover .r-dot { transform: translateY(-1px) scale(1.5); }
+  header.site nav {
+    display: flex; align-items: center; gap: 26px; font-family: var(--mono);
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted);
+  }
+  header.site nav a { color: var(--fg-muted); text-decoration: none; position: relative; transition: color .24s var(--ease); }
+  header.site nav a:not(.cta)::after {
+    content: ""; position: absolute; left: 0; right: 100%; bottom: -5px;
+    height: 1.5px; background: var(--ink); transition: right .24s var(--ease);
+  }
+  header.site nav a:not(.cta):hover { color: var(--ink); }
+  header.site nav a:not(.cta):hover::after { right: 0; }
+  header.site nav a.cta {
+    border: var(--line); border-radius: 6px; padding: 9px 16px; color: var(--ink);
+    letter-spacing: .1em; background: var(--mint);
+    transition: background .24s var(--ease), transform .24s var(--ease);
+  }
+  header.site nav a.cta:hover { background: #43b89a; transform: translateY(-1px); }
+  header.site nav a.cta::after { display: none; }
+  @media (max-width: 900px) { header.site nav a:not(.cta) { display: none; } }
+  @media (max-width: 560px) {
+    header.site { padding: 12px 16px; }
+    header.site .mark { font-size: 13px; letter-spacing: .1em; }
+    header.site nav a.cta { padding: 8px 12px; font-size: 10px; }
+  }
+
+  /* the hero rectangle */
+  .hero-rect { border: var(--line); display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); }
+  .hero-left { padding: 48px 52px; display: flex; flex-direction: column; justify-content: space-between; gap: 34px; min-width: 0; }
+  .hero-right { border-left: var(--line); background: var(--paper-2); padding: 48px 38px; display: flex; flex-direction: column; justify-content: space-between; gap: 26px; min-width: 0; }
+  @media (max-width: 900px) {
+    .hero-rect { grid-template-columns: 1fr; }
+    .hero-left { padding: 32px 24px; }
+    .hero-right { border-left: 0; border-top: var(--line); padding: 32px 24px; }
+  }
+  .mono-label { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
+  #screen-input h1 {
+    font-family: var(--serif); font-weight: 900; font-size: clamp(2.4rem, 4.2vw, 3.7rem);
+    line-height: 1.02; letter-spacing: -.015em; margin: 18px 0 22px; color: var(--ink);
+  }
+  .lede { font-family: var(--sans); font-size: 1.12rem; line-height: 1.5; max-width: 34ch; margin: 0 0 30px; color: var(--ink); }
+  .stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px 40px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--fg-muted); border-top: 1px solid var(--border-faint); padding-top: 20px;
+  }
+  .stats span { display: block; color: var(--fg-faint); margin-bottom: 5px; }
+
+  /* the diagram that stands in for the site's photograph — the tool's own
+     output, drawn small: a category where everything is crowded but one cell */
+  .hero-fig svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .hero-fig-cap { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; line-height: 1.7; color: var(--fg-muted); }
+
+  /* buttons, straight off the site */
+  .btn {
+    font-family: var(--sans); font-size: .95rem; font-weight: 600; padding: .85em 1.4em;
+    border-radius: 6px; display: inline-block; text-decoration: none; cursor: pointer;
+    transition: transform .24s var(--ease), background .24s var(--ease);
+  }
+  .btn-mint { border: var(--line); background: var(--mint); color: var(--ink); }
+  .btn-mint:hover { transform: translateY(-2px); background: #43b89a; }
+  .btn-line { border: var(--line); background: var(--paper); color: var(--ink); }
+  .btn-line:hover { transform: translateY(-2px); background: var(--paper-2); }
+  .btn[disabled], .btn.disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+
+  /* fields — underline only, as on the site */
+  .field-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: baseline; }
+  .field-row input, #f-brand, #f-category, #f-category-manual {
+    font-family: var(--sans); font-size: 1rem; color: var(--ink); background: transparent;
+    border: 0; border-bottom: 1px solid var(--fg-faint); padding: .6em 0; outline: none;
+    transition: border-color .24s var(--ease), border-width .24s var(--ease);
+  }
+  .field-row input:focus, #f-brand:focus, #f-category:focus, #f-category-manual:focus {
+    border-bottom-color: var(--mint); border-bottom-width: 2px;
+  }
+  input::placeholder { color: var(--fg-faint); }
   .field-row .f-name { flex: 0 0 38%; }
-  .field-row .f-url { flex: 1; }
+  .field-row .f-url { flex: 1; min-width: 0; }
   .field-row .f-x {
-    flex: 0 0 auto; background: none; border: none; color: var(--hairline);
+    flex: 0 0 auto; background: none; border: none; color: var(--fg-faint);
     font-family: var(--sans); font-size: 17px; cursor: pointer; padding: 0 4px; visibility: hidden;
   }
   .field-row.removable .f-x { visibility: visible; }
   .field-row .f-x:hover { color: var(--coral); }
-  .group-label { margin: 28px 0 8px; }
-  .optional { color: var(--hairline); letter-spacing: .08em; }
-
-  /* finder */
-  .find-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-  #f-brand {
-    flex: 1 1 260px; font-family: var(--sans); font-size: 17px; color: var(--ink);
-    background: transparent; border: none; border-bottom: 1px solid var(--divider);
-    padding: 10px 2px; outline: none;
-  }
-  #f-brand:focus { border-bottom-color: var(--ink); }
-  #find-btn {
-    font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--paper);
-    background: var(--ink); border: none; padding: 12px 22px; cursor: pointer;
-  }
-  #find-btn:hover { background: var(--green); }
-  #find-btn[disabled] { opacity: .5; cursor: default; }
-  .find-status { font-family: var(--sans); font-size: 14px; color: var(--label); margin-top: 16px; }
+  .find-row { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  #f-brand { flex: 1 1 200px; }
+  #f-category { flex: 1 1 200px; }
+  #f-category-manual { width: 100%; }
+  .group-label { margin: 26px 0 6px; }
+  #find-btn { border: 0; }
+  .find-status { font-family: var(--sans); font-size: 14px; color: var(--fg-muted); margin-top: 16px; }
   .find-status.err { color: var(--coral); }
-  .mode-link { display: block; margin-top: 18px; font-size: 14px; color: var(--label); }
+  .mode-link { display: inline-block; margin-top: 18px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); text-decoration: none; border-bottom: 1px solid var(--divider); }
+  .mode-link:hover { color: var(--ink); border-bottom-color: var(--coral); }
+  .guidance { font-family: var(--sans); font-size: .95rem; color: var(--fg-muted); margin: 18px 0 0; max-width: 58ch; }
+  .run-note { margin-top: 14px; }
+  .input-error { font-family: var(--sans); font-size: 14px; color: var(--coral); margin-top: 16px; display: none; }
 
-  /* the wait — three drawings of what the index is actually doing */
-  .wait-pair {
-    display: grid; grid-template-columns: 300px minmax(0, 1fr);
-    gap: 48px; align-items: start; width: 100%;
+  /* the three cards, in the site's card idiom */
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: var(--line); }
+  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } }
+  .step-card { padding: 34px 30px; border-right: var(--line); }
+  .step-card:last-child { border-right: none; }
+  @media (max-width: 900px) {
+    .step-card { border-right: none; border-bottom: var(--line); }
+    .step-card:last-child { border-bottom: none; }
   }
-  @media (max-width: 780px) {
-    .wait-pair { grid-template-columns: 1fr; gap: 26px; }
-    .stage { max-width: 240px; }
+  .step-card .cn { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--fg-faint); }
+  .step-card .cart { margin: 20px 0 22px; }
+  .step-card .cart svg { width: 100%; max-width: 160px; height: auto; }
+  .step-card h3 { font-family: var(--sans); font-weight: 700; font-size: 1.05rem; line-height: 1.25; margin: 0 0 10px; }
+  .step-card p { font-family: var(--sans); font-size: .93rem; line-height: 1.6; color: var(--fg-muted); margin: 0; }
+
+  /* the dark band — what it will not do */
+  .band-dark { border: var(--line); background: var(--ink-2); color: var(--paper); padding: 44px 52px; }
+  @media (max-width: 900px) { .band-dark { padding: 32px 24px; } }
+  .band-dark .mono-label { color: var(--mint); }
+  .band-dark h2 {
+    font-family: var(--serif); font-weight: 900; font-size: clamp(1.7rem, 2.6vw, 2.3rem);
+    line-height: 1.06; letter-spacing: -.012em; margin: 16px 0 20px; max-width: 24ch;
   }
-  .stage { width: 100%; max-width: 300px; position: sticky; top: 40px; }
-  .stage svg { width: 100%; height: auto; overflow: visible; }
-  .stage .ln { fill: none; stroke-width: 1.4; }
-  #progress-log p.aside {
-    font-family: var(--serif); font-weight: 900; font-size: 18px; line-height: 1.35;
-    letter-spacing: -.01em; color: var(--ink); margin: 16px 0 4px;
-  }
-  #progress-log p.aside::after { display: none; }
-  #progress-log p.aside .sub {
-    display: block; font-family: var(--sans); font-weight: 500; font-size: 13px;
-    letter-spacing: 0; color: var(--label); margin-top: 4px;
-  }
-  @keyframes converge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--to)); } }
-  @keyframes peel { 0%, 55% { opacity: 1; transform: translateX(0); } 80%, 100% { opacity: 0; transform: translateX(26px); } }
-  @keyframes fillcell { 0%, 100% { opacity: .12; } 50% { opacity: 1; } }
-  @keyframes sweep { to { stroke-dashoffset: 0; } }
-  .cv1 { animation: converge 3.6s ease-in-out infinite; }
-  .cv2 { animation: converge 3.6s ease-in-out infinite .25s; }
-  .cv3 { animation: converge 3.6s ease-in-out infinite .5s; }
-  .pl1 { animation: peel 4.4s ease-in-out infinite; }
-  .pl2 { animation: peel 4.4s ease-in-out infinite .5s; }
-  .stage .sq { animation: fillcell 3s ease-in-out infinite; }
-  .sweepln { stroke-dasharray: 300; stroke-dashoffset: 300; animation: sweep 2.6s ease-out infinite; }
-  @media (prefers-reduced-motion: reduce) {
-    .cv1, .cv2, .cv3, .pl1, .pl2, .stage .sq, .sweepln { animation: none; }
-    .sweepln { stroke-dashoffset: 0; }
-  }
+  .band-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px; margin-top: 30px; }
+  @media (max-width: 780px) { .band-grid { grid-template-columns: 1fr; gap: 24px; } }
+  .band-grid h4 { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--mint); margin: 0 0 8px; font-weight: 500; }
+  .band-grid p { font-family: var(--sans); font-size: .93rem; line-height: 1.6; color: var(--on-dark-muted); margin: 0; }
 
   /* the found set */
   .fb { border-top: 1px solid var(--divider); padding: 15px 0; }
   .fb:last-of-type { border-bottom: 1px solid var(--divider); }
   .fb-head { display: flex; align-items: baseline; gap: 10px; }
   .fb-name { font-family: var(--serif); font-weight: 900; font-size: 19px; }
-  .fb-co { font-family: var(--sans); font-size: 12.5px; color: var(--label); }
+  .fb-co { font-family: var(--sans); font-size: 12.5px; color: var(--fg-muted); }
   .fb-own { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--coral); }
   .fb-sites { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
   .fb-site { display: flex; align-items: flex-start; gap: 9px; font-size: 14px; }
   .fb-site input { margin-top: 3px; }
-  .fb-site.blocked { color: var(--hairline); }
-  .fb-url { font-family: var(--mono); font-size: 12px; color: var(--label); word-break: break-all; }
+  .fb-site.blocked { color: var(--fg-faint); }
+  .fb-url { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); word-break: break-all; }
   .fb-tag {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
     border: 1px solid var(--divider); padding: 1px 5px; margin-left: 7px; white-space: nowrap;
   }
   .fb-tag.no { color: var(--coral); border-color: var(--coral); }
   .fb-none { font-size: 13.5px; color: var(--coral); margin-top: 6px; }
-  #f-category, #f-category-manual {
-    font-family: var(--sans); font-size: 15px; color: var(--ink); width: 100%;
-    background: transparent; border: none; border-bottom: 1px solid var(--divider);
-    padding: 10px 2px; outline: none; transition: border-color .15s;
-  }
-  #f-category { flex: 1 1 220px; width: auto; }
-  #f-category:focus, #f-category-manual:focus { border-bottom-color: var(--ink); }
-  #f-category + .guidance { margin-top: 14px; margin-bottom: 0; }
   #add-competitor {
-    background: none; border: none; font-family: var(--sans); font-size: 13px;
-    color: var(--label); cursor: pointer; padding: 8px 0;
-    border-bottom: 1px solid var(--divider);
+    background: none; border: none; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); cursor: pointer;
+    padding: 8px 0; border-bottom: 1px solid var(--divider);
   }
   #add-competitor:hover { color: var(--ink); border-bottom-color: var(--coral); }
-  .guidance { font-size: 15px; color: var(--label); margin: 24px 0 32px; }
-  #run-btn {
-    font-family: var(--sans); font-size: 15px; font-weight: 600;
-    color: var(--white); background: var(--green); border: 1px solid var(--green);
-    padding: 14px 34px; cursor: pointer; transition: background .15s, border-color .15s;
-  }
-  #run-btn:hover { background: var(--coral); border-color: var(--coral); }
-  .quiet-row {
-    display: flex; gap: 26px; flex-wrap: wrap; margin-top: 46px;
-    padding-top: 20px; border-top: 1px solid var(--divider);
-  }
-  .quiet-row a { font-size: 13.5px; color: var(--label); text-decoration: none; border-bottom: 1px solid var(--divider); padding-bottom: 1px; }
-  .quiet-row a:hover { color: var(--coral); border-bottom-color: var(--coral); }
-  .run-note { margin: 16px 0 0; font-size: 13.5px; }
-  .input-error { font-family: var(--sans); font-size: 14px; color: var(--coral); margin-top: 16px; display: none; }
+
   .offline-note {
     display: none; font-family: var(--sans); font-size: 13.5px; line-height: 1.65;
-    color: var(--label); margin-top: 20px; padding-left: 16px; border-left: 2px solid var(--coral);
+    color: var(--fg-muted); margin-top: 22px; padding-left: 16px; border-left: 2px solid var(--coral);
   }
   .offline-note strong { color: var(--ink); font-weight: 600; }
   .offline-note code {
     display: block; font-family: var(--mono); font-size: 12px; color: var(--ink);
     background: rgba(48,48,48,.05); padding: 5px 8px; margin: 5px 0; width: fit-content;
   }
-  #run-btn.disabled { background: var(--hairline); border-color: var(--hairline); cursor: not-allowed; }
-  #run-btn.disabled:hover { background: var(--hairline); border-color: var(--hairline); }
+
+  /* the site's footer, verbatim */
+  footer.site {
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    padding: 0 8px 44px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  footer.site .mark { display: flex; align-items: baseline; font-weight: 600; color: var(--ink); letter-spacing: .14em; }
+  footer.site .social { display: flex; gap: 20px; }
+  footer.site a { color: var(--fg-muted); text-decoration: none; }
+  footer.site a:hover { color: var(--ink); }
+  footer.site .tag { color: var(--fg-faint); }
 
   /* ---------------------------------------------------------- progress */
-  #screen-progress { min-height: 100vh; display: none; align-items: center; }
+  #screen-progress {
+    min-height: 100vh; display: none; flex-direction: column; padding-top: 12px;
+  }
+  #screen-progress .progress-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .progress-wrap { width: 100%; max-width: 600px; margin: 0 auto; padding: 60px 28px; }
   #progress-log { margin-top: 30px; }
   #progress-log p { margin: 0 0 13px; color: var(--label); font-size: 17px; animation: fadein .45s ease both; }
@@ -588,83 +678,221 @@
 </style>
 </head>
 <body>
+<div class="grain" aria-hidden="true"></div>
 
 <!-- ============================================ INPUT -->
 <div id="screen-input">
-  <div class="input-wrap">
-    <div class="eyebrow">Rupture</div>
-    <h1>The Sameness Index</h1>
-    <p class="lede">For branded prescription medicines. How much of your category's messaging is shared with a competitor, and which territories nobody has taken — read from the brands' own websites, with the regulatory content and everything the label determines set aside.</p>
+  <div class="wrap">
 
-    <!-- Start from a brand name. Finding four competitor URLs is the hardest
-         thing this form can ask, and it asks before anyone has seen a reason
-         to bother. -->
-    <div id="find-mode">
-      <div class="group-label eyebrow">Your brand</div>
-      <div class="find-row">
-        <input id="f-brand" type="text" placeholder="Brand name, e.g. Ozempic" autocomplete="off">
-        <input id="f-category" type="text" placeholder="Therapy area, e.g. type 2 diabetes" autocomplete="off">
-        <button id="find-btn" type="button">Find competitors</button>
-      </div>
-      <p class="guidance">Both are needed. The brand name on its own is often ambiguous — plenty of medicines are marketed in more than one indication, and the therapy area is what points the search at the right sites and decides what every brand is measured against.</p>
-      <div class="find-status" id="find-status" hidden></div>
-    </div>
+    <header class="site">
+      <a href="https://thisisrupture.com" class="mark">This is Rupture<span class="r-dot"></span></a>
+      <nav>
+        <a href="https://thisisrupture.com/#work">Where we add value</a>
+        <a href="https://thisisrupture.com/essay">The essay</a>
+        <a href="https://thisisrupture.com/focused-acceleration-model">The model</a>
+        <a href="https://thisisrupture.com/#contact" class="cta">Find your daylight</a>
+      </nav>
+    </header>
 
-    <div id="manual-mode" hidden>
-      <div class="group-label eyebrow">Your brand</div>
-      <div id="your-brand">
-        <div class="field-row">
-          <input class="f-name" type="text" placeholder="Brand name">
-          <input class="f-url" type="url" placeholder="https://www.yourbrand.com">
-          <button class="f-x" tabindex="-1">×</button>
+    <!-- HERO. The form is the hero, because a tool that hides its one field
+         behind an explanation gets read and not used. -->
+    <section class="hero-rect">
+      <div class="hero-left">
+        <div>
+          <div class="mono-label">A Rupture tool — free</div>
+          <h1>The Sameness<br>Index.</h1>
+          <p class="lede">How much of your category's messaging is shared with a competitor — and which territories nobody has taken.</p>
+
+          <div id="find-mode">
+            <div class="find-row">
+              <input id="f-brand" type="text" placeholder="Your brand, e.g. Ozempic" autocomplete="off">
+              <input id="f-category" type="text" placeholder="Therapy area, e.g. type 2 diabetes" autocomplete="off">
+            </div>
+            <div class="cta-row" style="margin-top:26px">
+              <button id="find-btn" class="btn btn-mint" type="button">Find competitors</button>
+              <a class="mode-link" id="to-manual" href="#">Enter addresses yourself</a>
+            </div>
+            <p class="guidance">Both fields are needed. A brand name alone is often ambiguous — plenty of medicines are marketed in more than one indication, and the therapy area is what points the search at the right sites and decides what every brand is measured against.</p>
+            <div class="find-status" id="find-status" hidden></div>
+          </div>
+
+          <div id="manual-mode" hidden>
+            <div class="group-label mono-label">Your brand</div>
+            <div id="your-brand">
+              <div class="field-row">
+                <input class="f-name" type="text" placeholder="Brand name">
+                <input class="f-url" type="url" placeholder="https://www.yourbrand.com">
+                <button class="f-x" tabindex="-1">×</button>
+              </div>
+            </div>
+            <div class="group-label mono-label">Competitors</div>
+            <div id="competitors"></div>
+            <button id="add-competitor" type="button">Add another competitor</button>
+            <div class="group-label mono-label">Therapy area</div>
+            <input id="f-category-manual" type="text" placeholder="e.g. type 2 diabetes" autocomplete="off">
+            <br><a class="mode-link" id="to-find" href="#">Back to starting from a brand name</a>
+          </div>
+
+          <!-- What the finder came back with. Nothing runs until the set is
+               confirmed: who counts as a competitor is a judgement the tool
+               will sometimes get wrong. -->
+          <div id="found" hidden>
+            <div class="group-label mono-label">The set to analyse</div>
+            <p class="guidance" style="margin-top:0" id="found-intro"></p>
+            <div id="found-list"></div>
+            <a class="mode-link" id="found-again" href="#">Start again from a different brand</a>
+          </div>
+
+          <div id="post" hidden>
+            <p class="guidance" id="analysing-as"></p>
+            <div class="cta-row" style="margin-top:22px">
+              <button id="run-btn" class="btn btn-mint" type="button">Run the index</button>
+              <a class="mode-link" id="load-example" href="#">See a worked example</a>
+            </div>
+            <p class="guidance run-note">Four to six brands gives the most reliable read. Takes two to five minutes; you can close the tab and come back to the link.</p>
+            <div class="input-error" id="input-error"></div>
+          </div>
+
+          <div class="offline-note" id="offline-note">
+            <strong>This page is open as a file, so live runs are not available.</strong>
+            Reading competitor websites needs the analysis server — a browser cannot fetch other people's
+            domains by itself. To run your own brands:
+            <code>pip install -r requirements.txt</code>
+            <code>export ANTHROPIC_API_KEY=sk-ant-…</code>
+            <code>uvicorn server:app</code>
+            then open <strong>http://127.0.0.1:8000</strong>. The worked example needs none of that.
+          </div>
+        </div>
+
+        <div class="stats">
+          <div><span>Reads</span>Public brand websites</div>
+          <div><span>Measures</span>Messaging and art direction</div>
+          <div><span>Takes</span>Two to five minutes</div>
+          <div><span>Leaves you</span>A permanent link</div>
         </div>
       </div>
 
-      <div class="group-label eyebrow">Competitors</div>
-      <div id="competitors"></div>
-      <button id="add-competitor" type="button">Add another competitor</button>
-      <div class="group-label eyebrow">Therapy area</div>
-      <input id="f-category-manual" type="text" placeholder="e.g. type 2 diabetes" autocomplete="off">
-      <a class="mode-link" id="to-find" href="#">Back to starting from a brand name</a>
-    </div>
+      <!-- The site puts a photograph here. This puts the tool's own output:
+           a category where every territory is taken but one. -->
+      <div class="hero-right">
+        <div class="mono-label">What it produces</div>
+        <div class="hero-fig">
+          <svg viewBox="0 0 320 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A grid of messaging territories, all crowded except one, which is empty.">
+            <g id="hero-grid"></g>
+          </svg>
+        </div>
+        <p class="hero-fig-cap">Every territory in the category, shaded by how many brands are standing in it. The one nobody is standing in is the point.</p>
+        <div class="cta-row">
+          <a class="btn btn-line" id="load-example-2" href="#">See a worked example →</a>
+        </div>
+      </div>
+    </section>
 
-    <!-- What the finder came back with. Nothing is pre-run: the set has to be
-         confirmed, because who counts as a competitor is a judgement the tool
-         will sometimes get wrong. -->
-    <div id="found" hidden>
-      <div class="group-label eyebrow">The set to analyse</div>
-      <p class="guidance" id="found-intro"></p>
-      <div id="found-list"></div>
-      <a class="mode-link" id="found-again" href="#">Start again from a different brand</a>
-    </div>
+    <!-- HOW IT READS A CATEGORY -->
+    <section class="steps">
+      <article class="step-card">
+        <div class="cn">01</div>
+        <div class="cart">
+          <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="square">
+            <rect x="8" y="10" width="52" height="68"/>
+            <line x1="16" y1="24" x2="52" y2="24"/><line x1="16" y1="34" x2="52" y2="34"/>
+            <line x1="16" y1="44" x2="44" y2="44"/><line x1="16" y1="58" x2="52" y2="58" stroke="var(--coral)"/>
+            <line x1="16" y1="66" x2="46" y2="66" stroke="var(--coral)"/>
+            <path d="M72,44 H104" stroke="var(--fg-faint)"/><path d="M98,39 L106,44 L98,49" stroke="var(--fg-faint)"/>
+            <rect x="112" y="22" width="40" height="44" stroke="var(--mint)" stroke-width="2.5"/>
+            <line x1="120" y1="36" x2="144" y2="36" stroke="var(--mint)" stroke-width="2.5"/>
+            <line x1="120" y1="46" x2="138" y2="46" stroke="var(--mint)" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <h3>The regulatory content comes out first.</h3>
+        <p>Safety information, indication statements, prescribing links, disclaimers — nobody chose a word of it, and its volume varies by molecule rather than by marketing. What the label determines is set aside too. Only what somebody decided gets scored.</p>
+      </article>
+      <article class="step-card">
+        <div class="cn">02</div>
+        <div class="cart">
+          <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5">
+            <rect x="10" y="12" width="26" height="26" fill="var(--ink)" stroke="none"/>
+            <rect x="42" y="12" width="26" height="26" fill="rgba(48,48,48,.55)" stroke="none"/>
+            <rect x="74" y="12" width="26" height="26" fill="rgba(48,48,48,.3)" stroke="none"/>
+            <rect x="106" y="12" width="26" height="26" fill="var(--paper-2)" stroke="none"/>
+            <rect x="10" y="44" width="26" height="26" fill="rgba(48,48,48,.55)" stroke="none"/>
+            <rect x="42" y="44" width="26" height="26" fill="rgba(48,48,48,.3)" stroke="none"/>
+            <rect x="74" y="44" width="26" height="26" fill="var(--mint)" stroke="var(--ink)" stroke-width="2"/>
+            <rect x="106" y="44" width="26" height="26" fill="var(--mint)" stroke="var(--ink)" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3>Every territory is named, including the empty ones.</h3>
+        <p>The list is not built only from what these brands say — an inventory drawn from the sites has a user for every territory by construction. Half of it comes from the published literature on what patients and clinicians say is missing.</p>
+      </article>
+      <article class="step-card">
+        <div class="cn">03</div>
+        <div class="cart">
+          <svg viewBox="0 0 160 88" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="square">
+            <circle cx="26" cy="30" r="13" fill="var(--mint)" stroke="var(--ink)" stroke-width="2"/>
+            <text x="26" y="36" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="18" fill="var(--ink)" stroke="none">7</text>
+            <path d="M26,45 V64 H74" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3"/>
+            <rect x="82" y="14" width="66" height="60"/>
+            <line x1="90" y1="28" x2="140" y2="28" stroke="var(--fg-faint)"/>
+            <rect x="90" y="38" width="42" height="9" fill="var(--mint)" stroke="none"/>
+            <line x1="90" y1="58" x2="132" y2="58" stroke="var(--fg-faint)"/>
+            <line x1="90" y1="66" x2="122" y2="66" stroke="var(--fg-faint)"/>
+            <path d="M74,64 L82,64" stroke="var(--ink)" stroke-width="1"/><path d="M76,60 L82,64 L76,68" stroke="var(--ink)" stroke-width="1"/>
+          </svg>
+        </div>
+        <h3>Every number is one click from its evidence.</h3>
+        <p>Nothing appears that cannot be traced to the wording on a brand's website, or the image, that produced it. Click a figure and the quote opens on the page it came from, highlighted. That is the tool's entire claim to credibility.</p>
+      </article>
+    </section>
 
-    <!-- Nothing below appears until there is a set to run. A first view of one
-         field and one button converts; a wall of options does not. -->
-    <div id="post" hidden>
-      <p class="guidance" id="analysing-as"></p>
-      <button id="run-btn" type="button">Run the index</button>
-      <p class="guidance run-note">Four to six brands gives the most reliable read. Takes two to five minutes; you can close the tab.</p>
-      <div class="input-error" id="input-error"></div>
-    </div>
-    <div class="offline-note" id="offline-note">
-      <strong>This page is open as a file, so live runs are not available.</strong>
-      Reading competitor websites needs the local analysis server — a browser cannot fetch other people's
-      domains by itself. To run your own brands:
-      <code>pip install -r requirements.txt</code>
-      <code>export ANTHROPIC_API_KEY=sk-ant-…</code>
-      <code>uvicorn server:app</code>
-      then open <strong>http://127.0.0.1:8000</strong>. The worked example below needs none of that.
-    </div>
-    <div class="quiet-row">
-      <a id="load-example" href="#">See a worked example</a>
-      <a id="to-manual" href="#">Enter addresses yourself</a>
-      <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index">hello@thisisrupture.com</a>
-    </div>
+    <!-- THE HONEST BIT -->
+    <section class="band-dark">
+      <div class="mono-label">What it will not do</div>
+      <h2>A number you cannot check is worth nothing.</h2>
+      <p style="font-family:var(--sans);font-size:1.05rem;line-height:1.55;max-width:62ch;color:var(--on-dark-muted);margin:0">
+        This reads public websites in one market on one date. It is a snapshot of what a category publishes, not a verdict on its strategy — and the report says so, in the same detail it says everything else.
+      </p>
+      <div class="band-grid">
+        <div>
+          <h4>Not the whole message</h4>
+          <p>Websites only. Congress activity, sales aids, field and MSL messaging, paid media and social are outside it.</p>
+        </div>
+        <div>
+          <h4>Not a regulatory read</h4>
+          <p>Availability ratings are a strategist's assessment. Anything worth pursuing still needs medical, legal and regulatory review.</p>
+        </div>
+        <div>
+          <h4>Not hidden</h4>
+          <p>Every rule applied is published on the result page, applied identically to every brand, and open to challenge.</p>
+        </div>
+      </div>
+      <div class="cta-row" style="margin-top:34px">
+        <a class="btn btn-mint" href="https://thisisrupture.com/#contact">Talk to us about your category</a>
+      </div>
+    </section>
+
+    <footer class="site">
+      <div class="mark">THIS IS RUPTURE<span class="r-dot"></span></div>
+      <div>The Sameness Index · <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index">hello@thisisrupture.com</a></div>
+      <div class="social">
+        <a href="https://www.linkedin.com/in/kristianwebb/" target="_blank" rel="noopener">LinkedIn ↗</a>
+        <a href="https://substack.com/@rupturethinking" target="_blank" rel="noopener">Substack ↗</a>
+      </div>
+      <div class="tag">Different beats better every time</div>
+    </footer>
+
   </div>
 </div>
 
 <!-- ============================================ PROGRESS -->
 <div id="screen-progress">
+  <!-- The bar stays put for the two to five minutes this takes. A wait with no
+       chrome on it reads as a page that has broken. -->
+  <div class="wrap" style="gap:0">
+    <header class="site">
+      <a href="https://thisisrupture.com" class="mark">This is Rupture<span class="r-dot"></span></a>
+      <nav><a href="https://thisisrupture.com/#contact" class="cta">Find your daylight</a></nav>
+    </header>
+  </div>
   <div class="progress-wrap">
     <div class="eyebrow">Running the index</div>
     <div class="wait-pair">
@@ -1026,7 +1254,10 @@ $("#run-btn").addEventListener("click", () => {
   runIndex(brands, therapy);
 });
 
-$("#load-example").addEventListener("click", async e => {
+/* Two ways in, because the one beside the run button only appears once a set
+   has been confirmed, and someone arriving cold needs to see the output before
+   they will type anything. */
+async function loadWorkedExample(e) {
   e.preventDefault();
   const inline = document.getElementById("worked-example");
   if (inline) { try { render(JSON.parse(inline.textContent)); return; } catch (x) {} }
@@ -1039,13 +1270,47 @@ $("#load-example").addEventListener("click", async e => {
     err.textContent = "Could not load the worked example. Regenerate it with generate_worked_example.py.";
     err.style.display = "block";
   }
+}
+["#load-example", "#load-example-2"].forEach(sel => {
+  const n = $(sel);
+  if (n) n.addEventListener("click", loadWorkedExample);
 });
+
+/* The hero figure is the tool's own output at thumbnail size: a category where
+   every territory is taken but one. Drawn rather than drafted as markup so the
+   shading is a single readable rule. */
+(function heroGrid() {
+  const g = $("#hero-grid");
+  if (!g) return;
+  const cols = 8, rows = 6, w = 38, h = 36, gap = 2;
+  // 4 = every brand, 0 = nobody. Hand-set so the shape reads as a crowded
+  // category with one clear cell, rather than as noise.
+  const shade = [
+    4,4,3,4,3,2,4,3,
+    3,4,4,2,3,4,2,4,
+    4,2,3,4,4,3,4,2,
+    2,3,4,3,2,4,3,4,
+    4,4,2,4,3,3,4,3,
+    3,2,4,2,4,0,2,4,
+  ];
+  const fill = n => ["var(--mint)", "var(--paper)", "rgba(48,48,48,.3)", "rgba(48,48,48,.62)", "var(--ink)"][n];
+  let out = "";
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const n = shade[r * cols + c];
+      out += `<rect x="${c * (w + gap)}" y="${r * (h + gap)}" width="${w}" height="${h}" fill="${fill(n)}"` +
+             (n === 0 ? ' stroke="var(--ink)" stroke-width="2"' : "") + "/>";
+      if (n === 0) out += `<text x="${c * (w + gap) + w / 2}" y="${r * (h + gap) + h / 2 + 4}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--mint-ink)">?</text>`;
+    }
+  }
+  g.innerHTML = out;
+})();
 
 /* ---------------------------------------------------- run */
 function showScreen(id) {
   ["screen-input", "screen-progress", "screen-result"].forEach(s => document.getElementById(s).style.display = "none");
   const scr = document.getElementById(id);
-  scr.style.display = id === "screen-result" ? "block" : "flex";
+  scr.style.display = id === "screen-progress" ? "flex" : "block";
   window.scrollTo(0, 0);
   if (id === "screen-progress") startWaiting(); else stopWaiting();
 }
