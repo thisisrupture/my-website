@@ -256,8 +256,12 @@ async def test_own_brand_unreadable_stops_the_run(monkeypatch):
     assert errs and "built around your own brand" in errs[0]["text"]
 
 
+# Enough elective fragments to clear MIN_ELECTIVES — a brand below that
+# threshold is treated as unread, which _thin_layers exercises separately.
 async def _layers(): return {"category_guess": "test category", "mandated_word_estimate": 10,
-                             "molecule": ["m"], "elective": ["an elective fragment"]}
+                             "molecule": ["m"], "elective": ["an elective fragment"] + [f"fragment {i}" for i in range(6)]}
+async def _thin_layers(): return {"category_guess": "test category", "mandated_word_estimate": 10,
+                                  "molecule": ["m"], "elective": []}
 async def _space(): return [{"id": "C01", "label": "L", "description": "D", "source": "Observed in category.",
                              "tier": "open", "tier_reasoning": "R"},
                             {"id": "X01", "label": "L2", "description": "D2", "source": "Burden literature.",
@@ -373,3 +377,79 @@ Sitemap: https://trulicity.lilly.com/sitemap.xml""".splitlines())
     closed = RobotFileParser()
     closed.parse(["User-agent: *", "Disallow: /"])
     assert not closed.can_fetch("*", "https://anything.example/page")
+
+
+@pytest.mark.anyio
+async def test_a_brand_with_no_messaging_leaves_the_figures(monkeypatch):
+    """The failure that published a wrong number.
+
+    A corporate or regional page can be fetched, be full of words, and carry no
+    brand messaging at all. That brand then shares nothing with anybody, and
+    sharing nothing scores as perfect distinctiveness — so a half-read category
+    came back as "distinct" with a confident zero on the front of it. The brand
+    has to leave the figures and be named, exactly as an unreachable site is.
+    """
+    import server as s
+
+    async def crawl(fetcher, brand):
+        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, ""
+
+    async def layers(b, c):
+        return await (_thin_layers() if b == "Empty" else _layers())
+
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+    monkeypatch.setattr(s, "Fetcher", lambda http: _NoHTTP())
+    monkeypatch.setattr(s, "crawl_brand", crawl)
+    monkeypatch.setattr(s, "stage_layers", layers)
+    monkeypatch.setattr(s, "stage_space", lambda cat, e: _space())
+    monkeypatch.setattr(s, "stage_code", lambda b, f, p: _code())
+    monkeypatch.setattr(s, "stage_findings", lambda *a: _findings())
+
+    brands = [{"name": "Mine", "url": "https://a.test"},
+              {"name": "Empty", "url": "https://b.test"},
+              {"name": "Other", "url": "https://c.test"}]
+    result, notes = None, []
+    async for e in s.pipeline(brands):
+        if e["type"] == "result": result = e["data"]
+        if e["type"] == "progress": notes.append(e["text"])
+        if e["type"] == "error": raise AssertionError("run aborted: " + e["text"])
+
+    assert result is not None
+    named = [u["name"] for u in result["meta"]["unreadable"]]
+    assert named == ["Empty"], "the brand carrying no messaging must be named"
+    assert any("carries no brand messaging" in n for n in notes)
+
+    scored = [p["brand"] for p in result["convergence"]["messaging"]["per"]]
+    assert "Empty" not in scored, "an unread brand must not be scored"
+    assert set(scored) == {"Mine", "Other"}
+    assert result["convergence"]["overall"] > 0, "two brands sharing a territory cannot score zero"
+
+
+@pytest.mark.anyio
+async def test_one_readable_brand_fails_the_run_rather_than_scoring_it(monkeypatch):
+    """One brand is not a comparison, whatever the pages weighed."""
+    import server as s
+
+    async def crawl(fetcher, brand):
+        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, ""
+
+    async def layers(b, c):
+        return await (_layers() if b == "Mine" else _thin_layers())
+
+    monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+    monkeypatch.setattr(s, "Fetcher", lambda http: _NoHTTP())
+    monkeypatch.setattr(s, "crawl_brand", crawl)
+    monkeypatch.setattr(s, "stage_layers", layers)
+    monkeypatch.setattr(s, "stage_space", lambda cat, e: _space())
+    monkeypatch.setattr(s, "stage_code", lambda b, f, p: _code())
+    monkeypatch.setattr(s, "stage_findings", lambda *a: _findings())
+
+    brands = [{"name": "Mine", "url": "https://a.test"},
+              {"name": "Empty", "url": "https://b.test"}]
+    result, error = None, None
+    async for e in s.pipeline(brands):
+        if e["type"] == "result": result = e["data"]
+        if e["type"] == "error": error = e["text"]
+
+    assert result is None, "a one-brand run must not publish a score"
+    assert error and "one brand is not a comparison" in error

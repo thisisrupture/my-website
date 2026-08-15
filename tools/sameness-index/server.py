@@ -56,6 +56,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MAX_RUNS_PER_IP_PER_DAY = int(os.environ.get("SAMENESS_RUNS_PER_IP", "5"))
 MAX_CONCURRENT_RUNS = int(os.environ.get("SAMENESS_MAX_CONCURRENT", "3"))
 MAX_BRANDS_PER_RUN = 7
+# Below this many elective fragments a brand has not really been read, whatever
+# the page weighed. Set low: a thin brand site is a finding, an empty one is a
+# wrong address.
+MIN_ELECTIVES = 5
 # Rupture palette. Mint is reserved as a highlight, not a brand accent —
 # it lacks contrast against the paper at label sizes.
 ACCENTS = ["#FF686B", "#1F5B4A", "#303030", "#727270", "#51D4B2", "#ABAAA8", "#D7D6D2"]
@@ -260,21 +264,27 @@ def convergence(positions, brands):
     `positions` must already carry `claimers`. A brand that uses nothing scores
     zero and is still counted — having nothing to say is not distinctiveness.
     """
-    per = []
+    per, empty = [], []
     for b in brands:
         used = [p for p in positions if b in p["claimers"]]
+        if not used:
+            # Scoring this brand zero would read as perfect distinctiveness and
+            # drag the category score down with it. A brand that uses nothing
+            # was not read; it is not distinctive.
+            empty.append(b)
+            continue
         shared = [p for p in used if len(p["claimers"]) > 1]
         per.append({
             "brand": b,
             "used": len(used),
             "shared": len(shared),
             "alone": len(used) - len(shared),
-            "pct": r0(len(shared) / len(used) * 100) if used else 0,
+            "pct": r0(len(shared) / len(used) * 100),
             "shared_ids": [p["id"] for p in shared],
             "alone_ids": [p["id"] for p in used if len(p["claimers"]) == 1],
         })
     mean = r0(sum(p["pct"] for p in per) / len(per)) if per else 0
-    return {"per": per, "mean": mean}
+    return {"per": per, "mean": mean, "not_scored": empty}
 
 
 # ---------------------------------------------------------------------------
@@ -1241,6 +1251,55 @@ async def pipeline(brands_in, category_given=""):
             stripped = layers.get("mandated_word_estimate")
             if stripped:
                 yield ev({"type": "progress", "text": f"{b}: roughly {stripped:,} words of regulatory text removed; {len(electives[b])} messaging decisions retained for scoring."})
+
+        # A page can be fetched, be full of text, and still contain no brand
+        # messaging — a region selector, a corporate holding page, an
+        # interstitial. The crawl gate only asks whether there were words.
+        #
+        # Left alone this is the worst failure the tool has, because it does not
+        # look like one. A brand that contributed nothing shares nothing, and
+        # sharing nothing scores as perfect distinctiveness, so a half-read
+        # category publishes a confident low number and a headline saying the
+        # brands are saying different things. A brand nobody could read must
+        # leave the figures, exactly as an unreachable site does.
+        thin = [b for b in brands if len(electives.get(b, [])) < MIN_ELECTIVES]
+        for b in thin:
+            if b == yourn:
+                yield ev({"type": "error", "text": (
+                    f"{b}'s site was reached, but no brand messaging could be separated out of it — the page "
+                    "read as a region selector, a corporate page or an interstitial rather than the brand's own "
+                    "site. The report is built around your own brand, so there is nothing to run. Try the "
+                    "address of the brand site itself, or the patient site if you entered the HCP one."
+                )})
+                return
+            unreadable.append({
+                "name": b,
+                "url": next((x["url"] for x in brands_in if x["name"] == b), ""),
+                "reason": "no brand messaging on the page",
+                "note": (f"{b}'s site was reached, but no brand messaging could be separated out of it — what "
+                         "came back read as a region selector, a corporate page or an interstitial rather than "
+                         "the brand's own site. It is left out of every figure here."),
+            })
+            yield ev({"type": "progress", "text": (
+                f"{b}: the page was reached but carries no brand messaging — it reads as a corporate or "
+                "interstitial page rather than the brand's site. Leaving it out; the report will say so."
+            )})
+        if thin:
+            brands = [b for b in brands if b not in thin]
+            brands_in = [x for x in brands_in if x["name"] in brands]
+            for b in thin:
+                electives.pop(b, None)
+                molecules.pop(b, None)
+                corpora.pop(b, None)
+                image_cands.pop(b, None)
+            if len(brands) < 2:
+                yield ev({"type": "error", "text": (
+                    "Only one brand's site carried any messaging to analyse, and one brand is not a comparison. "
+                    + "Reached but empty: " + ", ".join(u["name"] for u in unreadable if u.get("reason") == "no brand messaging on the page") + ". "
+                    + "Those addresses are probably corporate or regional pages rather than the brand sites. "
+                      "Try the brand's own address and run it again."
+                )})
+                return
         # The whole territory list is built from this one phrase, so it decides
         # what every brand is measured against. Taking the first brand's guess
         # and discarding the rest silently is how a set spanning two
@@ -1443,6 +1502,16 @@ async def pipeline(brands_in, category_given=""):
         # messaging score alone and the page says so rather than quietly
         # averaging a number that does not exist.
         conv_msg = convergence(positions, brands)
+        if len(conv_msg["per"]) < 2:
+            # Everything upstream passed and the coding still came back empty for
+            # all but one brand. Publishing a score off one brand would be worse
+            # than saying so.
+            yield ev({"type": "error", "text": (
+                "Only one brand ended up with any messaging territories coded against it, and one brand is not "
+                "a comparison. This usually means an address points at a corporate or regional page rather than "
+                "the brand's own site. Check the addresses and run it again."
+            )})
+            return
         conv_img = convergence(visual_positions, visual_brands) if visual_positions and len(visual_brands) >= 2 else None
         overall = r0((conv_msg["mean"] + conv_img["mean"]) / 2) if conv_img else conv_msg["mean"]
         conv = {
@@ -1451,6 +1520,13 @@ async def pipeline(brands_in, category_given=""):
             "messaging": conv_msg,
             "imagery": conv_img,
             "imagery_brands": visual_brands,
+            "imagery_absent": None if conv_img else (
+                "No commissioned photography could be retrieved from these sites — the images on the pages read "
+                "were clinical, diagrams, pack shots or too small to be art direction."
+                if not visual_obs else
+                f"Commissioned photography was only readable on {len(visual_obs)} of {len(brands)} brands, and "
+                "art direction cannot be compared across one brand. The score covers messaging only."
+            ),
             "basis": (
                 "For each brand, the share of its territories that at least one rival also uses. The category "
                 "score is the mean across the brands analysed, calculated the same way for messaging and for "
@@ -1604,7 +1680,19 @@ async def pipeline(brands_in, category_given=""):
                                            conv, visual_positions)
         except Exception:
             summary = {}
-        headline = summary.get("headline") or fallback_headline
+        # The headline is written by the model and the score is computed, so the
+        # two can disagree — and the headline is the part that gets forwarded.
+        # If the written one does not carry the number printed beside it, the
+        # plain computed sentence is used instead.
+        written = (summary.get("headline") or "").strip()
+        if written and re.search(rf"\b{conv['overall']}\b", written):
+            headline = written
+        else:
+            headline = fallback_headline
+            if written:
+                yield ev({"type": "progress", "text": (
+                    "The written headline did not carry the computed score, so the plain computed one is used."
+                )})
         valid_refs = {p["id"] for p in positions} | {f"visual:{p['id']}" for p in visual_positions}
         findings = []
         for f in summary.get("findings", []) or []:

@@ -1309,11 +1309,13 @@ function render(data) {
   const note = $("#r-missing");
   if (missed.length) {
     note.hidden = false;
-    note.innerHTML =
-      `${esc(missed.map(m => m.name).join(" and "))} could not be read — ${missed.length === 1 ? "that site turns" : "those sites turn"} ` +
-      `away automated readers or builds ${missed.length === 1 ? "its page" : "their pages"} in the browser. ` +
-      `${missed.length === 1 ? "It is" : "They are"} competing in this category regardless, so a territory shown here as ` +
-      `used by nobody may well be used by ${missed.length === 1 ? "it" : "one of them"}.`;
+    const lines = missed.map(m => m.note ? esc(m.note) :
+      m.reason === "asked not to be read"
+        ? `${esc(m.name)}'s site asks automated readers not to read it, and the index honours that. It is left out of every figure here.`
+        : `${esc(m.name)}'s site could not be read — it turns away automated readers or builds its pages in the browser. It is left out of every figure here.`);
+    note.innerHTML = lines.join("<br><br>") +
+      `<br><br>${missed.length === 1 ? "It is" : "They are"} competing in this category regardless, so a territory shown ` +
+      `here as used by nobody may well be used by ${missed.length === 1 ? "it" : "one of them"}.`;
   } else {
     note.hidden = true;
   }
@@ -1382,9 +1384,11 @@ function renderScore() {
     ? "Category convergence<br>messaging and imagery, each measured<br>the same way, averaged"
     : "Category convergence<br>messaging only — the imagery<br>could not be read this run";
 
+  const absent = (DATA.convergence || {}).imagery_absent;
   $("#r-imscore").innerHTML =
     `<span data-act="shared">Messaging <b>${o.m.mean}</b></span>` +
-    (o.v ? `<span data-act="unusedimg">Imagery <b>${o.v.mean}</b></span>` : "");
+    (o.v ? `<span data-act="unusedimg">Imagery <b>${o.v.mean}</b></span>`
+         : (absent ? `<span style="cursor:default;max-width:340px;text-transform:none;letter-spacing:.02em;line-height:1.6">Imagery not scored — ${esc(absent)}</span>` : ""));
   $("#r-imscore").querySelectorAll("[data-act]").forEach(s => s.addEventListener("click", () => {
     if (s.dataset.act === "shared") listShared(); else listUnusedImagery();
   }));
