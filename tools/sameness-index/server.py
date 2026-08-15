@@ -384,6 +384,154 @@ PRIORITY_HINTS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Getting past the front door.
+#
+# Almost every pharma brand site puts something between the visitor and the
+# content: a region selector, an "are you a US healthcare professional?" gate,
+# or a consent wall. A crawler that does not handle these reads two hundred
+# words of legal text and reports it as the brand's messaging — which is worse
+# than failing, because it looks like a result. It is also what silently
+# destroys the highlight links, since a text fragment does not survive the
+# redirect a gate performs.
+# ---------------------------------------------------------------------------
+
+GATE_PHRASES = [
+    "healthcare professional", "health care professional", "hcp only",
+    "are you a", "select your country", "choose your country", "select your region",
+    "choose your location", "intended for residents", "intended for us residents",
+    "intended only for", "this site is intended", "leaving this site",
+    "by entering this site", "confirm you are", "please select",
+    "cookie", "cookies", "privacy preferences", "consent",
+    "age verification", "you must be",
+]
+
+# Text on the control that gets you through. Ordered: the most specific wins,
+# because "continue" appears on cookie banners as well as region gates.
+GATE_ACCEPT = [
+    "i am a us healthcare professional", "us healthcare professional",
+    "healthcare professional", "hcp", "i am a healthcare professional",
+    "united states", "usa", "u.s.", "united kingdom",
+    "i am a patient", "patient or caregiver", "patient",
+    "i agree", "i accept", "accept all", "accept all cookies", "accept cookies",
+    "agree and continue", "accept and continue", "continue", "enter site",
+    "enter", "proceed", "yes", "confirm",
+]
+
+GATE_TEXT_CEILING = 2200   # a real brand page carries far more than this
+
+
+def looks_like_a_gate(text, soup):
+    """A short page whose words are all about permission rather than product."""
+    if len(text) > GATE_TEXT_CEILING:
+        return False
+    low = text.lower()
+    hits = sum(1 for p in GATE_PHRASES if p in low)
+    if hits >= 2:
+        return True
+    # A page that is almost nothing but buttons is a gate whatever it says.
+    controls = len(soup.find_all(["button", "a"]))
+    return hits >= 1 and len(text) < 900 and controls <= 40
+
+
+def gate_exit(soup, landed):
+    """The most likely way through, or None.
+
+    Only same-site destinations are followed. A gate offering "leave this site"
+    is offering the one link we must not take.
+    """
+    root = urlparse(landed).netloc.replace("www.", "")
+    best, best_rank = None, len(GATE_ACCEPT)
+    for el in soup.find_all(["a", "button"]):
+        label = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip().lower()
+        if not label or len(label) > 60:
+            continue
+        for rank, phrase in enumerate(GATE_ACCEPT):
+            if label == phrase or (len(phrase) > 6 and phrase in label):
+                if rank >= best_rank:
+                    break
+                href = el.get("href") or el.get("data-href") or ""
+                if not href or href.startswith(("#", "javascript:", "mailto:")):
+                    break
+                target = urljoin(landed, href)
+                p = urlparse(target)
+                if not p.scheme.startswith("http"):
+                    break
+                if p.netloc.replace("www.", "") != root:
+                    break          # "leaving this site" is not the way in
+                best, best_rank = target, rank
+                break
+    return best
+
+
+# Client-rendered sites ship an empty shell and the copy in a JSON blob. Reading
+# it is not clever, but it recovers whole sites that would otherwise read as a
+# navigation bar, and it costs nothing.
+JSON_BLOB_IDS = ("__NEXT_DATA__", "__NUXT_DATA__", "__APOLLO_STATE__")
+
+
+def _is_prose(t):
+    """Sentence-shaped, rather than a class name, a key or a path.
+
+    A regex anchored at the start rejected anything opening with a short word —
+    "A once-daily treatment..." failed on its first character. Counting words
+    and letters is duller and does not have that class of mistake in it.
+    """
+    words = t.split()
+    if len(words) < 6:
+        return False
+    letters = sum(c.isalpha() or c.isspace() for c in t)
+    return letters / len(t) > 0.75 and " " in t.strip()
+
+
+def _harvest_strings(node, out, depth=0):
+    if depth > 12 or len(out) > 600:
+        return
+    if isinstance(node, str):
+        t = node.strip()
+        # Prose, not a class name, a URL, or a chunk of markup.
+        if 40 <= len(t) <= 600 and not t.startswith(("http", "/", "{", "<")) \
+           and "<" not in t and _is_prose(t):
+            out.append(re.sub(r"\s+", " ", t))
+    elif isinstance(node, list):
+        for v in node:
+            _harvest_strings(v, out, depth + 1)
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            if k.lower() in ("css", "style", "styles", "classname", "src", "href", "url", "id"):
+                continue
+            _harvest_strings(v, out, depth + 1)
+
+
+def embedded_prose(soup):
+    """Sentences carried in the page's JSON rather than its HTML."""
+    out = []
+    for tag in soup.find_all("script"):
+        raw = tag.string or tag.get_text() or ""
+        tid = tag.get("id") or ""
+        typ = (tag.get("type") or "").lower()
+        blob = None
+        if tid in JSON_BLOB_IDS or typ in ("application/json", "application/ld+json"):
+            blob = raw.strip()
+        elif "__NUXT__" in raw or "__INITIAL_STATE__" in raw:
+            m = re.search(r"=\s*(\{.*\})\s*;?\s*$", raw.strip(), re.S)
+            blob = m.group(1) if m else None
+        if not blob:
+            continue
+        try:
+            _harvest_strings(json.loads(blob), out)
+        except Exception:
+            continue
+    # Order preserved, duplicates dropped.
+    seen, keep = set(), []
+    for t in out:
+        k = t.lower()
+        if k not in seen:
+            seen.add(k)
+            keep.append(t)
+    return keep[:400]
+
+
 def visible_text(soup):
     for t in soup(["script", "style", "noscript", "iframe", "svg"]):
         t.decompose()
@@ -401,58 +549,230 @@ def visible_text(soup):
     return "\n".join(out)
 
 
+# ---------------------------------------------------------------------------
+# Finding the photography.
+#
+# The naive read — every <img src> on the front page — collects almost nothing
+# useful on a modern site. Images are lazy-loaded, so `src` holds a placeholder
+# and the real file is in srcset or a data- attribute; heroes are often CSS
+# backgrounds; and the front page is frequently the least photographic page on
+# the site. So: read every page, read every place an image can hide, and judge
+# what came back by its dimensions rather than its file size.
+# ---------------------------------------------------------------------------
+
+# Words that appear in the address of something that is not art direction.
+NOT_PHOTOGRAPHY = re.compile(
+    r"(logo|icon|sprite|favicon|pixel|spacer|placeholder|badge|banner-ad|"
+    r"arrow|chevron|bullet|divider|pattern|texture|avatar|thumb(nail)?|"
+    r"isi\b|pi\b|pdf|share|social|facebook|twitter|linkedin|instagram)", re.I)
+
+MIN_IMAGE_WIDTH = 420      # below this it is furniture, whatever it depicts
+MIN_IMAGE_BYTES = 6_000    # a cheap pre-filter; the dimension test does the work
+MAX_IMAGES_PER_BRAND = 4
+
+
+def _from_srcset(value, base):
+    """The largest candidate in a srcset, as an absolute address."""
+    best, best_w = None, -1
+    for part in value.split(","):
+        bits = part.strip().split()
+        if not bits:
+            continue
+        url = bits[0]
+        w = 0
+        if len(bits) > 1 and bits[1].endswith("w"):
+            try:
+                w = int(bits[1][:-1])
+            except ValueError:
+                w = 0
+        if w >= best_w:
+            best, best_w = url, w
+    return urljoin(base, best) if best else None
+
+
+def image_candidates(soup, base):
+    """Every address on this page that might be a commissioned photograph,
+    roughly in the order a reader would meet them."""
+    found = []
+
+    def add(u):
+        if not u or u.startswith("data:"):
+            return
+        u = urljoin(base, u.strip())
+        if not u.lower().startswith("http"):
+            return
+        if not re.search(r"\.(jpe?g|png|webp|avif)(\?|$)", u, re.I):
+            return
+        if NOT_PHOTOGRAPHY.search(urlparse(u).path):
+            return
+        found.append(u)
+
+    og = soup.find("meta", property="og:image")
+    if og and og.get("content"):
+        add(og["content"])
+
+    for pic in soup.find_all("picture"):
+        for src in pic.find_all("source"):
+            if src.get("srcset"):
+                add(_from_srcset(src["srcset"], base))
+
+    for img in soup.find_all("img"):
+        # srcset first: `src` on a lazy-loaded image is usually a placeholder.
+        if img.get("srcset"):
+            add(_from_srcset(img["srcset"], base))
+        for attr in ("data-src", "data-lazy-src", "data-original", "data-srcset", "data-image", "src"):
+            v = img.get(attr)
+            if not v:
+                continue
+            add(_from_srcset(v, base) if "srcset" in attr else v)
+
+    # Heroes are frequently a CSS background rather than an element.
+    for el in soup.find_all(style=True):
+        for m in re.finditer(r"url\(['\"]?([^'\")]+)", el["style"]):
+            add(m.group(1))
+    for tag in soup.find_all("style"):
+        for m in re.finditer(r"url\(['\"]?([^'\")]+)", tag.get_text() or ""):
+            add(m.group(1))
+
+    seen, out = set(), []
+    for u in found:
+        k = u.split("?")[0]
+        if k not in seen:
+            seen.add(k)
+            out.append(u)
+    return out
+
+
+def image_size(data):
+    """(width, height) from the file's own header, or None.
+
+    Size in bytes is a poor proxy for whether something is a photograph — a
+    well-compressed WebP hero can be smaller than a PNG logo. The dimensions
+    are in the first few dozen bytes of every format that matters, so read
+    those instead of guessing.
+    """
+    try:
+        if data[:8] == b"\x89PNG\r\n\x1a\n":
+            return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+        if data[:3] == b"\xff\xd8\xff":                       # JPEG
+            i = 2
+            while i < len(data) - 9:
+                if data[i] != 0xFF:
+                    i += 1
+                    continue
+                marker = data[i + 1]
+                if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                              0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    h = int.from_bytes(data[i + 5:i + 7], "big")
+                    w = int.from_bytes(data[i + 7:i + 9], "big")
+                    return w, h
+                seg = int.from_bytes(data[i + 2:i + 4], "big")
+                if seg <= 0:
+                    return None
+                i += 2 + seg
+            return None
+        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+            fmt = data[12:16]
+            if fmt == b"VP8 ":
+                return (int.from_bytes(data[26:28], "little") & 0x3FFF,
+                        int.from_bytes(data[28:30], "little") & 0x3FFF)
+            if fmt == b"VP8L":
+                b0 = int.from_bytes(data[21:25], "little")
+                return (b0 & 0x3FFF) + 1, ((b0 >> 14) & 0x3FFF) + 1
+            if fmt == b"VP8X":
+                return (int.from_bytes(data[24:27], "little") + 1,
+                        int.from_bytes(data[27:30], "little") + 1)
+    except Exception:
+        return None
+    return None
+
+
 async def crawl_brand(fetcher, brand):
     """Fetch the given URL plus a handful of same-site pages, within whatever
     robots.txt permits. Returns (pages_text, image_candidates, pages_fetched,
-    reason) where reason explains an empty result."""
+    reason, notes) where reason explains an empty result and notes records what
+    was in the way.
+    """
     start = brand["url"]
     if not start.startswith("http"):
         start = "https://" + start
-    # Provisional: replaced with wherever the first request actually lands.
     root = urlparse(start).netloc.replace("www.", "")
     queue, seen, texts, images = [start], set(), [], []
+    notes = {"gates": 0, "json_pages": 0, "thin_pages": 0}
 
-    # Two separate limits. Pages captured is the real budget; attempts is a
-    # backstop so a run of redirects, timeouts or non-HTML responses cannot
-    # keep the crawler going indefinitely on a site that is not cooperating.
+    async def read(url):
+        """One page, past whatever is in front of it. Returns (soup, landed) or
+        (None, None)."""
+        if not await fetcher.allowed(url):
+            return None, None, "robots"
+        r = await fetcher.get(url)
+        if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
+            return None, None, "not-html"
+        soup = BeautifulSoup(r.text, "html.parser")
+        landed = str(getattr(r, "url", url)) or url
+
+        # A gate is not a page. Walk through it — once — and take what is
+        # behind it instead. Two hops covers region-then-audience, which is the
+        # common pharma arrangement.
+        for _ in range(2):
+            body = visible_text(soup)
+            if not looks_like_a_gate(body, soup):
+                break
+            nxt = gate_exit(soup, landed)
+            if not nxt or nxt in seen:
+                break
+            notes["gates"] += 1
+            seen.add(nxt)
+            if not await fetcher.allowed(nxt):
+                break
+            r2 = await fetcher.get(nxt)
+            if r2.status_code != 200 or "text/html" not in r2.headers.get("content-type", ""):
+                break
+            soup = BeautifulSoup(r2.text, "html.parser")
+            landed = str(getattr(r2, "url", nxt)) or nxt
+        return soup, landed, ""
+
     while queue and len(texts) < MAX_PAGES_PER_BRAND and len(seen) < MAX_PAGES_PER_BRAND * 3:
         url = queue.pop(0)
         if url in seen:
             continue
         seen.add(url)
         try:
-            if not await fetcher.allowed(url):
-                if url == start:
-                    return "", [], 0, "robots"
-                continue
-            r = await fetcher.get(url)
-            if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
-                continue
+            soup, landed, why = await read(url)
         except Exception:
             continue
-        soup = BeautifulSoup(r.text, "html.parser")
+        if soup is None:
+            if url == start and why == "robots":
+                return "", [], 0, "robots", notes
+            continue
 
         # Brand URLs redirect constantly — www.trulicity.com lands on
         # trulicity.lilly.com. Everything downstream has to work from where the
         # request actually ended up: relative links resolve against it, the
         # same-site test compares against it, and the quote links the reader
         # follows have to point at the page that really served the wording.
-        landed = str(getattr(r, "url", url)) or url
         if url == start:
             host = urlparse(landed).netloc.replace("www.", "")
             if host:
                 root = host
 
-            og = soup.find("meta", property="og:image")
-            if og and og.get("content"):
-                images.append(urljoin(landed, og["content"]))
-            for img in soup.find_all("img", src=True)[:12]:
-                src = urljoin(landed, img["src"])
-                if re.search(r"\.(jpe?g|png|webp)", src, re.I):
-                    images.append(src)
+        body = visible_text(soup)
+        # A shell with the copy in a JSON blob reads as a navigation bar until
+        # the blob is opened.
+        if len(body) < 1500:
+            extra = embedded_prose(soup)
+            if extra:
+                notes["json_pages"] += 1
+                body = body + "\n" + "\n".join(extra)
+        if len(body) < 300:
+            notes["thin_pages"] += 1
+
+        # Images from every page, not only the first — the front page is often
+        # the least photographic one on the site.
+        images.extend(image_candidates(soup, landed))
 
         seen.add(landed)
-        texts.append(f"[PAGE {landed}]\n" + visible_text(soup)[:12000])
+        texts.append(f"[PAGE {landed}]\n" + body[:12000])
 
         links = []
         for a in soup.find_all("a", href=True):
@@ -470,9 +790,16 @@ async def crawl_brand(fetcher, brand):
                 queue.append(href)
 
     corpus = "\n\n".join(texts)[:MAX_CHARS_PER_BRAND]
+    # Ordered, de-duplicated, and capped — every candidate costs a request.
+    seen_i, cands = set(), []
+    for u in images:
+        k = u.split("?")[0]
+        if k not in seen_i:
+            seen_i.add(k)
+            cands.append(u)
     # Pages actually read, not addresses tried — a redirect puts two addresses
     # in `seen` for one page, and the reader is told this number.
-    return corpus, images, len(texts), ""
+    return corpus, cands[:40], len(texts), "", notes
 
 
 # ---------------------------------------------------------------------------
@@ -504,20 +831,57 @@ def _norm(s):
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
+# Words that carry no meaning for this comparison. Deliberately short — a long
+# stoplist starts throwing away the words that distinguish one claim from
+# another ("not", "only", "first").
+_STOP = {
+    "the", "and", "for", "with", "that", "this", "from", "your", "you", "are",
+    "was", "were", "has", "have", "had", "its", "their", "our", "can", "will",
+    "may", "been", "into", "than", "who", "when", "which", "while", "them",
+    "they", "she", "him", "her", "his", "about", "also", "some", "such",
+}
+
+
+def _content_words(t):
+    return {w for w in re.findall(r"[a-z0-9']+", t.lower()) if len(w) > 2 and w not in _STOP}
+
+
+def _similarity(a, b):
+    """How close two pieces of writing are in meaning, roughly.
+
+    Character similarity alone rates "designed around how people live" and
+    "designed around the way people live" lower than it should, because the
+    difference is one word in the middle. Blending it with the overlap of
+    content words rates the pair on what they are actually saying, which is the
+    question being asked. Both halves are cheap and deterministic — no model
+    call, so a link never costs anything to place.
+    """
+    from difflib import SequenceMatcher
+    ratio = SequenceMatcher(None, a, b).ratio()
+    wa, wb = _content_words(a), _content_words(b)
+    overlap = len(wa & wb) / len(wa | wb) if (wa | wb) else 0.0
+    return 0.5 * ratio + 0.5 * overlap
+
+
 def best_line_match(quote, text):
-    """Closest actual wording on the page to a quote that has been tidied.
+    """The wording on the page closest to a quote that has been tidied.
 
     The coding step is asked for an exact copy and mostly obliges, but it will
     sometimes smooth punctuation or join two nearby phrases. Requiring a
-    character-perfect match then drops the link on roughly a third of quotes.
-    This finds the closest run of real text instead, and only accepts a close
-    one — a link that lands on the wrong sentence is worse than no link.
-    """
-    from difflib import SequenceMatcher
+    character-perfect match drops the link on roughly a third of quotes.
 
+    What comes back is the PAGE'S OWN WORDING, not the quote — which is the
+    whole point. A highlight built from the model's paraphrase matches nothing
+    and fails silently; one built from the page's characters lands on the
+    sentence the reader came to see, even though the quote was tidied.
+
+    Returns (candidate, score, spans_lines). A candidate stitched from more
+    than one line crosses a block boundary on the page, which matters when the
+    fragment is built.
+    """
     q = _norm(quote)
     lines = [ln for ln in text.split("\n") if len(ln.strip()) > 8]
-    best, best_score = None, 0.0
+    best, best_score, best_span = None, 0.0, 1
     for i, line in enumerate(lines):
         # Compare against this line, and against it joined with the next one or
         # two — a stitched quote spans consecutive lines on the page.
@@ -528,13 +892,12 @@ def best_line_match(quote, text):
             c = _norm(candidate)
             if abs(len(c) - len(q)) > max(60, len(q)):
                 continue
-            m = SequenceMatcher(None, q, c)
-            if m.quick_ratio() < 0.6:
-                continue
-            score = m.ratio()
-            if score > best_score:
-                best, best_score = candidate.strip(), score
-    return (best, best_score) if best_score >= 0.68 else (None, best_score)
+            score = _similarity(q, c)
+            # A single line is contiguous on the page and highlights reliably,
+            # so it wins ties against a stitched one.
+            if score > best_score + (0.02 if span > 1 else 0):
+                best, best_score, best_span = candidate.strip(), score, span
+    return (best, best_score, best_span > 1) if best_score >= 0.62 else (None, best_score, False)
 
 
 def locate_quote(quote, pages):
@@ -547,7 +910,7 @@ def locate_quote(quote, pages):
     """
     q = _norm(quote)
     if len(q) < 12:
-        return None, None
+        return None, None, None
     # Longest first: a full sentence lands precisely; a short opening still
     # lands on the right paragraph.
     attempts = [q, q[:80], q[:48]]
@@ -575,26 +938,45 @@ def locate_quote(quote, pages):
             exact = re.sub(r"\s+", " ", text[start:end]).strip()
             if len(exact) > FRAGMENT_MAX:
                 exact = exact[:FRAGMENT_MAX].rsplit(" ", 1)[0]
-            return page_url, exact
+            return page_url, exact, "exact"
 
     # Nothing matched character for character. Fall back to the closest real
     # wording on each page, taking the best across all of them.
-    best_url, best_text, best_score = None, None, 0.0
+    best_url, best_text, best_score, best_split = None, None, 0.0, False
     for page_url, text in pages:
-        candidate, score = best_line_match(quote, text)
+        candidate, score, spans_lines = best_line_match(quote, text)
         if candidate and score > best_score:
-            best_url, best_text, best_score = page_url, candidate, score
+            best_url, best_text, best_score, best_split = page_url, candidate, score, spans_lines
     if best_url:
         frag = re.sub(r"\s+", " ", best_text).strip()
         if len(frag) > FRAGMENT_MAX:
             frag = frag[:FRAGMENT_MAX].rsplit(" ", 1)[0]
-        return best_url, frag
-    return None, None
+        # "near", not "exact": this is the page's own wording, so it highlights,
+        # but it is the closest sentence rather than the quote character for
+        # character, and the reader is told which they are looking at.
+        return best_url, frag, "near"
+    return None, None, None
 
 
 def quote_link(url, exact):
+    """A link that opens the page with the wording highlighted.
+
+    Chrome, Edge and Safari honour `#:~:text=`; Firefox ignores it and opens the
+    page. For anything longer than a few words the `start,end` form is used —
+    the browser locates the opening words and the closing words and highlights
+    between them, which tolerates a stray character in the middle that would
+    make a single long exact string fail. Anything after a redirect loses the
+    fragment entirely, which is why the crawler now steps through gates rather
+    than linking to them.
+    """
     from urllib.parse import quote as urlquote
-    return f"{url}#:~:text={urlquote(exact, safe='')}"
+    enc = lambda t: urlquote(t, safe="")
+    words = exact.split()
+    if len(words) >= 8:
+        head = " ".join(words[:5])
+        tail = " ".join(words[-5:])
+        return f"{url}#:~:text={enc(head)},{enc(tail)}"
+    return f"{url}#:~:text={enc(exact)}"
 
 
 # A logo, an icon and a tracking pixel are all images, and all worthless here.
@@ -604,30 +986,33 @@ MAX_IMAGES_PER_BRAND = 4
 
 
 async def fetch_images(http, urls, want=MAX_IMAGES_PER_BRAND):
-    """Return [(url, media_type, base64), ...] for the first `want` retrievable
-    candidates that are large enough to be photography rather than furniture.
+    """Return [(url, media_type, base64), ...] for the first `want` candidates
+    that are actually photographs.
 
-    One image was enough to code a fixed list of dimensions. It is not enough to
-    code a brand against an inventory of visual territories — a site that shows
-    a clinician in a second image and a device in a third is using territories
-    its hero does not. The budget is small because every image is paid for twice,
-    once in bandwidth and once in tokens.
+    The test is the image's own width, read from its header, not its file size:
+    a well-compressed WebP hero is routinely smaller than a PNG logo, so a byte
+    threshold throws away the very thing it is meant to find.
     """
-    out, seen = [], set()
-    for u in urls[:14]:
-        if len(out) >= want:
+    out, seen, tried = [], set(), 0
+    for u in urls:
+        if len(out) >= want or tried >= 18:
             break
         base = u.split("?")[0]
         if base in seen:
             continue
         seen.add(base)
+        tried += 1
         try:
             r = await http.get(u, headers=BROWSER_HEADERS, follow_redirects=True, timeout=25)
             mt = r.headers.get("content-type", "").split(";")[0].strip()
-            if (r.status_code == 200
-                    and mt in ("image/jpeg", "image/png", "image/webp")
-                    and MIN_IMAGE_BYTES < len(r.content) < 4_500_000):
-                out.append((u, mt, base64.standard_b64encode(r.content).decode()))
+            if r.status_code != 200 or mt not in ("image/jpeg", "image/png", "image/webp"):
+                continue
+            if not (MIN_IMAGE_BYTES < len(r.content) < 4_500_000):
+                continue
+            size = image_size(r.content)
+            if size and size[0] < MIN_IMAGE_WIDTH:
+                continue
+            out.append((u, mt, base64.standard_b64encode(r.content).decode()))
         except Exception:
             continue
     return out
@@ -1189,7 +1574,7 @@ async def pipeline(brands_in, category_given=""):
         for b in brands_in:
             host = urlparse(b["url"] if b["url"].startswith("http") else "https://" + b["url"]).netloc or b["url"]
             yield ev({"type": "progress", "text": f"Reading {host} — the public website, as a patient or prescriber would find it."})
-            corpus, images, n_pages, why = await crawl_brand(fetcher, b)
+            corpus, images, n_pages, why, notes = await crawl_brand(fetcher, b)
             if why == "robots":
                 # Not a failure. The site has asked crawlers not to read it,
                 # and that is the end of the matter — there is no version of
@@ -1226,7 +1611,16 @@ async def pipeline(brands_in, category_given=""):
                 continue
             corpora[b["name"]] = corpus
             image_cands[b["name"]] = images
-            yield ev({"type": "progress", "text": f"{b['name']}: {n_pages} page{'s' if n_pages != 1 else ''} read."})
+            extra = []
+            if notes.get("gates"):
+                extra.append(f"{notes['gates']} gate{'s' if notes['gates'] != 1 else ''} stepped through")
+            if notes.get("json_pages"):
+                extra.append(f"{notes['json_pages']} page{'s' if notes['json_pages'] != 1 else ''} whose copy is built in the browser, read from the page data")
+            yield ev({"type": "progress", "text": (
+                f"{b['name']}: {n_pages} page{'s' if n_pages != 1 else ''} read"
+                + (" — " + ", ".join(extra) if extra else "")
+                + f". {len(images)} image{'s' if len(images) != 1 else ''} to look at."
+            )})
 
         brands = [b for b in brands if b in corpora]
         brands_in = [b for b in brands_in if b["name"] in corpora]
@@ -1352,28 +1746,42 @@ async def pipeline(brands_in, category_given=""):
 
         # Where each quote lives, so the reader can go and see it in place.
         pages_by_brand = {b: split_pages(corpora[b]) for b in brands}
-        traced = untraced = 0
+        highlighted = near = page_only = lost = 0
 
         for p in positions:
             p["claimers"] = [b for b in brands if p["id"] in coding[b]]
             p["n"] = len(p["claimers"])
             p["receipts"] = {b: coding[b][p["id"]] for b in p["claimers"]}
-            links = {}
+            links, match = {}, {}
             for b in p["claimers"]:
-                url, exact = locate_quote(coding[b][p["id"]], pages_by_brand[b])
-                if url:
-                    links[b] = quote_link(url, exact)
-                    traced += 1
+                url, frag, how = locate_quote(coding[b][p["id"]], pages_by_brand[b])
+                if url and frag:
+                    links[b] = quote_link(url, frag)
+                    match[b] = how          # "exact" or "near"
+                    if how == "exact":
+                        highlighted += 1
+                    else:
+                        near += 1
+                elif url:
+                    links[b] = url
+                    match[b] = "page"
+                    page_only += 1
                 else:
-                    untraced += 1
+                    lost += 1
             if links:
                 p["receipt_links"] = links
+                p["receipt_match"] = match
 
-        if traced or untraced:
-            yield ev({"type": "progress", "text": (
-                f"Linked {traced} of {traced + untraced} quotes back to the page they appear on."
-                + (" The rest were paraphrased closely enough that the exact wording could not be found again." if untraced else "")
-            )})
+        total = highlighted + near + page_only + lost
+        if total:
+            bits = [f"{highlighted} of {total} quotes link to the exact wording, highlighted on the page"]
+            if near:
+                bits.append(f"{near} highlight the closest sentence on the page, where the quote had been tidied")
+            if page_only:
+                bits.append(f"{page_only} open the right page without a highlight")
+            if lost:
+                bits.append(f"{lost} could not be found again")
+            yield ev({"type": "progress", "text": "; ".join(bits) + "."})
 
         # 5 — the visual layer
         #
@@ -1402,7 +1810,34 @@ async def pipeline(brands_in, category_given=""):
             visual_summaries[b] = v.get("summary", "")
             yield ev({"type": "progress", "text": f"{b}: {len(imgs)} commissioned image{'s' if len(imgs) != 1 else ''} read, {len(obs)} art direction decisions noted."})
 
+        # What was seen, brand by brand, kept regardless of whether there is
+        # enough of it to compare. Reading a brand's art direction and then
+        # discarding it because no rival could be read wastes the reading and
+        # tells the reader nothing — describing one brand's photography is
+        # worth having even when scoring it against nobody is not.
+        visual_read = []
+        for b, obs in visual_obs.items():
+            urls = image_urls.get(b, [])
+            visual_read.append({
+                "brand": b,
+                "summary": visual_summaries.get(b, ""),
+                "images": urls,
+                "observations": [
+                    {"note": o.get("note", ""),
+                     "image": (urls[o["image"] - 1]
+                               if isinstance(o.get("image"), int) and 1 <= o["image"] <= len(urls)
+                               else None)}
+                    for o in obs if o.get("note")
+                ],
+            })
+
         visual_positions, visual_coding = [], {}
+        if len(visual_obs) == 1:
+            only = next(iter(visual_obs))
+            yield ev({"type": "progress", "text": (
+                f"Only {only}'s art direction could be read, and one brand is not a comparison — so the "
+                "imagery is described rather than scored, and it is left out of the convergence figure."
+            )})
         if len(visual_obs) >= 2:
             yield ev({"type": "progress", "text": "Building the list of visual territories available to this category — including territories nobody depicts, drawn from the literature on who this disease affects and what patients describe, rather than from the brands themselves."})
             try:
@@ -1524,8 +1959,11 @@ async def pipeline(brands_in, category_given=""):
                 "No commissioned photography could be retrieved from these sites — the images on the pages read "
                 "were clinical, diagrams, pack shots or too small to be art direction."
                 if not visual_obs else
-                f"Commissioned photography was only readable on {len(visual_obs)} of {len(brands)} brands, and "
-                "art direction cannot be compared across one brand. The score covers messaging only."
+                f"Only {next(iter(visual_obs))}'s art direction could be read, so there is nothing to compare it "
+                "against. It is described in the working."
+                if len(visual_obs) == 1 else
+                f"Art direction was readable on {len(visual_obs)} of {len(brands)} brands, which is not enough to "
+                "compare. What was seen is described in the working."
             ),
             "basis": (
                 "For each brand, the share of its territories that at least one rival also uses. The category "
@@ -1736,12 +2174,18 @@ async def pipeline(brands_in, category_given=""):
             "visual_provenance": visual_provenance,
             "visual": {
                 "brands": visual_brands,
+                "read": visual_read,
+                "compared": bool(visual_positions),
                 "notes": visual_summaries,
                 "images": image_urls,
                 "territories": len(visual_positions),
                 "unclaimed": v_unused,
                 "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. The visual territories are built for this category the same way the messaging territories are — from what these brands show, plus what the literature evidences and nobody shows."
-                + ("" if visual_positions else " Imagery could not be read on enough brands this run, so it is not reported and the convergence score covers messaging only."),
+                + ("" if visual_positions else (
+                    f" Only {len(visual_read)} brand's art direction could be read this run"
+                    if len(visual_read) == 1 else
+                    " The art direction could not be read on enough brands this run")
+                   + ", and art direction cannot be compared against nobody — so what was seen is described below rather than scored, and the convergence figure covers messaging only."),
             },
             "cross_check": cross_check,
             "findings": findings,

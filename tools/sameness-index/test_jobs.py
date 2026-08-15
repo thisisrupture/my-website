@@ -218,8 +218,8 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
     import server as s
     async def crawl(fetcher, brand):
         if brand["name"] == "Blocked":
-            return "", [], 0, ""                  # nothing readable came back
-        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, ""
+            return "", [], 0, "", {}              # nothing readable came back
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, "", {}
     monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
     monkeypatch.setattr(s, "crawl_brand", crawl)
     monkeypatch.setattr(s, "stage_layers", lambda b, c: _layers())
@@ -247,7 +247,7 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
 async def test_own_brand_unreadable_stops_the_run(monkeypatch):
     import server as s
     async def crawl(fetcher, brand):
-        return ("", [], 0, "") if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1, "")
+        return ("", [], 0, "", {}) if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1, "", {})
     monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
     monkeypatch.setattr(s, "crawl_brand", crawl)
     errs = [e async for e in s.pipeline([{"name": "Mine", "url": "https://a.test"},
@@ -321,8 +321,8 @@ async def test_robots_is_honoured_and_named_as_such(monkeypatch):
 
     async def crawl(fetcher, brand):
         if brand["name"] == "Private":
-            return "", [], 0, "robots"
-        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, ""
+            return "", [], 0, "robots", {}
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, "", {}
 
     monkeypatch.setattr(s, "crawl_brand", crawl)
     monkeypatch.setattr(s, "stage_layers", lambda b, c: _layers())
@@ -392,7 +392,7 @@ async def test_a_brand_with_no_messaging_leaves_the_figures(monkeypatch):
     import server as s
 
     async def crawl(fetcher, brand):
-        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, ""
+        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, "", {}
 
     async def layers(b, c):
         return await (_thin_layers() if b == "Empty" else _layers())
@@ -431,7 +431,7 @@ async def test_one_readable_brand_fails_the_run_rather_than_scoring_it(monkeypat
     import server as s
 
     async def crawl(fetcher, brand):
-        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, ""
+        return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, "", {}
 
     async def layers(b, c):
         return await (_layers() if b == "Mine" else _thin_layers())
@@ -453,3 +453,196 @@ async def test_one_readable_brand_fails_the_run_rather_than_scoring_it(monkeypat
 
     assert result is None, "a one-brand run must not publish a score"
     assert error and "one brand is not a comparison" in error
+
+
+# ---------------------------------------------------------------------------
+# Getting past the front door, finding the photography, and telling the truth
+# about a highlight. All three failures observed in production on 15 Aug 2026.
+# ---------------------------------------------------------------------------
+
+GATE_HTML = """<html><body><h1>Are you a US healthcare professional?</h1>
+<p>This site is intended for US healthcare professionals only. Please select.</p>
+<a href="/hcp/home">I am a US healthcare professional</a>
+<a href="https://elsewhere.example/">I am a patient — leave this site</a>
+</body></html>"""
+
+
+def test_a_gate_is_recognised_and_walked_through():
+    """The Jardiance failure. A region or HCP gate is full of words and carries
+    no messaging; read as a page it produces a brand with nothing to say, which
+    then scores as perfectly distinctive."""
+    import server as s
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(GATE_HTML, "html.parser")
+    assert s.looks_like_a_gate(s.visible_text(soup), soup)
+    # Same-site only: "leave this site" is the one link that must not be taken.
+    assert s.gate_exit(soup, "https://brand.example/") == "https://brand.example/hcp/home"
+
+
+def test_a_real_page_is_not_mistaken_for_a_gate():
+    import server as s
+    from bs4 import BeautifulSoup
+    html = "<html><body>" + "<p>Real brand copy about the medicine and the patient. </p>" * 80 + "</body></html>"
+    soup = BeautifulSoup(html, "html.parser")
+    assert not s.looks_like_a_gate(s.visible_text(soup), soup)
+
+
+def test_images_are_found_where_they_actually_hide():
+    """A lazy-loaded site puts a placeholder in src and the real file in srcset
+    or a data- attribute; heroes are often CSS backgrounds. Reading only
+    img[src] collects placeholders and logos."""
+    import server as s
+    from bs4 import BeautifulSoup
+    page = """<html><body>
+    <meta property="og:image" content="/img/hero-og.jpg">
+    <img src="data:image/gif;base64,R0lGOD" data-src="/img/lazy-hero.webp">
+    <img src="/img/brand-logo.png">
+    <picture><source srcset="/img/small.webp 400w, /img/big.webp 1600w"></picture>
+    <div style="background-image:url('/img/background-hero.jpg')"></div>
+    </body></html>"""
+    found = s.image_candidates(BeautifulSoup(page, "html.parser"), "https://brand.example/x/")
+    assert "https://brand.example/img/hero-og.jpg" in found
+    assert "https://brand.example/img/lazy-hero.webp" in found, "a data-src image was missed"
+    assert "https://brand.example/img/big.webp" in found, "srcset should yield the largest candidate"
+    assert "https://brand.example/img/background-hero.jpg" in found, "a CSS background hero was missed"
+    assert not any("logo" in u for u in found), "a logo is not art direction"
+
+
+def test_photographs_are_judged_by_width_not_file_size():
+    """A well-compressed WebP hero is smaller than a PNG logo, so a byte
+    threshold discards the very thing it is meant to find."""
+    import server as s
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 + (1200).to_bytes(4, "big") + (800).to_bytes(4, "big")
+    assert s.image_size(png) == (1200, 800)
+    jpeg = (b"\xff\xd8\xff\xe0" + (16).to_bytes(2, "big") + b"J" * 14 +
+            b"\xff\xc0" + (17).to_bytes(2, "big") + b"\x08" +
+            (900).to_bytes(2, "big") + (1600).to_bytes(2, "big") + b"\x00" * 8)
+    assert s.image_size(jpeg) == (1600, 900), "width and height are the other way round in JPEG"
+    assert s.image_size(b"not an image at all") is None
+
+
+def test_copy_built_in_the_browser_is_still_read():
+    import server as s
+    from bs4 import BeautifulSoup
+    shell = """<html><body><nav>Home</nav>
+    <script id="__NEXT_DATA__" type="application/json">
+    {"props":{"hero":"A once-daily treatment designed around the way people actually live with this condition.",
+    "className":"hero--large","href":"https://x/y"}}
+    </script></body></html>"""
+    got = s.embedded_prose(BeautifulSoup(shell, "html.parser"))
+    assert any("once-daily treatment" in t for t in got)
+    assert not any("hero--large" in t for t in got), "class names are not copy"
+
+
+def test_a_long_quote_links_by_its_ends():
+    """One long exact string fails on a single changed character. start,end
+    finds the opening and closing words and highlights between them."""
+    import server as s
+    link = s.quote_link("https://x.example/p",
+                        "Plaque psoriasis is driven by an overactive immune response, not by anything you did")
+    assert "#:~:text=" in link and "," in link.split("#:~:text=")[1]
+    short = s.quote_link("https://x.example/p", "targets the source")
+    assert "," not in short.split("#:~:text=")[1], "a short quote needs no end anchor"
+
+
+def test_a_tidied_quote_still_highlights_the_page_s_own_wording():
+    """The correction to an over-correction.
+
+    The browser cannot fuzzy-match — a fragment has to be an exact substring of
+    the rendered page. But it never needed to: the closest match is found among
+    the PAGE'S lines, so it is already the page's own characters and highlights
+    perfectly. Building the fragment from the model's paraphrase was the bug;
+    refusing to build one at all threw away working highlights.
+    """
+    import server as s
+    page = ("Our treatment was designed around the way people actually live with this condition.\n"
+            "It is given four times a year after the starting doses.")
+    pages = [("https://x.example/p", page)]
+
+    url, frag, how = s.locate_quote("It is given four times a year after the starting doses.", pages)
+    assert how == "exact" and frag in page
+
+    url, frag, how = s.locate_quote(
+        "Our treatment is designed around how people live with this condition", pages)
+    assert how == "near", "a tidied quote should still find its sentence"
+    assert frag and frag in page, "the fragment must be the page's own wording, or it highlights nothing"
+    assert "#:~:text=" in s.quote_link(url, frag)
+
+    url, frag, how = s.locate_quote(
+        "a support programme with a dedicated nurse team from your first dose", pages)
+    assert how is None and frag is None, "wording that is simply not there must not be invented"
+
+
+def test_meaning_beats_characters_when_matching():
+    """Character similarity alone rates a one-word difference in the middle of a
+    sentence too harshly. The blend with content-word overlap is what makes a
+    tidied quote findable."""
+    import server as s
+    a = "designed around the way people actually live with this condition"
+    b = "designed around how people live with this condition"
+    c = "given four times a year after the starting doses"
+    assert s._similarity(a, b) > s._similarity(a, c)
+    assert s._similarity(a, b) >= 0.62, "a paraphrase this close must clear the bar"
+
+
+def test_one_brand_s_imagery_is_described_rather_than_discarded():
+    """Reading a brand's art direction and then throwing it away because no
+    rival could be read wastes the reading and tells the reader nothing. One
+    brand cannot be scored against nobody, but it can be described."""
+    import server as s
+
+    async def crawl(fetcher, brand):
+        return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), ["https://x.test/hero.jpg"], 1, "", {}
+
+    async def images(http, urls, want=4):
+        # Only the user's own brand yields anything a camera made.
+        return [("https://x.test/hero.jpg", "image/jpeg", "AAAA")] if urls else []
+
+    async def read(brand, imgs):
+        return {"summary": f"{brand}: one adult alone in domestic light.",
+                "elements": [{"image": 1, "note": "Single adult, waist-up, kitchen window light."},
+                             {"image": 1, "note": "Short sleeves, forearm in frame."}]}
+
+    seen = {"n": 0}
+
+    async def images_once(http, urls, want=4):
+        seen["n"] += 1
+        return [("https://x.test/hero.jpg", "image/jpeg", "AAAA")] if seen["n"] == 1 else []
+
+    monkey = pytest.MonkeyPatch()
+    try:
+        monkey.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
+        monkey.setattr(s, "Fetcher", lambda http: _NoHTTP())
+        monkey.setattr(s, "crawl_brand", crawl)
+        monkey.setattr(s, "fetch_images", images_once)
+        monkey.setattr(s, "stage_visual_read", read)
+        monkey.setattr(s, "stage_layers", lambda b, c: _layers())
+        monkey.setattr(s, "stage_space", lambda cat, e: _space())
+        monkey.setattr(s, "stage_code", lambda b, f, p: _code())
+        monkey.setattr(s, "stage_findings", lambda *a, **k: _findings())
+
+        brands = [{"name": "Mine", "url": "https://a.test"}, {"name": "Other", "url": "https://c.test"}]
+        result = None
+
+        async def go():
+            nonlocal result
+            async for e in s.pipeline(brands):
+                if e["type"] == "result":
+                    result = e["data"]
+                if e["type"] == "error":
+                    raise AssertionError("run aborted: " + e["text"])
+
+        import anyio
+        anyio.run(go)
+    finally:
+        monkey.undo()
+
+    assert result is not None
+    v = result["visual"]
+    assert v["compared"] is False, "one brand cannot be compared"
+    assert result["convergence"]["imagery"] is None, "and must not reach the score"
+    assert len(v["read"]) == 1, "but what was read has to survive"
+    only = v["read"][0]
+    assert only["summary"], "the reader gets a description"
+    assert len(only["observations"]) == 2
+    assert result["convergence"]["imagery_absent"] and "described" in result["convergence"]["imagery_absent"]
