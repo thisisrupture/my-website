@@ -14,7 +14,14 @@ services:
     name: rupture-tools
     rootDir: tools/sameness-index
     runtime: python
-    plan: starter          # the free plan sleeps, which would kill runs in flight
+    # Standard, not Starter: Starter is 512MB and Chromium needs about a
+    # gigabyte to render a page reliably. The free plan is not an option either
+    # — it sleeps, which would kill a run in flight.
+    #
+    # One browser is shared across runs rather than one per run, so 2GB holds.
+    # If runs start failing on memory, the next step is Pro (4GB) rather than
+    # more concurrency.
+    plan: standard
     region: frankfurt      # nearest to the eu-west-2 database
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
@@ -31,4 +38,4 @@ services:
       - key: SAMENESS_RUNS_PER_IP
         value: "5"
       - key: SAMENESS_MAX_CONCURRENT
-        value: "3"
+        value: "2"
