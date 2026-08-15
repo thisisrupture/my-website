@@ -528,6 +528,56 @@
   .c.s0.ready { background: var(--mint); border-color: var(--mint); }
   @media (max-width: 620px) { #map { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } .c { min-height: 78px; font-size: 13.5px; } }
 
+  /* the chart, set inside the map panel — a second question, not a second
+     section, so it is inset rather than given its own number */
+  .inset { margin-top: 40px; border-top: 1.5px solid var(--fg-faint); padding-top: 26px; }
+  .inset-head { margin-bottom: 16px; }
+  .inset-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 30px; align-items: center; }
+  @media (max-width: 860px) { .inset-body { grid-template-columns: 1fr; gap: 18px; } }
+  .inset-body .figcap { margin-top: 0; }
+
+  /* act two — the daylight */
+  #sec-daylight h2 { max-width: 22ch; }
+  .day-row {
+    display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 20px;
+    padding: 26px 0; border-bottom: 1px solid var(--fg-faint); cursor: pointer;
+    align-items: start; transition: background .14s;
+  }
+  .day-row:first-child { border-top: 1px solid var(--fg-faint); }
+  .day-row:hover { background: var(--paper-2); }
+  .day-row:hover .day-label { color: var(--green); }
+  .day-n { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--fg-faint); padding-top: 7px; }
+  .day-label {
+    font-family: var(--serif); font-weight: 900; font-size: clamp(19px, 2vw, 24px);
+    line-height: 1.15; letter-spacing: -.012em; margin-bottom: 7px;
+  }
+  .day-desc { font-family: var(--sans); font-size: 15.5px; line-height: 1.55; color: var(--fg-muted); margin: 0; }
+  .day-src {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; line-height: 1.75;
+    color: var(--fg-faint); margin: 10px 0 0; padding-left: 12px; border-left: 1.5px solid var(--mint);
+  }
+  .day-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-top: 4px; }
+  .day-kind { font-family: var(--mono); font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-faint); }
+  .day-more { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 28px; }
+  @media (max-width: 620px) {
+    .day-row { grid-template-columns: 1fr; gap: 10px; }
+    .day-n { padding-top: 0; }
+    .day-meta { flex-direction: row; align-items: center; justify-content: flex-start; }
+  }
+
+  /* the one place the report asks for something */
+  .rpanel.mint { background: var(--mint); border-color: var(--ink); }
+  .cta-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 40px; align-items: center; }
+  @media (max-width: 860px) { .cta-panel { grid-template-columns: 1fr; gap: 24px; } }
+  .cta-panel h2 { margin-bottom: 12px; max-width: 20ch; }
+  .cta-copy { font-family: var(--sans); font-size: 16.5px; line-height: 1.55; max-width: 52ch; margin: 0; color: var(--mint-ink); }
+  .cta-side { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+  .cta-side .btn { text-align: center; white-space: nowrap; }
+  .btn-dark { border: var(--line); background: var(--ink); color: var(--paper); }
+  .btn-dark:hover { transform: translateY(-2px); background: var(--ink-2); }
+  .rpanel.mint .btn-line { background: transparent; }
+  .rpanel.mint .btn-line:hover { background: var(--paper); }
+
   /* findings */
   .fd { display: grid; grid-template-columns: 56px 1fr; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--fg-faint); }
   .fd:last-child { border-bottom: none; }
@@ -902,7 +952,10 @@
   </div>
 </div>
 
-<!-- ============================================ RESULT -->
+<!-- ============================================ RESULT
+     Two acts. One: the category sounds the same, here is the proof. Two: here
+     is the ground nobody has taken. Everything else is working, and collapses.
+     The order is the argument, not the method. -->
 <div id="screen-result">
   <div class="page">
 
@@ -911,10 +964,9 @@
       <div class="meta" id="r-meta"></div>
     </div>
 
-    <!-- The score is the number that gets forwarded, so it leads and it is the
-         only inverted panel on the page. -->
+    <!-- ACT ONE — the sameness -->
     <section class="rpanel dark" id="sec-score">
-      <div class="r-eyebrow on-dark">01 — Convergence</div>
+      <div class="r-eyebrow on-dark">01 — How alike this category sounds</div>
       <p class="missing-note" id="r-missing" hidden></p>
       <div class="hero">
         <div>
@@ -936,54 +988,58 @@
       <div class="bkey" id="r-bkey"></div>
     </section>
 
+    <!-- Three counts, each a finding, arranged as the argument runs:
+         identical ground, then empty ground, then what is reachable. -->
     <div class="counts" id="r-numbers"></div>
 
-    <section class="rpanel" id="sec-field">
-      <div class="r-eyebrow">02 — The field</div>
-      <h2 id="r-fieldh"></h2>
-      <p class="sec-sub" id="r-fieldsub"></p>
-      <div class="chips" id="r-chips"></div>
-      <div class="tabs">
-        <div class="modes">
-          <button aria-pressed="true"  data-go="0">Difference</button>
-          <button aria-pressed="false" data-go="1">Overlap</button>
-          <button aria-pressed="false" data-go="2">Standing out</button>
-        </div>
-        <div class="dots">
-          <button class="dot on" data-go="0" aria-label="Difference"></button>
-          <button class="dot" data-go="1" aria-label="Overlap"></button>
-          <button class="dot" data-go="2" aria-label="Standing out"></button>
-        </div>
-      </div>
-      <div class="figbox">
-        <div class="rail" id="rail">
-          <div class="panelx" id="p0"></div>
-          <div class="panelx" id="p1"></div>
-          <div class="panelx" id="p2"></div>
-        </div>
-      </div>
-      <div class="figcap" id="figcap"></div>
-    </section>
-
     <section class="rpanel" id="sec-map">
-      <div class="r-eyebrow">03 — The territory map</div>
-      <h2>Where the category is crowded, and where it is <span class="hl">empty</span>.</h2>
-      <div class="invtoggle" id="r-invtoggle"></div>
+      <div class="r-eyebrow">02 — The crowded ground</div>
+      <h2 id="r-maph"></h2>
+      <p class="sec-sub" id="r-mapsub"></p>
+      <div class="chips" id="r-chips"></div>
       <div class="gcap" id="map-legend"></div>
       <div id="map"></div>
+
+      <div class="inset">
+        <div class="inset-head">
+          <div class="r-eyebrow" style="margin:0">Is it you, or is it the category?</div>
+        </div>
+        <div class="inset-body">
+          <div class="figbox"><div class="figsvg" id="p0"></div></div>
+          <p class="figcap" id="figcap"></p>
+        </div>
+      </div>
     </section>
 
-    <section class="rpanel">
-      <div class="r-eyebrow">04 — What the analysis found</div>
+    <section class="rpanel" id="sec-findings">
+      <div class="r-eyebrow">03 — What the analysis found</div>
       <div id="r-findings"></div>
     </section>
 
+    <!-- ACT TWO — the daylight. The payoff, and the reason to pick up a phone. -->
     <section class="rpanel" id="sec-daylight">
-      <div class="r-eyebrow">05 — Territories to explore</div>
-      <h2>What nobody in this category is <span class="hl">using</span>.</h2>
+      <div class="r-eyebrow">04 — The daylight</div>
+      <h2 id="r-dayh"></h2>
       <p class="sec-sub" id="daylight-intro"></p>
       <div id="r-daylight"></div>
-      <div style="margin-top:26px"><button class="why" id="why-daylight">How these are judged</button></div>
+      <div class="day-more">
+        <button class="why" id="show-all-daylight" type="button" hidden></button>
+        <button class="why" id="why-daylight">How these are judged</button>
+      </div>
+    </section>
+
+    <section class="rpanel mint" id="sec-cta">
+      <div class="cta-panel">
+        <div>
+          <div class="r-eyebrow" style="color:var(--mint-ink)">What happens next</div>
+          <h2>Finding the daylight is the easy half.</h2>
+          <p class="cta-copy">Knowing which of these is worth your name on it — and building the position, the evidence and the go-to-market around it — is the work. That is what we do.</p>
+        </div>
+        <div class="cta-side">
+          <a class="btn btn-dark" href="https://thisisrupture.com/#contact">Talk to us about this category</a>
+          <a class="btn btn-line" href="https://thisisrupture.com">thisisrupture.com →</a>
+        </div>
+      </div>
     </section>
 
     <div class="colophon" id="r-colophon"></div>
@@ -991,6 +1047,12 @@
     <details class="working">
       <summary>Show the full working</summary>
       <div class="working-body">
+
+        <h3>The art direction, territory by territory</h3>
+        <p class="sec-sub" id="visual-exclusions"></p>
+        <div class="gcap" id="vmap-legend"></div>
+        <div id="vmap"></div>
+        <table id="t-visual" style="margin-top:34px"></table>
 
         <h3>What each brand does differently</h3>
         <p class="sec-sub">How often a brand departs from what most of the category does, across the territories anyone uses.</p>
@@ -1009,10 +1071,6 @@
 
         <h3>Every messaging territory</h3>
         <table id="t-positions"></table>
-
-        <h3>Every visual territory</h3>
-        <p class="sec-sub" id="visual-exclusions"></p>
-        <table id="t-visual"></table>
 
         <h3>Brand by brand</h3>
         <div id="t-brands"></div>
@@ -1487,7 +1545,6 @@ const bandFor = s => BANDS.find(b => s < b.to) || BANDS[BANDS.length - 1];
 let BR = [];          // [{name, key, url, accent}]
 let SEL = [];         // selected brand indices
 let VIS = [];         // indices of brands whose imagery was read
-let GSET = "messaging";
 let IDX = 0;
 let LAST = null;      // the list a drawer came from, so "back" works
 
@@ -1562,7 +1619,6 @@ function render(data) {
   });
   SEL = BR.map((_, i) => i);
   VIS = BR.map((b, i) => (((data.visual || {}).brands || []).includes(b.name) ? i : -1)).filter(i => i >= 0);
-  GSET = "messaging";
   IDX = 0;
 
   $("#r-meta").textContent = `${data.meta.category} · ${data.meta.market} · captured ${data.meta.captured}`;
@@ -1585,7 +1641,6 @@ function render(data) {
     note.hidden = true;
   }
 
-  buildToggle();
   renderAll();
   renderColophon();
   renderCentre(); renderLiterature(); renderProvenance(); renderWorking();
@@ -1596,11 +1651,9 @@ function render(data) {
 /* Everything that moves when a brand is deselected. */
 function renderAll() {
   renderChips(); renderScore(); renderNumbers(); renderMap();
-  renderFindings(); renderDaylight(); renderFieldHead();
+  renderFindings(); renderDaylight(); renderMapHead();
   $("#p0").innerHTML = figAxes();
-  $("#p1").innerHTML = figOverlap();
-  $("#p2").innerHTML = figBars();
-  go(IDX);
+  $("#figcap").textContent = FIGCAP;
 }
 
 // A result is only useful inside the account if it can be passed around, and
@@ -1725,26 +1778,37 @@ function renderScale(o) {
     n.addEventListener("click", () => listBrandShared(+n.dataset.i, n.dataset.dim)));
 }
 
-/* ---- the counts ---- */
+/* ---- the counts ----
+   Three, and each one is a finding rather than the size of a list. They run in
+   the order the argument does: the ground every brand is standing on, the
+   ground nobody is, and how much of that second number is reachable without
+   generating new evidence. "40 territories mapped" is method, and nobody ever
+   forwarded a method. */
 function renderNumbers() {
   const m = MSG(), v = VT();
-  const mUnused = m.filter(t => users(t).length === 0).length;
+  const all = m.concat(v);
+  const unusedM = m.filter(t => users(t).length === 0);
+  const unusedV = v.filter(t => users(t, visPool()).length === 0);
+  const unused = unusedM.concat(unusedV);
+  const universal = m.filter(t => users(t).length === SEL.length && SEL.length > 1);
+  const open = unused.filter(t => t.tier === "open");
   const cells = [
-    { v: m.length, l: "messaging territories<br>mapped", act: "allmsg" },
-    { v: mUnused, l: "messaging territories<br>used by nobody", act: "unusedmsg", cls: "open" },
+    { v: universal.length, l: "territories every brand<br>is standing on", t: "Territories every brand is standing on", act: "universal" },
+    { v: unused.length, l: "territories nobody<br>is standing on", t: "Territories nobody is standing on", act: "unused", cls: "open" },
+    { v: open.length, l: "of those need no new<br>clinical evidence", t: "Unused, and needing no new clinical evidence", act: "open", cls: "open" },
   ];
-  if (v.length) {
-    const vUnused = v.filter(t => users(t, visPool()).length === 0).length;
-    cells.push({ v: v.length, l: "visual territories<br>mapped", act: "allimg" });
-    cells.push({ v: vUnused, l: "visual territories<br>unclaimed", act: "unusedimg", cls: "open" });
-  } else {
-    cells.push({ v: m.filter(t => users(t).length > 1).length, l: "messaging territories<br>shared", act: "shared" });
-    cells.push({ v: m.filter(t => users(t).length === 0 && t.tier === "open").length, l: "need no new<br>clinical evidence", act: "unusedmsg", cls: "open" });
-  }
+  $("#r-numbers").style.gridTemplateColumns = "repeat(3, 1fr)";
   $("#r-numbers").innerHTML = cells.map(c =>
-    `<div class="ct ${c.cls || ""}" data-act="${c.act}"><div class="v">${c.v}</div><div class="l">${c.l}</div></div>`).join("");
+    `<div class="ct ${c.cls || ""}" data-act="${c.act}" data-title="${esc(c.t)}"><div class="v">${c.v}</div><div class="l">${c.l}</div></div>`).join("");
+  const sets = { universal, unused, open };
+  const notes = {
+    universal: "Used by every brand analysed. Whatever is spent behind these, no reader is given a basis on which to tell the brands apart.",
+    unused: "Used by no brand in this set — messaging and art direction together.",
+    open: "Unused, and reachable without a new trial, a new endpoint or anything further to substantiate. Decisions about how the disease is described, who is addressed, and what is pictured.",
+  };
   $("#r-numbers").querySelectorAll("[data-act]").forEach(d => d.addEventListener("click", () => {
-    ({ allmsg: listAll, unusedmsg: listUnused, allimg: listAllImagery, unusedimg: listUnusedImagery, shared: listShared }[d.dataset.act])();
+    const k = d.dataset.act;
+    listSet("Count", d.dataset.title, sets[k], notes[k]);
   }));
 }
 
@@ -1762,36 +1826,22 @@ function renderChips() {
   });
 }
 
-/* ---- the field: three views on one rail ---- */
-const CAPS = [
-  "Each brand placed by how far its copy, and separately its art direction, sits from the rest. Thin lines run to the category centre. Click a brand for what puts it there.",
-  "Circles sized by territories used. Overlaps are labelled, not drawn to scale — the number is true, the shape would not be.",
-  "Each brand on both dimensions: shared at the left, held alone in mint at the right.",
-];
-/* The rail can be driven two ways — the buttons and a swipe — and both have to
-   end up agreeing. A programmatic scroll animates, and the scroll listener sees
-   the intermediate positions; without this latch it reads one of them as a new
-   choice and drags the rail back to where it started. */
-let RAIL_LOCK = 0;
-function go(i) {
-  IDX = i;
-  const r = $("#rail");
-  RAIL_LOCK = Date.now() + 700;
-  r.scrollTo({ left: r.clientWidth * i });
-  document.querySelectorAll(".modes button").forEach((b, n) => b.setAttribute("aria-pressed", n === i ? "true" : "false"));
-  document.querySelectorAll(".dot").forEach((b, n) => b.classList.toggle("on", n === i));
-  $("#figcap").textContent = CAPS[i] + (i === 2 && !hasImagery() ? " The imagery could not be read this run, so only the messaging bar is drawn." : "");
-}
+/* ---- the one chart ----
+   Difference, overlap and standing out were three pictures of one fact, and a
+   reader wants one. This is the only one that answers a question they actually
+   arrive with: is this me, or is it the whole category? The other two survive
+   as tables in the working. */
+const FIGCAP = "Each brand placed by how far its copy, and separately its art direction, sits from the rest. Thin lines run to the category centre. Click a brand for what puts it there.";
 
-/* The two-axis field. Both axes are the same question — how unlike the other
-   brands is this one — asked of the messaging and of the art direction. The
-   view is zoomed to the brands plotted, so position is relative. */
+/* Both axes ask the same question of each brand — how unlike the others is it —
+   once of its messaging and once of its art direction. The view is zoomed to
+   the brands plotted, so position is relative to the field, not absolute. */
 function figAxes() {
   const P = (DATA.plot || []).filter(p => SEL.some(i => nameOf(i) === p.brand));
   if (!P.length) return "";
   const withImg = P.filter(p => p.imagery !== null && p.imagery !== undefined);
   const twoD = withImg.length >= 2;
-  const span = (vals) => {
+  const span = vals => {
     const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * .35 || .1;
     return { lo: lo - pad, hi: hi + pad };
   };
@@ -1804,7 +1854,6 @@ function figAxes() {
   const pts = P.map(p => ({
     i: idxOf(p.brand), name: p.brand,
     x: X(p.messaging), y: twoD ? (p.imagery == null ? 330 : Y(p.imagery)) : 190,
-    m: p.messaging, im: p.imagery,
   }));
   const cx = pts.reduce((a, b) => a + b.x, 0) / pts.length;
   const cy = pts.reduce((a, b) => a + b.y, 0) / pts.length;
@@ -1819,6 +1868,8 @@ function figAxes() {
   pts.forEach((p, n) => { if (n !== far) s += `<line x1="${p.x}" y1="${p.y}" x2="${cx}" y2="${cy}" stroke="#303030" stroke-width="1" opacity=".5"/>`; });
   s += `<circle cx="${cx}" cy="${cy}" r="7" fill="#FE1849"/>`;
   s += `<text x="${cx}" y="${cy + 26}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.2" fill="#FE1849">THE CATEGORY</text>`;
+  // Two brands close together write their names over each other, so the later
+  // label is nudged clear rather than left to collide.
   const placed = [];
   pts.forEach(p => {
     p.ly = p.y + 4;
@@ -1833,125 +1884,42 @@ function figAxes() {
   });
   if (pts.length > 1) s += `<text x="${pts[far].x}" y="${pts[far].y - 26}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.2" fill="#1F5B4A">FURTHEST OUT</text>`;
   s += "</svg>";
-  return '<div class="figsvg">' + s + "</div>";
+  return s;
 }
 
-/* Overlap. Circles up to three brands, a matrix above that — a Venn of four is
-   fifteen regions and nobody reads it. */
-function figOverlap() {
-  const M = MSG();
-  const unused = M.filter(t => users(t).length === 0).length;
-  if (SEL.length > 3) {
-    let h = `<div class="notice">A Venn is unreadable above three brands — four make fifteen regions. <a data-three="1">Compare three</a>, or read the counts.</div>`;
-    h += `<table class="matrix"><thead><tr><th></th>${SEL.map(i => `<th>${esc(nameOf(i))}</th>`).join("")}</tr></thead><tbody>`;
-    SEL.forEach(i => {
-      h += `<tr><th style="text-align:left">${esc(nameOf(i))}</th>`;
-      SEL.forEach(j => {
-        if (i === j) {
-          const n = M.filter(t => { const u = users(t); return u.length === 1 && u[0] === i; }).length;
-          h += `<td class="self">${n}</td>`;
-        } else {
-          const n = M.filter(t => users(t).includes(i) && users(t).includes(j)).length;
-          h += `<td class="cell2" data-pair="${i},${j}">${n}</td>`;
-        }
-      });
-      h += "</tr>";
-    });
-    h += `</tbody></table><div class="figcap">Mint diagonal — territories that brand holds alone. Other cells — territories the pair share. ${unused} territories are used by none of them.</div>`;
-    return h;
-  }
-  const two = SEL.length === 2;
-  const posn = two ? [[236, 190], [372, 190]] : [[228, 164], [386, 164], [306, 296]];
-  const cnts = SEL.map(i => M.filter(t => users(t).includes(i)).length);
-  const rad = cnts.map(c => 54 + Math.sqrt(c) * 15);
-  let s = '<svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg">';
-  SEL.forEach((i, n) => { s += `<circle cx="${posn[n][0]}" cy="${posn[n][1]}" r="${rad[n]}" fill="#51D4B2" fill-opacity=".16" stroke="#303030" stroke-width="1.5"/>`; });
-  const lp = two ? [[236 - rad[0] - 10, 190, "end"], [372 + rad[1] + 10, 190, "start"]]
-                 : [[228 - rad[0] - 10, 154, "end"], [386 + rad[1] + 10, 154, "start"], [306, 296 + rad[2] + 26, "middle"]];
-  SEL.forEach((i, n) => {
-    s += `<text x="${lp[n][0]}" y="${lp[n][1]}" text-anchor="${lp[n][2]}" font-family="Epilogue, sans-serif" font-size="14" fill="#303030">${esc(nameOf(i))}</text>`;
-    s += `<text x="${lp[n][0]}" y="${lp[n][1] + 18}" text-anchor="${lp[n][2]}" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">${cnts[n]}</text>`;
-  });
-  const cnt = a => M.filter(t => { const u = users(t); return u.length === a.length && a.every(x => u.includes(x)); }).length;
-  const put = (x, y, n, big) => n ? `<text x="${x}" y="${y}" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="${big ? 28 : 20}" fill="#303030">${n}</text>` : "";
-  if (two) {
-    s += put(236 - rad[0] / 2.1, 198, cnt([SEL[0]])) + put(372 + rad[1] / 2.1, 198, cnt([SEL[1]])) + put(304, 196, cnt(SEL), true);
-  } else {
-    s += put(178, 136, cnt([SEL[0]])) + put(436, 136, cnt([SEL[1]])) + put(306, 348, cnt([SEL[2]]))
-       + put(306, 150, cnt([SEL[0], SEL[1]])) + put(226, 240, cnt([SEL[0], SEL[2]])) + put(388, 240, cnt([SEL[1], SEL[2]])) + put(306, 224, cnt(SEL), true);
-  }
-  s += `<text x="306" y="386" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">${unused} OUTSIDE EVERY CIRCLE</text></svg>`;
-
-  const m = {};
-  M.forEach(t => { const u = users(t); if (!u.length) return; (m[u.join(",")] = m[u.join(",")] || []).push(t); });
-  let side = '<div class="lab" style="padding-bottom:8px;border-bottom:1.5px solid var(--ink)">Regions</div>';
-  Object.keys(m).sort((a, b) => m[b].length - m[a].length).forEach(k => {
-    side += `<div class="vrow" data-key="${k}"><span>${k.split(",").map(x => esc(nameOf(+x))).join(" + ")}</span><span>${m[k].length}</span></div>`;
-  });
-  side += `<div class="vrow" data-key="none"><span>Nobody</span><span>${unused}</span></div>`;
-  return `<div class="vwrap"><div class="figsvg">${s}</div><div>${side}</div></div>`;
-}
-
-/* Standing out. Both inventories per brand, shared at the left and held alone
-   in mint at the right, so a brand that is distinctive in copy and generic in
-   art direction shows it in one glance. */
-function figBars() {
-  const vp = visPool();
-  const ranked = SEL.map(i => {
-    const m = segsFor(MSG(), i), v = hasImagery() && VIS.includes(i) ? segsFor(VT(), i, vp) : null;
-    const alone = m.alone.length + (v ? v.alone.length : 0);
-    const used = m.used + (v ? v.used : 0);
-    return { i, m, v, alone, used };
-  }).sort((a, b) => (b.used ? b.alone / b.used : 0) - (a.used ? a.alone / a.used : 0));
-  const maxM = Math.max(1, ...ranked.map(r => r.m.used));
-  const maxV = Math.max(1, ...ranked.map(r => (r.v ? r.v.used : 0)));
-  const track = (s, max, i, dim) => {
-    const w = n => (n / max * 100) + "%";
-    return `<div class="track">` +
-      (s.many.length  ? `<div class="seg many"  style="width:${w(s.many.length)}"  data-dim="${dim}" data-kind="many"  data-i="${i}"></div>` : "") +
-      (s.two.length   ? `<div class="seg two"   style="width:${w(s.two.length)}"   data-dim="${dim}" data-kind="two"   data-i="${i}"></div>` : "") +
-      (s.alone.length ? `<div class="seg alone" style="width:${w(s.alone.length)}" data-dim="${dim}" data-kind="alone" data-i="${i}"></div>` : "") +
-      `<div class="seg pad" style="width:${w(Math.max(0, max - s.used))}"></div></div>`;
-  };
-  return ranked.map(r =>
-    `<div class="bar-row"><div class="bar-top"><span class="nm">${esc(nameOf(r.i))}</span>` +
-    `<span class="rt">${r.alone} of ${r.used} territories its own</span></div>` +
-    `<div class="dimrow"><span class="dimlab">Messaging</span>${track(r.m, maxM, r.i, "messaging")}</div>` +
-    (r.v ? `<div class="dimrow"><span class="dimlab">Imagery</span>${track(r.v, maxV, r.i, "imagery")}</div>` : "") +
-    `</div>`).join("");
-}
-
-/* ---- the territory map ---- */
-function buildToggle() {
-  const t = $("#r-invtoggle");
-  const v = VT();
-  t.innerHTML = `<button aria-pressed="true" data-set="messaging">Messaging territories ${MSG().length}</button>` +
-    (v.length ? `<button aria-pressed="false" data-set="imagery">Visual territories ${v.length}</button>` : "");
-  t.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
-    GSET = b.dataset.set;
-    t.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
-    b.setAttribute("aria-pressed", "true");
-    renderMap();
-  }));
+/* ---- the territory map ----
+   Messaging only. The art direction map was a second full inventory behind a
+   toggle, which doubled the navigation for a finding that is one sentence long.
+   It moves to the working, where a reader who wants it will look. */
+function renderMapHead() {
+  const o = overallScore();
+  const sorted = [...o.m.per].sort((a, b) => a.pct - b.pct);
+  const low = sorted[0], next = sorted[1];
+  const apart = low && next && (next.pct - low.pct) >= 10;
+  const universal = MSG().filter(t => users(t).length === SEL.length && SEL.length > 1).length;
+  $("#r-maph").innerHTML = `Every territory in the category, and who is <span class="hl">standing in it</span>.`;
+  $("#r-mapsub").textContent = apart
+    ? `Darker means more brands are using it. ${low.name} is the only brand standing apart — it shares ${low.pct}% of what it says, against ${next.pct}% for the next closest.`
+    : `Darker means more brands are using it. No brand is standing apart: ${universal ? universal + " territories are used by every one of them" : "the brands sit within a few points of each other"}.`;
 }
 function shade(n, of) { if (n === 0) return 0; if (n === of) return 4; if (n >= 3) return 3; return n === 2 ? 2 : 1; }
-function renderMap() {
-  const items = setOf(GSET);
-  const pool = GSET === "imagery" ? visPool() : SEL;
+function drawMap(target, items, pool, legend) {
   const order = [...items].sort((a, b) => users(b, pool).length - users(a, pool).length || a.id.localeCompare(b.id));
-  $("#map-legend").textContent =
-    (GSET === "imagery" ? "visual territories" : "messaging territories") +
-    " · darker — more brands using it · mint — nobody there";
-  const g = $("#map");
+  $(legend).textContent = "darker — more brands using it · mint — nobody there";
+  const g = $(target);
   g.innerHTML = "";
   order.forEach(t => {
-    const s = shade(users(t, pool).length, pool.length);
-    const c = el("div", "c s" + s + (s === 0 && t.tier === "open" ? " ready" : ""));
+    const s2 = shade(users(t, pool).length, pool.length);
+    const c = el("div", "c s" + s2 + (s2 === 0 && t.tier === "open" ? " ready" : ""));
     c.textContent = t.label;
     c.title = t.description || "";
     c.onclick = () => detail(t.id);
     g.appendChild(c);
   });
+}
+function renderMap() {
+  drawMap("#map", MSG(), SEL, "#map-legend");
+  if (VT().length) drawMap("#vmap", VT(), visPool(), "#vmap-legend");
 }
 
 /* ---- findings ---- */
@@ -1969,24 +1937,67 @@ function renderFindings() {
     a.addEventListener("click", () => detail(a.dataset.id)));
 }
 
-/* ---- territories to explore ---- */
-function renderDaylight() {
+/* ---- act two: the daylight ----
+   This is the payoff and the reason anyone forwards the report, so it gets the
+   room. Twenty-five items is somebody else's problem; five, named properly and
+   carrying the evidence they rest on, is a conversation. The rest are one
+   click away and stay in the working. */
+const DAY_SHOWN = 5;
+let DAY_ALL = false;
+function daylightItems() {
   const RANK = { open: 0, frame_only: 1, constrained: 2, closed: 3 };
-  const all = MSG().concat(VT());
-  const items = all.filter(t => users(t, t.visual ? visPool() : SEL).length === 0 && t.tier !== "closed")
-    .sort((a, b) => RANK[a.tier] - RANK[b.tier] || a.id.localeCompare(b.id));
+  return MSG().concat(VT())
+    .filter(t => users(t, t.visual ? visPool() : SEL).length === 0 && t.tier !== "closed")
+    // Reachable first, then the ones the literature speaks to most directly.
+    .sort((a, b) => RANK[a.tier] - RANK[b.tier] ||
+      (b.provenance !== "observed in category") - (a.provenance !== "observed in category") ||
+      a.id.localeCompare(b.id));
+}
+function renderDaylight() {
+  const items = daylightItems();
   const open = items.filter(t => t.tier === "open").length;
   const vis = items.filter(t => t.visual).length;
-  $("#daylight-intro").innerHTML =
-    `${items.length} territories are used by nobody in this set and are worth a conversation` +
-    `${vis ? ` — ${items.length - vis} messaging, ${vis} art direction` : ""}. ` +
-    `${open} of them need no new clinical evidence. Ratings are a strategic read, not a regulatory one.`;
-  $("#r-daylight").innerHTML = items.map(t =>
-    `<div class="day-item" data-id="${esc(t.id)}">` +
-    `<div><div class="d-label">${esc(t.label)}</div><div class="d-desc">${esc(t.description || "")}</div></div>` +
-    `${tierChip(t.tier)}</div>`).join("") || `<p class="dr-empty">Every territory in this list is used by at least one brand.</p>`;
+  $("#r-dayh").innerHTML = open
+    ? `${open === 1 ? "One territory needs" : open + " territories need"} no new evidence. <span class="hl">Nobody is using ${open === 1 ? "it" : "them"}.</span>`
+    : `What nobody in this category is <span class="hl">using</span>.`;
+  const allUnused = MSG().concat(VT()).filter(t => users(t, t.visual ? visPool() : SEL).length === 0);
+  const notViable = allUnused.length - items.length;
+  $("#daylight-intro").textContent =
+    `${allUnused.length} territories are used by no brand in this set` +
+    `${notViable ? `. ${notViable === 1 ? "One is" : notViable + " are"} not viable for anybody, which leaves ${items.length}` : ""}` +
+    `${vis ? ` — ${items.length - vis} in the messaging, ${vis} in the art direction` : ""}. ` +
+    `Every one carries the published evidence it rests on; click it to see that evidence, and who is absent from it.`;
+
+  const show = DAY_ALL ? items : items.slice(0, DAY_SHOWN);
+  let lastSrc = null;
+  $("#r-daylight").innerHTML = show.map((t, i) => {
+    const src = (t.provenance !== "observed in category" && t.source) ? t.source : "";
+    const showSrc = src && src !== lastSrc;
+    if (src) lastSrc = src;
+    return `
+    <div class="day-row" data-id="${esc(t.id)}">
+      <div class="day-n">${String(i + 1).padStart(2, "0")}</div>
+      <div class="day-main">
+        <div class="day-label">${esc(t.label)}</div>
+        <p class="day-desc">${esc(t.description || "")}</p>
+        ${showSrc ? `<p class="day-src">${esc(src)}</p>` : ""}
+      </div>
+      <div class="day-meta">
+        ${tierChip(t.tier)}
+        ${t.visual ? '<span class="day-kind">Art direction</span>' : ""}
+      </div>
+    </div>`;
+  }).join("") || `<p class="dr-empty">Every territory in this list is used by at least one brand.</p>`;
   $("#r-daylight").querySelectorAll("[data-id]").forEach(d =>
     d.addEventListener("click", () => detail(d.dataset.id)));
+
+  const more = $("#show-all-daylight");
+  if (items.length > DAY_SHOWN) {
+    more.hidden = false;
+    more.textContent = DAY_ALL ? "Show the first five only" : `Show the other ${items.length - DAY_SHOWN}`;
+  } else {
+    more.hidden = true;
+  }
 }
 
 /* ---- the colophon: the method, one click away, at the foot of the report ---- */
@@ -2210,52 +2221,18 @@ function listBrandShared(i, dim) {
   listSet("Brand", `${nameOf(i)} — ${dim}`, shared,
     `${pctv} convergence · ${shared.length} of its ${s.used} ${dim === "imagery" ? "visual" : "messaging"} territories a rival also uses.`);
 }
-function listSeg(dim, kind, i) {
-  const items = dim === "imagery" ? VT() : MSG();
-  const pool = dim === "imagery" ? visPool() : SEL;
-  const s = segsFor(items, i, pool);
-  const m = { many: "shared with two or more", two: "shared with one other", alone: "held alone" };
-  listSet("Brand", `${nameOf(i)} — ${dim}`, s[kind],
-    `${s[kind].length} ${dim === "imagery" ? "visual" : "messaging"} territories ${m[kind]}.`);
-}
-function listRegion(key) {
-  if (key === "none") return listUnused();
-  const a = key.split(",").map(Number);
-  listSet("Overlap", a.map(x => nameOf(x)).join(" + "),
-    MSG().filter(t => { const u = users(t); return u.length === a.length && a.every(x => u.includes(x)); }),
-    a.length === 1 ? "Held alone." : "Shared by these brands and no others.");
-}
 function noteDrawer(kicker, title, body) {
   LAST = null;
   $("#drawer-content").innerHTML = drawerHTML(kicker, esc(title), "", body, false);
   showDrawer();
 }
 
-/* The field is redrawn on every selection change, so its clicks are delegated
-   from the section rather than bound to elements that will not exist. */
-$("#sec-field").addEventListener("click", e => {
-  const goBtn = e.target.closest("[data-go]");
-  if (goBtn) return go(+goBtn.dataset.go);
+/* The map and the chart are redrawn on every selection change, so their clicks
+   are delegated from the section rather than bound to elements that will not
+   exist a moment later. */
+$("#sec-map").addEventListener("click", e => {
   const pt = e.target.closest(".ax-pt");
-  if (pt) return listBrandShared(+pt.dataset.i, "messaging");
-  const seg = e.target.closest(".seg[data-i]");
-  if (seg) return listSeg(seg.dataset.dim, seg.dataset.kind, +seg.dataset.i);
-  const row = e.target.closest(".vrow[data-key]");
-  if (row) return listRegion(row.dataset.key);
-  const cell = e.target.closest("td.cell2[data-pair]");
-  if (cell) {
-    const [i, j] = cell.dataset.pair.split(",").map(Number);
-    return listSet("Overlap", `${nameOf(i)} + ${nameOf(j)}`,
-      MSG().filter(t => users(t).includes(i) && users(t).includes(j)),
-      "Territories both of these brands use, whether or not anyone else does.");
-  }
-  if (e.target.closest("[data-three]")) { SEL = SEL.slice(0, 3); renderAll(); }
-});
-
-$("#rail").addEventListener("scroll", () => {
-  if (Date.now() < RAIL_LOCK) return;
-  const r = $("#rail"), i = Math.round(r.scrollLeft / r.clientWidth);
-  if (i !== IDX) go(i);
+  if (pt) listBrandShared(+pt.dataset.i, "messaging");
 });
 
 /* ---- the "why" buttons ---- */
@@ -2269,6 +2246,8 @@ $("#why-headline").addEventListener("click", () => {
     <p class="dr-src">Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. More investment behind a shared territory buys share of voice rather than preference.</p>
     <p class="dr-src">One trap worth knowing: a brand that says very little overlaps with nobody, and low overlap reads as distinctiveness. Check how many territories a brand uses before reading its score — the count sits beside it in every list.</p>`);
 });
+
+$("#show-all-daylight").addEventListener("click", () => { DAY_ALL = !DAY_ALL; renderDaylight(); });
 
 $("#why-daylight").addEventListener("click", () => noteDrawer("Method", "How these are judged", `
   ${Object.keys(TIER_NAMES).map(t => `<p>${tierChip(t)}</p><p class="dr-src">${esc(TIER_EXPLAIN[t])}</p>`).join("")}
