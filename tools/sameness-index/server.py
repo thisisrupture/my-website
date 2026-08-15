@@ -27,6 +27,7 @@ The methodology is methodology.md. The metrics are score.py, ported unchanged.
 import asyncio
 import base64
 import json
+import math
 import os
 import random
 import re
@@ -178,22 +179,102 @@ GENERIC_BOUNDARY_RULES = [
     {"element": "Mechanism analogy or metaphor", "layer": 3, "rule": "Explanatory framing is elective."},
 ]
 
-VISUAL_DIMENSIONS = [
-    ("human_configuration", "Who is in the picture"),
-    ("touch", "Is anyone touching anyone"),
-    ("disease_depiction", "Is the disease shown"),
-    ("skin_tone_range", "Range of skin tones"),
-    ("life_moment", "What is happening"),
-    ("emotional_register", "How it is meant to feel"),
-    ("abstraction_motif", "Graphic device used"),
-    ("category_borrow", "What it looks like it is selling"),
-]
+VISUAL_TIER_RULES = """
+Every visual territory carries an availability rating, on the same four-point
+scale as the messaging territories, read for art direction rather than copy:
+- open: a casting, setting or treatment decision. Needs no new evidence and no
+  new claim — somebody simply has to choose it.
+- frame_only: the situation can be depicted as part of the disease, because
+  published evidence supports describing it. Depicting it as something the
+  product resolves would need an endpoint that does not exist.
+- constrained: usable, but the image itself carries an implied claim — showing
+  severity, showing a result, showing an age group, showing a body site — and
+  needs supporting evidence and careful treatment. Expect close review.
+- closed: cannot be depicted without clinical data nobody has generated, or
+  would depict something the label does not permit.
+"""
 
 PROVENANCE_LABELS = {
     "C": "observed in category",
     "X": "patient burden literature",
     "H": "clinical barrier literature",
 }
+
+# The reader never sees the internal tier word. These are the labels on the page.
+TIER_READER_LABELS = {
+    "open": "Explore now",
+    "frame_only": "Raise, not claim",
+    "constrained": "Needs substantiation",
+    "closed": "Not viable",
+}
+
+# ---------------------------------------------------------------------------
+# The convergence score.
+#
+# For one brand: of the territories it uses, the share that at least one rival
+# also uses. For the category: the mean of those, across the brands analysed.
+# The same calculation is applied to messaging and to imagery, and the headline
+# score is the mean of the two.
+#
+# It is deliberately per-brand-then-averaged rather than a single category-wide
+# ratio. A category-wide ratio is dominated by whichever brand says the most;
+# this gives each brand equal weight, which is how a brand lead reads their own
+# position. The category ratio is still on the page — it survives as
+# `crowding_rate` in the working.
+# ---------------------------------------------------------------------------
+
+BANDS = [
+    {"to": 40, "name": "Distinct", "cls": "good",
+     "note": "Brands are saying different things. There is still advantage available inside the current frame."},
+    {"to": 60, "name": "Converging", "cls": "mid",
+     "note": "The category is drifting together. Differentiation still exists, but it thins with every cycle."},
+    {"to": 80, "name": "Converged", "cls": "bad",
+     "note": "Most of what each brand says, a rival also says. Messaging no longer separates the field."},
+    {"to": 101, "name": "Indistinguishable", "cls": "bad",
+     "note": "The category speaks with one voice. Share of voice is the only lever left inside this frame."},
+]
+
+
+def r0(x):
+    """Round half up, to a whole number.
+
+    Python's round() breaks ties to even and JavaScript's Math.round() rounds
+    half up, so a score landing on .5 came out one point lower on the server
+    than the page recalculated it — the same figure disagreeing with itself.
+    Every score on this page goes through here, and the front end uses
+    Math.round, which now means the same thing.
+    """
+    return int(math.floor(float(x) + 0.5))
+
+
+def band_for(score):
+    for b in BANDS:
+        if score < b["to"]:
+            return {k: v for k, v in b.items() if k != "to"}
+    return {k: v for k, v in BANDS[-1].items() if k != "to"}
+
+
+def convergence(positions, brands):
+    """Per-brand convergence over one inventory, and the mean across brands.
+
+    `positions` must already carry `claimers`. A brand that uses nothing scores
+    zero and is still counted — having nothing to say is not distinctiveness.
+    """
+    per = []
+    for b in brands:
+        used = [p for p in positions if b in p["claimers"]]
+        shared = [p for p in used if len(p["claimers"]) > 1]
+        per.append({
+            "brand": b,
+            "used": len(used),
+            "shared": len(shared),
+            "alone": len(used) - len(shared),
+            "pct": r0(len(shared) / len(used) * 100) if used else 0,
+            "shared_ids": [p["id"] for p in shared],
+            "alone_ids": [p["id"] for p in used if len(p["claimers"]) == 1],
+        })
+    mean = r0(sum(p["pct"] for p in per) / len(per)) if per else 0
+    return {"per": per, "mean": mean}
 
 
 # ---------------------------------------------------------------------------
@@ -506,17 +587,40 @@ def quote_link(url, exact):
     return f"{url}#:~:text={urlquote(exact, safe='')}"
 
 
-async def fetch_hero_image(http, urls):
-    """Return (media_type, base64) for the first retrievable candidate."""
-    for u in urls[:5]:
+# A logo, an icon and a tracking pixel are all images, and all worthless here.
+# Nothing under this size is commissioned photography.
+MIN_IMAGE_BYTES = 24_000
+MAX_IMAGES_PER_BRAND = 4
+
+
+async def fetch_images(http, urls, want=MAX_IMAGES_PER_BRAND):
+    """Return [(url, media_type, base64), ...] for the first `want` retrievable
+    candidates that are large enough to be photography rather than furniture.
+
+    One image was enough to code a fixed list of dimensions. It is not enough to
+    code a brand against an inventory of visual territories — a site that shows
+    a clinician in a second image and a device in a third is using territories
+    its hero does not. The budget is small because every image is paid for twice,
+    once in bandwidth and once in tokens.
+    """
+    out, seen = [], set()
+    for u in urls[:14]:
+        if len(out) >= want:
+            break
+        base = u.split("?")[0]
+        if base in seen:
+            continue
+        seen.add(base)
         try:
             r = await http.get(u, headers=BROWSER_HEADERS, follow_redirects=True, timeout=25)
             mt = r.headers.get("content-type", "").split(";")[0].strip()
-            if r.status_code == 200 and mt in ("image/jpeg", "image/png", "image/webp") and len(r.content) < 4_500_000:
-                return mt, base64.standard_b64encode(r.content).decode()
+            if (r.status_code == 200
+                    and mt in ("image/jpeg", "image/png", "image/webp")
+                    and MIN_IMAGE_BYTES < len(r.content) < 4_500_000):
+                out.append((u, mt, base64.standard_b64encode(r.content).decode()))
         except Exception:
             continue
-    return None, None
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -729,25 +833,140 @@ Only include positions that are clearly taken. An empty object is a valid answer
     return await llm_json(prompt, max_tokens=8000, stage="scoring a brand against the territories")
 
 
-async def stage_visual(brand, mt, b64):
-    dims = "\n".join(f"- {k}: {label}" for k, label in VISUAL_DIMENSIONS)
-    prompt = f"""Code this brand hero image ({brand}) on plain-English dimensions.
-Commissioned imagery only — if this is clinical photography, a mechanism
-diagram or a pack shot, return {{"excluded": true, "reason": "<why>"}}.
+async def stage_visual_read(brand, images):
+    """Read one brand's commissioned imagery into art-direction observations.
 
-Dimensions (pick ONE short value each, lower case):
-- human_configuration: none / individual alone / caregiver-child dyad / family group / clinician-patient
-- touch: absent / self-touch / interpersonal touch
-- disease_depiction: clinical lesion / visible on lifestyle model / implied only / absent
-- skin_tone_range: single / limited / broad
-- life_moment: clinical / ordinary domestic / leisure / achievement / abstract
-- emotional_register: relief / celebration / calm control / confidence / tenderness / neutral clinical
-- abstraction_motif: none / natural / scientific / cosmetic / celestial
-- category_borrow: pharma / beauty and skincare / wellness / consumer tech
+    This is the visual counterpart of stage_layers: it produces the elective
+    material that the visual opportunity space is then built from. It does not
+    score anything and does not see the territory list, because the list does
+    not exist yet.
+    """
+    n = len(images)
+    prompt = f"""You are reading the art direction on one pharmaceutical brand's website:
+"{brand}". {n} image{'s' if n != 1 else ''} follow{'' if n != 1 else 's'}, numbered from 1 in the order shown.
 
-Return ONLY JSON: {{"human_configuration": "...", ..., "child_present": true/false,
-"notes": "<2-3 sentences describing what the image shows and how>"}}"""
-    return await llm_json(prompt, max_tokens=2000, images=[(mt, b64)], stage="reading the hero image")
+COMMISSIONED IMAGERY ONLY. Clinical photography of the disease, mechanism-of-action
+diagrams, pack shots, screenshots, charts and logos were determined by the product
+rather than chosen by an art director. Ignore them entirely. If none of the images
+is commissioned photography or illustration, return {{"excluded": true, "reason": "<why>"}}.
+
+For each commissioned image, write down the decisions somebody made. One
+observation per decision, each a short plain-English sentence naming what is
+actually in the picture — who is in frame and roughly how old they read, what
+they are doing, where they are, the light and palette, what is touching what,
+whether the disease is visible, whether a device or a clinician appears, the
+register the picture is reaching for. Describe only what you can see. Do not
+interpret the brand's strategy and do not use marketing adjectives.
+
+Return ONLY JSON:
+{{"elements": [{{"image": <1-based number of the image>, "note": "<one observation>"}}, ...],
+  "summary": "<2-3 sentences on this brand's art direction overall>"}}
+
+Between 6 and 14 observations in total across all the images."""
+    return await llm_json(prompt, max_tokens=3000, images=[(mt, b64) for _u, mt, b64 in images],
+                          stage="reading the imagery")
+
+
+async def stage_visual_space(category, brand_visuals):
+    """Build the visual opportunity space for this category, on the fly.
+
+    Same shape as stage_space and for the same reason: an inventory derived only
+    from what the brands show has a user for every territory by construction, so
+    unclaimed visual territory can never appear. The literature-established half
+    is what makes "nobody depicts this" a finding rather than an absence.
+    """
+    block = "\n\n".join(
+        f"### {b}\n" + "\n".join(f"- {x}" for x in obs)
+        for b, obs in brand_visuals.items()
+    )
+    prompt = f"""You are building the VISUAL OPPORTUNITY SPACE for a category-level
+positioning audit. Category: {category}.
+
+A VISUAL TERRITORY is an art direction decision that was available to every
+brand in the category — a casting decision, a setting, a moment, a treatment, a
+graphic register. The decision is the unit, not the execution. ("A woman at a
+kitchen window in morning light" and "a man in a sunlit hallway" are the same
+territory: a single adult alone in domestic light.)
+
+Build the space from TWO sources:
+
+1. OBSERVED IN CATEGORY (ids V01, V02, ...): every distinct art direction
+   decision any brand below actually makes. 8-14 territories. Merge executions
+   of the same decision into one territory.
+
+2. EVIDENCED BUT UNDEPICTED — this is NOT optional, and it is the point of the
+   exercise. An inventory built only from these sites has a user for every
+   territory by construction.
+   - PATIENT BURDEN (ids X01...): 5-8 visual territories established from the
+     documented burden-of-illness and lived-experience literature for this
+     disease — the people, moments, settings and body sites patients describe
+     as mattering — identified independently of what these brands show. For
+     each, name the kind of evidence.
+   - REPRESENTATION AND CLINICAL BARRIERS (ids H01...): 4-7 visual territories
+     established from the literature on who the disease actually affects and
+     where it is missed or under-recognised — age, skin tone, sex, body site,
+     comorbidity, setting of care. Again, name the evidence.
+   Some X/H territories may in fact be depicted by a brand below; include them
+   anyway, with their literature provenance.
+
+Availability tiering — every territory, with reasoning written for a brand lead
+in plain commercial English:
+{VISUAL_TIER_RULES}
+
+VOCABULARY. The unit is a "visual territory". Avoid spatial metaphor beyond the
+word territory itself — never "ground", "space", "white space", "own", "stand
+on". Never "disruption", "transformation" or "innovation". Write about casting,
+setting, art direction, treatment, register.
+
+Art direction observed, by brand:
+{block}
+
+LENGTH — a list, not an essay, and the whole answer has to arrive in one piece.
+Never more than 26 territories in total. Label at most 10 words, description one
+sentence of at most 22 words, source at most 22 words, tier_reasoning at most 28
+words. Do not restate the label inside the description.
+
+Return ONLY JSON — a list:
+[{{"id": "V01", "label": "<the decision, one line>",
+   "description": "<plain English, one sentence>",
+   "source": "<for V: 'Observed in category.' For X/H: the specific literature basis>",
+   "tier": "open|frame_only|constrained|closed",
+   "tier_reasoning": "<1-2 sentences, specific to this category>"}}, ...]"""
+    return await llm_json(prompt, max_tokens=16000, stage="building the visual territory list")
+
+
+async def stage_visual_code(brand, observations, positions):
+    """Code one brand's art direction against the visual territory list.
+
+    Deliberately reads the written observations rather than the images again:
+    the same material the list was built from, so a brand cannot be coded on
+    something no reader can check, and the run does not pay for every image a
+    second time.
+    """
+    plist = "\n".join(f'{p["id"]}: {p["label"]} — {p["description"]}' for p in positions)
+    obs = "\n".join(f"- [image {o.get('image', 1)}] {o.get('note', '')}" for o in observations)
+    prompt = f"""Code one brand's art direction against a fixed list of visual territories.
+
+A territory is USED only if the observations below clearly show that decision
+having been made. Do not infer it from the category, from the product, or from
+what a brand like this usually does. If in doubt, leave it out — under-coding is
+the conservative direction.
+
+THE EVIDENCE IS A DESCRIPTION OF WHAT IS IN THE PICTURE, taken from the
+observations below and not invented. Reproduce the observation that shows the
+decision, and say which image it came from. Coding a picture involves more
+judgement than quoting a sentence does, which is exactly why the reader is shown
+the image and the observation together and can disagree with the call.
+
+Visual territories:
+{plist}
+
+Art direction observed for "{brand}":
+{obs}
+
+Return ONLY JSON: {{"<territory id>": {{"evidence": "<the observation>", "image": <image number>}}, ...}}
+Only include territories clearly used. An empty object is a valid answer."""
+    return await llm_json(prompt, max_tokens=6000, stage="scoring a brand's art direction")
 
 
 async def stage_find(brand, category_hint):
@@ -786,11 +1005,18 @@ Return ONLY JSON:
     return await llm_json(prompt, max_tokens=3000, stage="finding the category and competitors")
 
 
-async def stage_findings(category, metrics, positions, brands, cross_check):
+async def stage_findings(category, metrics, positions, brands, cross_check,
+                         conv=None, visual_positions=None):
     pos_lines = "\n".join(
         f'{p["id"]} [{p["tier"]}] ({p["n"]} of {len(brands)}: {", ".join(p["claimers"]) or "nobody"}) {p["label"]}'
         for p in positions
     )
+    visual_positions = visual_positions or []
+    vis_lines = "\n".join(
+        f'visual:{p["id"]} [{p["tier"]}] ({p["n"]} of {len(brands)}: {", ".join(p["claimers"]) or "nobody"}) {p["label"]}'
+        for p in visual_positions
+    ) or "imagery could not be read on enough brands this run"
+    conv_block = json.dumps(conv) if conv else "not computed"
     cc = json.dumps(cross_check) if cross_check else "not captured"
     prompt = f"""You are writing the result screen of a strategic audit called the
 Sameness Index. Category: {category}. Brands: {", ".join(brands)} — the first
@@ -819,28 +1045,44 @@ Do not write pithy or aphoristic lines. Every sentence should be explicit
 enough that a reader who has never seen this tool understands it without
 inference. Never use the words "disruption", "transformation" or "innovation".
 
+There are two inventories, built the same way and scored the same way: MESSAGING
+TERRITORIES and VISUAL TERRITORIES. A visual territory is an art direction
+decision — casting, setting, moment, treatment. Write about it in art direction
+language, and say what is actually in the pictures.
+
+Convergence (computed, do not recompute): {conv_block}
+The convergence score is, for each brand, the share of its territories that at
+least one rival also uses, averaged across the brands. Higher means the brands
+sound and look more alike.
+
 Metrics (computed, do not recompute): {json.dumps(metrics)}
-Positions:
+Messaging territories:
 {pos_lines}
+Visual territories:
+{vis_lines}
 Verbal/visual cross-check: {cc}
 
 Return ONLY JSON:
 {{
- "headline": "<LEAD WITH THE SAMENESS, then the counts, then what nobody uses.
-   Keep it plain and keep the arithmetic adding up. Three short sentences, no
-   subordinate clauses, no phrase the reader has to decode. Write 'explore'
-   rather than 'take' or 'own' — some territories will not suit a given brand
-   and the tool does not know which. Follow this pattern exactly, substituting
-   the real numbers: '32% of the messaging in this category is shared. Of 41
-   messaging territories, 7 are used by both brands, 15 by only one, and 19 by
-   neither. 18 of those unused territories come from published evidence on what
-   patients and clinicians say is missing, rather than from anything these
-   brands publish.' With three or more brands, write 'more than one brand'
-   instead of 'both brands'.>",
- "findings": [  // 3 to 5, each one sentence or two, each with evidence refs
-   {{"text": "<the finding>", "refs": ["<position id>" or "visual:<dimension key>", ...]}}
+ "headline": "<LEAD WITH THE SCORE AND THE BAND, then the counts, then what
+   nobody uses. Keep it plain and keep the arithmetic adding up. Three or four
+   short sentences, no subordinate clauses, no phrase the reader has to decode.
+   Write 'explore' rather than 'take' or 'own' — some territories will not suit
+   a given brand and the tool does not know which. Follow this pattern exactly,
+   substituting the real numbers: 'This category scores 64 for convergence —
+   converged. Of 41 messaging territories, 7 are used by more than one brand, 15
+   by only one, and 19 by neither. 18 of those unused territories come from
+   published evidence on what patients and clinicians say is missing, rather
+   than from anything these brands publish. The art direction scores 78, with 5
+   of 14 visual territories depicted by nobody.' With two brands, write 'both
+   brands' instead of 'more than one brand'. Leave out the imagery sentence if
+   the imagery was not read.>",
+ "findings": [  // 3 to 5, each one sentence or two, each with evidence refs.
+                // At least one should be about the art direction where visual
+                // territories were read.
+   {{"text": "<the finding>", "refs": ["<messaging territory id>" or "visual:<visual territory id>", ...]}}
  ],
- "brand_comments": {{"<brand>": "<one sentence on its verbal vs visual posture>", ...}}
+ "brand_comments": {{"<brand>": "<one sentence on how its messaging and its art direction compare>", ...}}
 }}"""
     return await llm_json(prompt, max_tokens=6000, stage="writing the findings")
 
@@ -1074,35 +1316,102 @@ async def pipeline(brands_in, category_given=""):
                 + (" The rest were paraphrased closely enough that the exact wording could not be found again." if untraced else "")
             )})
 
-        # 5 — visual layer
-        yield ev({"type": "progress", "text": "Coding the hero imagery — commissioned photography only. Clinical images, mechanism diagrams and pack shots are excluded, because they were not art direction decisions."})
-        visual, notes = {}, {}
+        # 5 — the visual layer
+        #
+        # Built the same way the messaging layer is: read the material, build
+        # the inventory for this category from what is observed plus what the
+        # literature evidences, then code every brand against the whole list.
+        # An inventory fixed in advance could not say which visual territory
+        # this category leaves empty, and that is the finding worth having.
+        yield ev({"type": "progress", "text": "Reading the art direction — commissioned photography only. Clinical images, mechanism diagrams and pack shots are excluded, because they were not art direction decisions."})
+        visual_obs, visual_summaries, image_urls = {}, {}, {}
         for b in brands:
-            mt, b64 = await fetch_hero_image(http, image_cands.get(b, []))
-            if not b64:
+            imgs = await fetch_images(http, image_cands.get(b, []))
+            if not imgs:
                 continue
+            image_urls[b] = [u for u, _mt, _b64 in imgs]
             try:
-                v = await stage_visual(b, mt, b64)
+                v = await stage_visual_read(b, imgs)
             except Exception:
                 continue
             if v.get("excluded"):
                 continue
-            visual[b] = v
-            notes[b] = v.get("notes", "")
+            obs = [o for o in (v.get("elements") or []) if o.get("note")]
+            if not obs:
+                continue
+            visual_obs[b] = obs
+            visual_summaries[b] = v.get("summary", "")
+            yield ev({"type": "progress", "text": f"{b}: {len(imgs)} commissioned image{'s' if len(imgs) != 1 else ''} read, {len(obs)} art direction decisions noted."})
 
-        visual_rows, modal_profile = [], {}
-        if len(visual) >= 2:
-            for key, label in VISUAL_DIMENSIONS:
-                vals = Counter(str(visual[b].get(key, "")) for b in visual)
-                modal, n = vals.most_common(1)[0]
-                modal_profile[key] = modal
-                visual_rows.append({
-                    "key": key, "label": label, "modal_value": modal,
-                    "agreement": round(n / len(visual), 3),
-                    "spread": dict(vals),
-                    "per_brand": {b: visual[b].get(key, "—") for b in visual},
+        visual_positions, visual_coding = [], {}
+        if len(visual_obs) >= 2:
+            yield ev({"type": "progress", "text": "Building the list of visual territories available to this category — including territories nobody depicts, drawn from the literature on who this disease affects and what patients describe, rather than from the brands themselves."})
+            try:
+                raw_visual = await stage_visual_space(
+                    category, {b: [o["note"] for o in obs] for b, obs in visual_obs.items()})
+            except Exception:
+                raw_visual = []
+            for p in raw_visual or []:
+                pid = str(p.get("id", "")).strip()
+                if not pid or pid[0] not in "VXH":
+                    continue
+                # The visual list is asked for X and H ids so the model applies
+                # the same provenance discipline it does to the messaging list,
+                # but those ids already exist in the messaging inventory. Every
+                # visual territory is therefore namespaced with a leading V, so
+                # an id identifies one territory on the whole page and a finding
+                # can never link to the wrong one.
+                prov = ("observed in category" if pid[0] == "V"
+                        else PROVENANCE_LABELS.get(pid[0], "observed in category"))
+                if pid[0] != "V":
+                    pid = "V" + pid
+                visual_positions.append({
+                    "id": pid,
+                    "label": p.get("label", "").strip(),
+                    "description": p.get("description", "").strip(),
+                    "provenance": prov,
+                    "source": p.get("source", ""),
+                    "tier": p.get("tier", "open"),
+                    "tier_reasoning": p.get("tier_reasoning", ""),
+                    "visual": True,
                 })
-            visual_rows.sort(key=lambda r: -r["agreement"])
+
+        if visual_positions:
+            valid_v = {p["id"] for p in visual_positions}
+            for b in visual_obs:
+                yield ev({"type": "progress", "text": f"Scoring {b}'s art direction against all {len(visual_positions)} visual territories."})
+                try:
+                    codes = await stage_visual_code(b, visual_obs[b], visual_positions)
+                except Exception:
+                    codes = {}
+                clean = {}
+                for k, v in (codes or {}).items():
+                    if k not in valid_v:
+                        continue
+                    if isinstance(v, dict) and v.get("evidence"):
+                        clean[k] = {"evidence": str(v["evidence"]),
+                                    "image": int(v.get("image") or 1)}
+                    elif isinstance(v, str) and v.strip():
+                        clean[k] = {"evidence": v.strip(), "image": 1}
+                visual_coding[b] = clean
+
+            for p in visual_positions:
+                p["claimers"] = [b for b in brands if p["id"] in visual_coding.get(b, {})]
+                p["n"] = len(p["claimers"])
+                p["receipts"] = {b: visual_coding[b][p["id"]]["evidence"] for b in p["claimers"]}
+                links = {}
+                for b in p["claimers"]:
+                    i = visual_coding[b][p["id"]]["image"]
+                    urls = image_urls.get(b, [])
+                    if 1 <= i <= len(urls):
+                        links[b] = urls[i - 1]
+                if links:
+                    p["receipt_links"] = links
+            visual_positions.sort(key=lambda p: (-p["n"], p["id"]))
+
+        # Brands whose imagery could not be read are outside the imagery figures
+        # entirely rather than counted as depicting nothing.
+        visual_brands = [b for b in brands if b in visual_coding]
 
         # 6 — the arithmetic
         yield ev({"type": "progress", "text": "Calculating — how much of the available positioning is in use, how much of it is shared, and which positions each brand holds alone."})
@@ -1128,53 +1437,72 @@ async def pipeline(brands_in, category_given=""):
             })
         centre.sort(key=lambda r: -r["distance"])
 
-        # Two-axis plot: mean dissimilarity to the other brands, same
-        # calculation applied to messaging and to imagery.
+        # The headline. Messaging and imagery are scored by the same
+        # calculation over their own inventories, and the category score is the
+        # mean of the two. Where the imagery could not be read, the score is the
+        # messaging score alone and the page says so rather than quietly
+        # averaging a number that does not exist.
+        conv_msg = convergence(positions, brands)
+        conv_img = convergence(visual_positions, visual_brands) if visual_positions and len(visual_brands) >= 2 else None
+        overall = r0((conv_msg["mean"] + conv_img["mean"]) / 2) if conv_img else conv_msg["mean"]
+        conv = {
+            "overall": overall,
+            "band": band_for(overall),
+            "messaging": conv_msg,
+            "imagery": conv_img,
+            "imagery_brands": visual_brands,
+            "basis": (
+                "For each brand, the share of its territories that at least one rival also uses. The category "
+                "score is the mean across the brands analysed, calculated the same way for messaging and for "
+                "imagery, and the headline is the mean of the two."
+                if conv_img else
+                "For each brand, the share of its messaging territories that at least one rival also uses, "
+                "averaged across the brands analysed. The imagery could not be read on enough brands this run, "
+                "so the score covers messaging only."
+            ),
+            "bands_note": "Under 40 distinct, 40 to 59 converging, 60 to 79 converged, 80 and above indistinguishable. Scores compare within a category over time, not between categories of different size.",
+        }
+
+        # Two-axis plot: mean dissimilarity to the other brands, the same
+        # calculation applied to messaging and to imagery — now over two
+        # inventories of territories rather than one inventory and one fixed
+        # list of dimensions, so both axes mean the same thing.
         plot = []
         for b in brands:
             peers = [o for o in brands if o != b]
             msg = 1 - (sum(jaccard(coding[b], coding[o]) for o in peers) / len(peers)) if peers else 0.0
             img = None
-            if b in visual:
-                vpeers = [o for o in peers if o in visual]
+            if b in visual_coding:
+                vpeers = [o for o in visual_brands if o != b]
                 if vpeers:
-                    img = 1 - sum(
-                        sum(1 for k, _ in VISUAL_DIMENSIONS
-                            if str(visual[b].get(k, "")) == str(visual[o].get(k, ""))) / len(VISUAL_DIMENSIONS)
-                        for o in vpeers
-                    ) / len(vpeers)
+                    img = 1 - sum(jaccard(visual_coding[b], visual_coding[o]) for o in vpeers) / len(vpeers)
             plot.append({"brand": b, "messaging": round(msg, 3),
                          "imagery": round(img, 3) if img is not None else None})
 
         plotted = [p for p in plot if p["imagery"] is not None]
-        n_dims = len(VISUAL_DIMENSIONS)
-        dims_with_majority = sum(
-            1 for k, _ in VISUAL_DIMENSIONS
-            if visual and max(Counter(str(visual[b].get(k, "")) for b in visual).values()) > len(visual) / 2
-        )
         plot_meta = {
             "messaging_mean": round(sum(p["messaging"] for p in plot) / len(plot), 3) if plot else None,
             "imagery_mean": round(sum(p["imagery"] for p in plotted) / len(plotted), 3) if plotted else None,
-            "imagery_step": round(1 / n_dims, 3),
-            "imagery_dimensions": n_dims,
-            "imagery_dimensions_with_majority": dims_with_majority,
+            "imagery_territories": len(visual_positions),
             "caveat": (
-                "Both axes measure how unlike the other brands each brand is — the same calculation, "
-                "applied to messaging and to imagery. The view is zoomed to the brands plotted, so read "
-                "position relative to the crosshair rather than as an absolute score. Imagery moves in "
-                f"steps of {round(100 / n_dims)} percentage points because there are only {n_dims} coded "
-                "dimensions, so small vertical differences are coarse."
+                "Both axes measure how unlike the other brands each brand is — the same calculation, applied to "
+                "the messaging territories and to the visual territories. The view is zoomed to the brands "
+                "plotted, so read position relative to the crosshair rather than as an absolute score. "
+                + (f"There are {len(visual_positions)} visual territories against {len(positions)} messaging ones, "
+                   "so the vertical axis moves in coarser steps than the horizontal."
+                   if visual_positions else "")
             ),
         }
 
         imagery_pairs = []
-        for a, b in combinations([x for x in brands if x in visual], 2):
-            same = [k for k, _ in VISUAL_DIMENSIONS
-                    if str(visual[a].get(k, "")) == str(visual[b].get(k, ""))]
+        for a, b in combinations(visual_brands, 2):
+            same = sorted(set(visual_coding[a]) & set(visual_coding[b]))
+            labels = {p["id"]: p["label"] for p in visual_positions}
+            union = set(visual_coding[a]) | set(visual_coding[b])
             imagery_pairs.append({
                 "pair": [a, b],
-                "match": round(len(same) / len(VISUAL_DIMENSIONS), 3),
-                "shared": [lbl for k, lbl in VISUAL_DIMENSIONS if k in same],
+                "match": round(len(same) / len(union), 3) if union else 0.0,
+                "shared": [labels.get(k, k) for k in same],
             })
         imagery_pairs.sort(key=lambda r: -r["match"])
 
@@ -1196,19 +1524,47 @@ async def pipeline(brands_in, category_given=""):
                     "unused": sum(1 for p in sel if p["n"] == 0),
                 })
 
-        cross_check = []
-        if modal_profile:
-            for b in brands:
-                if b not in visual:
-                    continue
-                vdist = sum(1 for k, _ in VISUAL_DIMENSIONS
-                            if str(visual[b].get(k, "")) != modal_profile[k]) / len(VISUAL_DIMENSIONS)
-                cross_check.append({
-                    "brand": b,
-                    "verbal_ownership": brand_position[b]["ownership"],
-                    "visual_distance": round(vdist, 3),
-                    "hero_notes": notes.get(b, ""),
+        visual_prov_notes = {
+            "observed in category": ("Read off the brand websites",
+                "Visual territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the imagery means."),
+            "patient burden literature": ("Established from patient burden literature",
+                "Visual territories evidenced in the burden-of-illness and lived-experience literature, identified independently of anything these brands show."),
+            "clinical barrier literature": ("Established from representation and barrier literature",
+                "Visual territories evidenced in the literature on who this disease affects and where it is under-recognised, identified independently of anything these brands show."),
+        }
+        visual_provenance = []
+        for key, (label, note) in visual_prov_notes.items():
+            sel = [p for p in visual_positions if p["provenance"] == key]
+            if sel:
+                visual_provenance.append({
+                    "key": key, "label": label, "note": note,
+                    "total": len(sel),
+                    "unused": sum(1 for p in sel if p["n"] == 0),
                 })
+
+        # Where each brand's art direction sits against the category's majority
+        # behaviour, calculated exactly as the messaging centre is.
+        v_occupied = [p["id"] for p in visual_positions if p["n"] > 0]
+        cross_check = []
+        for b in visual_brands:
+            vdist = 0.0
+            if v_occupied:
+                v_counts = Counter()
+                for x in visual_brands:
+                    v_counts.update(visual_coding[x].keys())
+                departures = [pid for pid in v_occupied
+                              if (pid in visual_coding[b]) != (v_counts[pid] > len(visual_brands) / 2)]
+                vdist = round(len(departures) / len(v_occupied), 3)
+            v_used = len(visual_coding[b])
+            v_alone = sum(1 for pid in visual_coding[b]
+                          if len([x for x in visual_brands if pid in visual_coding[x]]) == 1)
+            cross_check.append({
+                "brand": b,
+                "verbal_ownership": brand_position[b]["ownership"],
+                "visual_ownership": round(v_alone / v_used, 3) if v_used else 0.0,
+                "visual_distance": vdist,
+                "hero_notes": visual_summaries.get(b, ""),
+            })
 
         # 7 — the findings
         yield ev({"type": "progress", "text": "Writing the findings — each one linked to the wording on a brand's website that produced it."})
@@ -1219,12 +1575,20 @@ async def pipeline(brands_in, category_given=""):
         # Plain, and the numbers add up: shared + sole-held + unused = the whole
         # list. The reader should not have to hold anything in their head.
         both = "both brands" if n_b == 2 else "more than one brand"
+        # The headline leads with the score, because that is the number that
+        # gets forwarded. The counts behind it follow immediately, and they add
+        # up: shared + sole-held + unused is the whole list. The reader should
+        # not have to hold anything in their head.
+        v_unused = sum(1 for p in visual_positions if p["n"] == 0)
         fallback_headline = (
-            f"{crw:.0%} of the messaging in this category is shared. "
+            f"This category scores {conv['overall']} for convergence — {conv['band']['name'].lower()}. "
             f"Of {metrics['space_size']} messaging territories, {metrics['contested']} are used by {both}, "
             f"{metrics['sole_held']} by only one, and {metrics['empty']} by neither. "
             f"{len(lit_empty)} of those unused territories come from published evidence on what patients and "
             f"clinicians say is missing, rather than from anything these brands publish."
+            + (f" The art direction scores {conv_img['mean']}, with {v_unused} of "
+               f"{len(visual_positions)} visual territories depicted by nobody."
+               if conv_img else "")
         )
         standfirst = (
             "Shared territory is the expensive part. Where several brands make the same argument, none of them "
@@ -1236,11 +1600,12 @@ async def pipeline(brands_in, category_given=""):
             "nobody could."
         )
         try:
-            summary = await stage_findings(category, metrics, positions, brands, cross_check)
+            summary = await stage_findings(category, metrics, positions, brands, cross_check,
+                                           conv, visual_positions)
         except Exception:
             summary = {}
         headline = summary.get("headline") or fallback_headline
-        valid_refs = {p["id"] for p in positions} | {f"visual:{r['key']}" for r in visual_rows}
+        valid_refs = {p["id"] for p in positions} | {f"visual:{p['id']}" for p in visual_positions}
         findings = []
         for f in summary.get("findings", []) or []:
             refs = [r for r in f.get("refs", []) if r in valid_refs]
@@ -1269,20 +1634,26 @@ async def pipeline(brands_in, category_given=""):
             },
             "headline": headline,
             "standfirst": standfirst,
+            "convergence": conv,
+            "tier_labels": TIER_READER_LABELS,
             "metrics": metrics,
             "positions": positions,
+            "visual_positions": visual_positions,
             "brand_position": brand_position,
             "centre": centre,
             "plot": plot,
             "plot_meta": plot_meta,
             "imagery_pairs": imagery_pairs,
             "provenance_breakdown": provenance_breakdown,
+            "visual_provenance": visual_provenance,
             "visual": {
-                "dimensions": visual_rows,
-                "child_in_hero": sum(1 for b in visual if visual[b].get("child_present")),
-                "notes": notes,
-                "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below."
-                + ("" if visual_rows else " Lead images could not be retrieved for enough brands on this run, so imagery is not reported."),
+                "brands": visual_brands,
+                "notes": visual_summaries,
+                "images": image_urls,
+                "territories": len(visual_positions),
+                "unclaimed": v_unused,
+                "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. The visual territories are built for this category the same way the messaging territories are — from what these brands show, plus what the literature evidences and nobody shows."
+                + ("" if visual_positions else " Imagery could not be read on enough brands this run, so it is not reported and the convergence score covers messaging only."),
             },
             "cross_check": cross_check,
             "findings": findings,
@@ -1301,6 +1672,7 @@ async def pipeline(brands_in, category_given=""):
                 + (" With fewer than four brands, treat the shared-position figure as indicative only." if len(brands) < 4 else ""),
                 "A single capture, taken once. This is a snapshot, not a trend.",
                 "Deciding which territories a brand uses is a judgement made against the published rules, assisted by a language model. Every decision carries the exact wording from the site that produced it, so any of them can be checked and disagreed with.",
+                "Coding a picture involves more judgement than quoting a sentence does. Each brand's commissioned imagery is read into written observations first, the visual territories are built from those observations, and every visual territory opens the image and the observation it was coded from — so any call can be checked and disagreed with. Only the images reachable from the pages read are included; a brand's wider campaign is not.",
                 "Availability ratings are a strategic assessment, not a regulatory one. Every position requires medical, legal and regulatory review before use.",
                 "Before trusting the result in a new category, run two brands on their own as a control. If two brands alone produce a similar level of shared positioning, the separation of label-determined content has not worked, and the tool is measuring the shared vocabulary of the therapy area rather than the choices brands made.",
             ],

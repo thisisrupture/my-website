@@ -10,14 +10,23 @@
 <style>
   :root {
     --paper:    #EFEEEA;
+    --paper-2:  #E6E4DD;
     --white:    #FFFFFF;
     --ink:      #303030;
+    --ink-2:    #1F1F1F;
     --green:    #1F5B4A;
     --mint:     #51D4B2;
-    --coral:    #FF686B;
+    --coral:    #FE1849;
     --label:    #727270;
     --divider:  #D7D6D2;
     --hairline: #ABAAA8;
+    /* The report draws itself in tinted ink rather than named greys, so a
+       panel can invert without needing a second palette. */
+    --fg-muted:      rgba(48,48,48,.62);
+    --fg-faint:      rgba(48,48,48,.38);
+    --on-dark-muted: rgba(239,238,234,.72);
+    --on-dark-faint: rgba(239,238,234,.48);
+    --line: 1.5px solid var(--ink);
     --serif: "Fraunces", Georgia, serif;
     --sans:  "Epilogue", -apple-system, sans-serif;
     --mono:  "JetBrains Mono", "Courier New", monospace;
@@ -260,215 +269,320 @@
   @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none;} }
   @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
 
-  /* ---------------------------------------------------------- result */
-  #screen-result { display: none; padding: 76px 0 110px; }
-  .headline {
-    font-family: var(--serif); font-weight: 900; font-size: 38px; line-height: 1.16;
-    letter-spacing: -.015em; max-width: 820px; margin-top: 14px;
+  /* ---------------------------------------------------------- result
+     The report is a document with interactive parts, not a dashboard of
+     widgets. Panels are drawn with a 1.5px rule and share edges, so the whole
+     thing reads as one ruled sheet rather than a stack of cards. The only
+     inverted panel is the convergence score, because that is the number that
+     gets forwarded. */
+  #screen-result { display: none; padding: 22px 0 90px; font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+  #screen-result .page { max-width: 1180px; margin: 0 auto; padding: 0 22px; }
+  /* The panels are a single ruled sheet: they share edges, so the document
+     rhythm that spaces the input screen must not open gaps between them. */
+  #screen-result section { margin: 0; }
+  #screen-result h2 {
+    font-family: var(--serif); font-weight: 900; font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.05; letter-spacing: -.012em; margin: 0 0 10px;
   }
-  .headline .num { color: var(--coral); }
+  .hl   { background: var(--mint);  color: var(--ink);   padding: 0 .12em; }
+  .hl-c { background: var(--coral); color: var(--paper); padding: 0 .12em; }
+
+  .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
+  .r-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 18px; }
+  .r-eyebrow.on-dark { color: var(--mint); }
+
+  /* the bar */
+  .r-bar { border: var(--line); display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 22px; flex-wrap: wrap; }
+  .wordmark { font-family: var(--mono); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; }
+  .wordmark i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); margin-left: 8px; vertical-align: 1px; }
+  .r-bar .meta { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
+  .r-bar .share-btn { margin: 0; }
+
+  /* panels */
+  .rpanel { border: var(--line); border-top: none; padding: 34px 22px; }
+  .rpanel.dark { background: var(--ink-2); color: var(--paper); border-color: var(--ink-2); }
   .missing-note {
-    font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--ink);
-    border-left: 2px solid var(--coral); padding: 2px 0 2px 13px;
-    margin-top: 14px; max-width: 660px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .04em; line-height: 1.8;
+    border: 1.5px solid var(--coral); padding: 12px 14px; margin: 0 0 20px;
   }
-  .headline-why { margin-top: 20px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 
-  /* four numbers */
-  .four-numbers { display: flex; margin: 52px 0 0; border-top: 1px solid var(--ink); }
-  .four-numbers > div { flex: 1; padding: 22px 14px 20px 0; cursor: pointer; }
-  .four-numbers > div + div { border-left: 1px solid var(--divider); padding-left: 22px; }
-  .four-numbers > div:hover .n { color: var(--coral); }
-  .four-numbers .n { font-family: var(--serif); font-weight: 900; font-size: 50px; line-height: 1; transition: color .15s; }
-  .four-numbers .l {
-    font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .04em;
-    text-transform: uppercase; margin-top: 10px; color: var(--label);
+  /* the convergence panel */
+  .hero { display: grid; grid-template-columns: 300px 1fr; gap: 44px; align-items: start; }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 26px; } }
+  .score { font-family: var(--serif); font-weight: 900; font-size: clamp(96px, 15vw, 168px); line-height: .78; letter-spacing: -.05em; }
+  .bandchip {
+    display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; padding: 6px 10px; border-radius: 6px; margin-top: 22px;
   }
-  .four-numbers > div.key .n { color: var(--coral); }
+  .bandchip.good { background: var(--mint);  color: var(--ink); }
+  .bandchip.mid  { background: transparent;  color: var(--paper); border: 1.5px solid var(--on-dark-faint); }
+  .bandchip.bad  { background: var(--coral); color: var(--paper); }
+  .scorelab { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--on-dark-faint); margin-top: 14px; line-height: 1.7; }
+  .imscore {
+    display: flex; gap: 26px; flex-wrap: wrap; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--on-dark-muted);
+    margin-top: 18px; padding-top: 16px; border-top: 1.5px solid var(--on-dark-faint);
+  }
+  .imscore span { cursor: pointer; }
+  .imscore span:hover { color: var(--mint); }
+  .imscore b { display: block; font-family: var(--serif); font-weight: 900; font-size: 30px; letter-spacing: -.03em; color: var(--paper); margin-top: 6px; }
+  .read { font-size: 17px; line-height: 1.6; color: var(--paper); margin: 0; font-family: var(--sans); }
+  .read + .read { margin-top: 14px; color: var(--on-dark-muted); }
+  .headline-why { margin-top: 22px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .rpanel.dark .why { color: var(--mint); border-bottom-color: rgba(81,212,178,.4); }
+  .rpanel.dark .why:hover { color: var(--paper); }
+  .scale { margin-top: 34px; }
+  .scale svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .bkey { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 16px; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--on-dark-muted); }
+  .bkey span { cursor: pointer; }
+  .bkey span:hover { color: var(--mint); }
+  .bkey b { font-weight: 400; color: var(--paper); }
 
-  /* plot */
-  #plot { margin-top: 8px; max-width: 620px; }
-  #plot svg { width: 100%; height: auto; overflow: visible; }
-  #plot .pole {
-    font-family: var(--sans); font-size: 13px; font-weight: 700;
-    letter-spacing: .04em; text-transform: uppercase;
+  /* the counts */
+  .counts { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--line); border-top: none; }
+  @media (max-width: 760px) { .counts { grid-template-columns: 1fr 1fr; } }
+  .ct { padding: 22px; border-right: var(--line); cursor: pointer; transition: background .14s; }
+  .ct:last-child { border-right: none; }
+  .ct:hover { background: var(--paper-2); }
+  .ct .v { font-family: var(--serif); font-weight: 900; font-size: 44px; line-height: .9; letter-spacing: -.03em; }
+  .ct .l { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); margin-top: 12px; line-height: 1.6; }
+  .ct.open .v { color: var(--green); }
+  @media (max-width: 760px) {
+    .ct:nth-child(2) { border-right: none; }
+    .ct:nth-child(1), .ct:nth-child(2) { border-bottom: var(--line); }
   }
-  #plot .pole.sub { font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: none; opacity: .8; }
-  #plot .pole-conv { fill: var(--label); }
-  #plot .pole-day  { fill: var(--green); }
-  #plot .axis-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; fill: var(--label); }
-  #plot .brand-label { font-family: var(--sans); font-size: 13px; font-weight: 600; }
-  #plot .cross { stroke: var(--divider); }
-  #plot .cross-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; fill: var(--hairline); }
-  #plot .frame { fill: none; stroke: var(--divider); }
 
-  /* two-brand circles */
-  .venn-frame { fill: none; stroke: var(--divider); }
-  .venn-frame-label, .venn-outside {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
-    text-transform: uppercase; fill: var(--label);
+  /* brand chips */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .chip {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 7px 12px; border: var(--line); border-radius: 6px; background: transparent;
+    color: var(--fg-faint); cursor: pointer;
   }
-  .venn-hit { cursor: pointer; }
-  .venn-hit:hover circle { fill-opacity: .38; }
-  /* Labels sit above the circles, so they must not swallow the click that was
-     aimed at the region underneath them. */
-  .venn-n, .venn-cap, .venn-brand, .venn-outside, .venn-frame-label { pointer-events: none; }
-  .venn-n { font-family: var(--serif); font-weight: 900; font-size: 34px; }
-  .venn-n.mid { fill: var(--ink); }
-  .venn-cap { font-family: var(--sans); font-size: 11.5px; font-weight: 600; fill: var(--label); }
-  .venn-cap.mid { fill: var(--ink); }
-  .venn-brand { font-family: var(--sans); font-size: 13px; font-weight: 600; }
-  #plot .pt { cursor: pointer; }
-  #plot .pt:hover circle { r: 11; }
+  .chip.on { background: var(--mint); color: var(--ink); }
+  .chip:disabled { cursor: not-allowed; }
 
-  /* map */
-  #map { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; }
-  .cell {
-    min-height: 92px; padding: 10px; cursor: pointer; display: flex;
-    flex-direction: column; justify-content: space-between; transition: transform .1s;
-    border: 1px solid transparent;
+  /* the field — three views on one rail */
+  .figbox { background: var(--paper-2); border: var(--line); padding: 20px; }
+  .rail { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .panelx { min-width: 100%; scroll-snap-align: start; }
+  .figsvg svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .tabs { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .modes { display: flex; border: var(--line); border-radius: 6px; overflow: hidden; }
+  .modes button {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    background: transparent; border: none; border-right: var(--line); color: var(--fg-muted);
+    padding: 8px 13px; cursor: pointer;
   }
-  .cell:hover { outline: 2px solid var(--coral); outline-offset: -1px; }
-  .cell .c-id { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; opacity: .6; }
-  .cell .c-label { font-family: var(--sans); font-size: 13px; font-weight: 500; line-height: 1.3; margin-top: 3px; }
-  .cell .c-foot { font-family: var(--mono); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; opacity: .75; }
-  .cell.empty { background: rgba(255,104,107,.07); border: 1px dashed var(--coral); }
-  .cell.empty .c-foot { color: var(--coral); opacity: 1; }
-  .cell.n1 { background: rgba(31,91,74,.10); }
-  .cell.n2 { background: rgba(31,91,74,.26); }
-  .cell.n3 { background: rgba(31,91,74,.48); color: var(--white); }
-  .cell.n4 { background: var(--green); color: var(--white); }
-  .map-legend {
-    display: flex; gap: 20px; align-items: center; margin-top: 16px; flex-wrap: wrap;
-    font-family: var(--sans); font-size: 12px; color: var(--label);
+  .modes button:last-child { border-right: none; }
+  .modes button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .figcap { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--fg-muted); line-height: 1.7; margin-top: 16px; }
+  .dots { display: flex; gap: 8px; }
+  .dot { width: 8px; height: 8px; border: 1.5px solid var(--ink); background: transparent; padding: 0; cursor: pointer; border-radius: 50%; }
+  .dot.on { background: var(--ink); }
+
+  .vwrap { display: grid; grid-template-columns: 1fr 230px; gap: 24px; align-items: start; }
+  @media (max-width: 800px) { .vwrap { grid-template-columns: 1fr; } }
+  .vrow {
+    display: flex; justify-content: space-between; gap: 10px; padding: 9px 0;
+    border-bottom: 1px solid var(--fg-faint); cursor: pointer;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .03em;
   }
-  .map-legend .sw { display: inline-block; width: 13px; height: 13px; margin-right: 6px; vertical-align: -2px; }
-  .map-legend .sw.e { background: rgba(255,104,107,.07); border: 1px dashed var(--coral); }
+  .vrow:hover { color: var(--green); }
+  .notice { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; line-height: 1.8; border: 1.5px solid var(--coral); padding: 12px 14px; margin-bottom: 18px; }
+  .notice a { color: var(--coral); cursor: pointer; }
+  .matrix { border-collapse: collapse; width: 100%; max-width: 560px; background: var(--paper); }
+  .matrix th, .matrix td { border: 1px solid var(--fg-faint); padding: 12px 8px; text-align: center; font-family: var(--mono); font-size: 12px; }
+  .matrix th { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); font-weight: 400; }
+  .matrix td.self { background: var(--mint); color: var(--ink); }
+  .matrix td.cell2 { cursor: pointer; }
+  .matrix td.cell2:hover { background: var(--paper-2); }
+
+  /* standing out — stacked bars, both inventories per brand */
+  .bar-row { padding: 14px 0; border-bottom: 1px solid var(--fg-faint); }
+  .bar-row:last-child { border-bottom: none; }
+  .bar-top { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; align-items: baseline; }
+  .bar-top .nm { font-size: 16px; }
+  .bar-top .rt { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--fg-muted); }
+  .dimrow { display: grid; grid-template-columns: 82px 1fr; gap: 12px; align-items: center; margin-top: 7px; }
+  .dimlab { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
+  .track { display: flex; height: 24px; border: 1.5px solid var(--ink); }
+  .seg { cursor: pointer; }
+  .seg.many  { background: var(--ink); }
+  .seg.two   { background: var(--fg-faint); }
+  .seg.alone { background: var(--mint); }
+  .seg.pad   { background: var(--paper-2); }
+
+  /* the territory map */
+  .invtoggle { display: flex; border: var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 16px; width: fit-content; max-width: 100%; }
+  .invtoggle button {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    background: transparent; border: none; border-right: var(--line); color: var(--fg-muted);
+    padding: 9px 14px; cursor: pointer;
+  }
+  .invtoggle button:last-child { border-right: none; }
+  .invtoggle button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .gcap { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 14px; }
+  #map { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 4px; }
+  .c {
+    min-height: 92px; padding: 12px; display: flex; align-items: flex-start; cursor: pointer;
+    font-size: 14.5px; line-height: 1.3; border: 1.5px solid transparent;
+  }
+  .c:hover { outline: 1.5px solid var(--ink); outline-offset: 2px; }
+  .c.s4 { background: var(--ink); color: var(--paper); }
+  .c.s3 { background: rgba(48,48,48,.74); color: var(--paper); }
+  .c.s2 { background: rgba(48,48,48,.32); }
+  .c.s1 { background: var(--paper-2); }
+  .c.s0 { background: rgba(81,212,178,.3); border-color: rgba(81,212,178,.6); }
+  .c.s0.ready { background: var(--mint); border-color: var(--mint); }
+  @media (max-width: 620px) { #map { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); } .c { min-height: 78px; font-size: 13.5px; } }
 
   /* findings */
-  .finding { display: flex; gap: 18px; margin-bottom: 26px; max-width: 730px; }
-  .finding .f-n { font-family: var(--mono); font-size: 11px; color: var(--hairline); padding-top: 8px; flex: 0 0 20px; }
-  .finding p { font-size: 18.5px; }
-  .finding .f-ev { font-family: var(--sans); font-size: 12.5px; margin-top: 7px; }
-  .f-ev a { color: var(--label); margin-right: 12px; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--divider); }
-  .f-ev a:hover { color: var(--coral); border-bottom-color: var(--coral); }
-
-  /* what shared territory costs */
+  .fd { display: grid; grid-template-columns: 56px 1fr; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--fg-faint); }
+  .fd:last-child { border-bottom: none; }
+  .fd .n { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--fg-faint); }
+  .fd p { margin: 0; font-size: 16.5px; line-height: 1.6; font-family: var(--sans); }
+  .fd .f-ev { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; margin-top: 9px; }
+  .f-ev a { color: var(--fg-muted); margin-right: 14px; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--fg-faint); }
+  .f-ev a:hover { color: var(--green); border-bottom-color: var(--green); }
 
   /* territories to explore */
-  .day-item {
-    border-top: 1px solid var(--divider); padding: 18px 0; max-width: 730px;
-    cursor: pointer; display: flex; align-items: baseline; gap: 16px;
-  }
-  .day-item:hover .d-label { color: var(--coral); }
+  .day-item { border-top: 1px solid var(--fg-faint); padding: 18px 0; cursor: pointer; display: flex; align-items: baseline; gap: 16px; justify-content: space-between; }
+  .day-item > div:first-child { flex: 1; min-width: 0; }
+  .day-item:hover .d-label { color: var(--green); }
   .d-label { font-family: var(--serif); font-weight: 900; font-size: 19px; flex: 1; letter-spacing: -.01em; }
-  .d-desc { color: var(--label); font-size: 15.5px; margin-top: 3px; font-family: var(--sans); }
+  .d-desc { color: var(--fg-muted); font-size: 15px; margin-top: 3px; font-family: var(--sans); }
   .tier-chip {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase;
-    padding: 4px 9px; border: 1px solid var(--divider); color: var(--label); white-space: nowrap;
+    padding: 4px 9px; border: 1px solid var(--fg-faint); color: var(--fg-muted); white-space: nowrap;
   }
   .tier-chip.open { border-color: var(--green); color: var(--green); background: rgba(81,212,178,.22); }
+  .lit-item { display: flex; gap: 22px; align-items: flex-start; justify-content: space-between; padding: 17px 0; border-bottom: 1px solid var(--fg-faint); cursor: pointer; }
+  .lit-item:hover .d-label { color: var(--green); }
+  .lit-src { font-family: var(--sans); font-size: 13px; color: var(--fg-muted); margin-top: 7px; max-width: 620px; }
+  .lit-use { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); white-space: nowrap; padding-top: 4px; }
+  .lit-use.none { color: var(--coral); }
 
-  /* disclosure */
-  details.working { margin-top: 70px; border-top: 1px solid var(--ink); }
+  /* the colophon, and the working behind it */
+  .colophon {
+    border: var(--line); border-top: none; padding: 16px 22px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--fg-muted); line-height: 1.9;
+  }
+  .colophon a { color: var(--green); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  details.working { border: var(--line); border-top: none; }
   details.working > summary {
-    list-style: none; cursor: pointer; padding: 22px 0;
-    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    list-style: none; cursor: pointer; padding: 18px 22px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
   }
   details.working > summary::-webkit-details-marker { display: none; }
   details.working > summary::before { content: "+ "; color: var(--coral); }
   details.working[open] > summary::before { content: "− "; }
-  .working-body h2 { margin-top: 52px; }
-  .working-body .sec-sub { margin-top: 8px; }
+  details.working > .working-body { padding: 0 22px 40px; }
+  .working-body h3 {
+    font-family: var(--serif); font-weight: 900; font-size: 22px; line-height: 1.1;
+    letter-spacing: -.012em; margin: 44px 0 6px;
+  }
+  .working-body .sec-sub {
+    font-family: var(--sans); font-size: 14.5px; color: var(--fg-muted);
+    margin: 0 0 16px; max-width: 730px;
+  }
+  details.lit { margin-top: 6px; }
+  details.lit > summary { padding: 14px 0; }
 
   table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px; }
   th {
     text-align: left; font-family: var(--mono); font-weight: 500; font-size: 10px;
-    letter-spacing: .08em; text-transform: uppercase; color: var(--label);
-    padding: 8px 14px 8px 0; border-bottom: 1px solid var(--ink);
+    letter-spacing: .08em; text-transform: uppercase; color: var(--fg-muted);
+    padding: 8px 14px 8px 0; border-bottom: 1.5px solid var(--ink);
   }
   td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--divider); vertical-align: top; }
   td.serif { font-family: var(--serif); font-size: 15px; }
   td.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
   tr.clickable { cursor: pointer; }
-  tr.clickable:hover td { color: var(--coral); }
-  tr.total td { font-weight: 600; border-bottom: none; }
+  tr.clickable:hover td { color: var(--green); }
   .brand-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
   .brand-block { border-top: 1px solid var(--divider); padding: 18px 0; }
-  .b-stats { font-family: var(--sans); font-size: 13px; color: var(--label); margin-top: 4px; }
+  .b-stats { font-family: var(--sans); font-size: 13px; color: var(--fg-muted); margin-top: 4px; }
   .b-owned { font-size: 15px; margin-top: 8px; font-family: var(--sans); }
 
-  /* bar chart (inside full working) */
   .centre-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; cursor: pointer; }
-  .centre-row:hover .cr-name { color: var(--coral); }
+  .centre-row:hover .cr-name { color: var(--green); }
   .cr-name { font-family: var(--sans); font-size: 13.5px; font-weight: 600; flex: 0 0 96px; text-align: right; }
   .cr-track { flex: 1; position: relative; height: 22px; }
   .cr-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--divider); }
   .cr-bar { position: absolute; top: 50%; left: 0; height: 3px; margin-top: -1.5px; }
   .cr-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; margin-top: -6px; margin-left: -6px; }
-  .cr-val { font-family: var(--mono); font-size: 11px; color: var(--label); flex: 0 0 118px; }
+  .cr-val { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); flex: 0 0 118px; }
 
   /* drawer */
-  #drawer-scrim { position: fixed; inset: 0; background: rgba(48,48,48,.3); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 40; }
+  #drawer-scrim { position: fixed; inset: 0; background: rgba(31,31,31,.4); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 40; }
   #drawer-scrim.on { opacity: 1; pointer-events: auto; }
   #drawer {
-    position: fixed; top: 0; right: 0; height: 100%; width: min(540px, 94vw);
-    background: var(--paper); border-left: 1px solid var(--divider);
+    position: fixed; top: 0; right: 0; height: 100%; width: min(520px, 94vw);
+    background: var(--paper); border-left: var(--line);
     transform: translateX(102%); transition: transform .3s cubic-bezier(.2,.7,.2,1);
-    z-index: 50; overflow-y: auto; padding: 40px 36px 60px;
+    z-index: 50; overflow-y: auto; padding: 34px 30px 60px; font-family: var(--sans);
   }
   #drawer.on { transform: none; }
   #drawer-close {
-    position: absolute; top: 18px; right: 20px; background: none; border: none;
-    font-family: var(--sans); font-size: 22px; color: var(--hairline); cursor: pointer;
+    position: absolute; top: 16px; right: 18px; background: none; border: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--fg-muted); cursor: pointer;
   }
   #drawer-close:hover { color: var(--coral); }
-  .dr-label { font-family: var(--serif); font-weight: 900; font-size: 25px; line-height: 1.16; margin: 10px 0 8px; letter-spacing: -.015em; }
-  .dr-desc { color: var(--label); font-family: var(--sans); font-size: 15.5px; margin-bottom: 20px; }
+  #dr-back {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted);
+  }
+  #dr-back:hover { color: var(--green); }
+  .dr-label { font-family: var(--serif); font-weight: 900; font-size: 25px; line-height: 1.16; margin: 14px 0 6px; letter-spacing: -.015em; }
+  .dr-desc { color: var(--fg-muted); font-family: var(--sans); font-size: 15px; margin-bottom: 20px; }
+  .dr-sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 20px; }
   .dr-h {
     font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--label); margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--divider);
+    color: var(--fg-muted); margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--divider);
   }
   .receipt { border-left: 2px solid var(--divider); padding: 2px 0 2px 14px; margin-bottom: 16px; }
-  .r-brand { font-family: var(--sans); font-size: 12px; font-weight: 600; }
-  .r-quote { font-size: 16.5px; font-style: italic; margin-top: 3px; }
+  .r-brand { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--green); }
+  .r-quote { font-size: 16px; line-height: 1.55; margin-top: 4px; font-family: var(--sans); }
+  .r-quote.said { font-style: italic; }
   .r-see {
-    display: inline-block; margin-top: 7px; font-family: var(--sans); font-size: 12px;
-    font-weight: 600; color: var(--green); text-decoration: none;
-    border-bottom: 1px solid var(--divider); padding-bottom: 1px;
+    display: inline-block; margin-top: 7px; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--fg-muted);
+    text-decoration: none; border-bottom: 1px solid var(--divider); padding-bottom: 1px;
   }
-  .r-see:hover { color: var(--coral); border-bottom-color: var(--coral); }
-
-  /* the research behind unused territories */
-  .lit-item {
-    display: flex; gap: 22px; align-items: flex-start; justify-content: space-between;
-    padding: 17px 0; border-bottom: 1px solid var(--divider); cursor: pointer;
-  }
-  .lit-item:hover .d-label { color: var(--coral); }
-  .lit-src {
-    font-family: var(--sans); font-size: 13px; color: var(--label);
-    margin-top: 7px; max-width: 620px;
-  }
-  .lit-use {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--label); white-space: nowrap; padding-top: 4px;
-  }
-  .lit-use.none { color: var(--coral); }
-  details.lit { margin-top: 6px; }
-  .dr-empty { font-family: var(--sans); font-size: 15px; color: var(--label); }
-  .dr-src { font-family: var(--sans); font-size: 14px; color: var(--label); }
+  .r-see:hover { color: var(--green); border-bottom-color: var(--green); }
+  .r-shot { display: block; width: 100%; margin-top: 8px; border: 1px solid var(--divider); }
+  .ti { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--fg-faint); cursor: pointer; align-items: baseline; }
+  .ti:hover { color: var(--green); }
+  .ti .lb { flex: 1; font-size: 15px; line-height: 1.35; }
+  .ti .av2 { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-muted); margin-top: 3px; font-style: normal; }
+  .mk { width: 20px; height: 20px; border: 1.5px solid var(--fg-faint); display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 9.5px; color: var(--fg-faint); margin-left: 3px; }
+  .mk.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .dr-empty { font-family: var(--sans); font-size: 15px; color: var(--fg-muted); }
+  .dr-src { font-family: var(--sans); font-size: 14px; color: var(--fg-muted); }
   #drawer p { margin-bottom: 9px; }
 
-  footer { border-top: 1px solid var(--divider); padding: 26px 0 50px; margin-top: 80px; }
-  footer .col { font-family: var(--sans); font-size: 12.5px; color: var(--label); }
+  footer { padding: 26px 0 40px; }
+  footer .col { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; color: var(--fg-muted); max-width: 1180px; padding: 0 22px; }
   footer a { color: var(--green); text-decoration: none; border-bottom: 1px solid var(--divider); }
   footer a:hover { color: var(--coral); border-bottom-color: var(--coral); }
 
+  @media (max-width: 720px) {
+    /* Two rows of pills across 900 units of viewBox is illegible at phone
+       width. The key underneath carries the same figures, so the figure is
+       dropped rather than shrunk into decoration. */
+    .scale { display: none; }
+    .bkey { flex-direction: column; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1.5px solid var(--on-dark-faint); }
+  }
   @media (max-width: 680px) {
-    h1 { font-size: 34px; } .headline { font-size: 27px; }
-    .four-numbers { flex-wrap: wrap; border-top: none; }
-    .four-numbers > div { flex: 1 1 44%; border-top: 1px solid var(--divider); }
-    .four-numbers > div + div { border-left: none; padding-left: 0; }
+    h1 { font-size: 34px; }
+    #screen-result .page { padding: 0 14px; }
+    .rpanel { padding: 26px 16px; }
+    .r-bar { padding: 12px 16px; }
+    .ct { padding: 16px; }
     .field-row { flex-wrap: wrap; } .field-row .f-name { flex: 1 1 100%; }
   }
 </style>
@@ -562,113 +676,140 @@
 
 <!-- ============================================ RESULT -->
 <div id="screen-result">
-  <div class="col">
+  <div class="page">
 
-    <div class="eyebrow" id="r-meta"></div>
-    <p class="missing-note" id="r-missing" hidden></p>
-    <p class="headline" id="r-headline"></p>
-    <div class="headline-why">
-      <button class="why" id="why-headline">What does this mean?</button>
-      <button class="share-btn" id="copy-link" hidden>Copy the link to this result</button>
+    <div class="r-bar">
+      <div class="wordmark">This is Rupture<i></i></div>
+      <div class="meta" id="r-meta"></div>
     </div>
 
-    <button class="see-more" id="see-breakdown" type="button">See the breakdown</button>
-
-    <!-- The map is the thing people look at, so it sits in the middle with
-         everything else arranged around it rather than stacked above it. -->
-    <div id="dash">
-      <div class="dash-grid">
-        <aside class="dash-side">
-          <div class="four-numbers" id="r-numbers"></div>
-          <section id="sec-plot">
-            <div class="panel-head">
-              <h2>Convergence and daylight</h2>
-              <button class="why" id="why-plot">How this is measured</button>
-            </div>
-            <p class="sec-sub">The bottom-left corner is convergence — saying and showing what every competitor says and shows. Distance out from that corner is daylight.</p>
-            <div id="plot"></div>
-          </section>
-        </aside>
-
-        <section class="dash-main">
-          <div class="sec-head">
-            <h2>The messaging territory map</h2>
-            <button class="why" id="why-map">Where this list came from</button>
+    <!-- The score is the number that gets forwarded, so it leads and it is the
+         only inverted panel on the page. -->
+    <section class="rpanel dark" id="sec-score">
+      <div class="r-eyebrow on-dark">01 — Convergence</div>
+      <p class="missing-note" id="r-missing" hidden></p>
+      <div class="hero">
+        <div>
+          <div class="score" id="r-score"></div>
+          <div class="bandchip" id="r-band"></div>
+          <div class="scorelab" id="r-scorelab"></div>
+          <div class="imscore" id="r-imscore"></div>
+        </div>
+        <div>
+          <p class="read" id="r-headline"></p>
+          <p class="read" id="r-standfirst"></p>
+          <div class="headline-why">
+            <button class="why" id="why-headline">What does this mean?</button>
+            <button class="share-btn" id="copy-link" hidden>Copy the link to this result</button>
           </div>
-          <p class="sec-sub">Each cell is one territory. Darker means more brands are using it. Outlined cells are used by nobody. Click any cell for the evidence.</p>
-          <div id="map"></div>
-          <div class="map-legend" id="map-legend"></div>
-        </section>
+        </div>
       </div>
-    </div>
+      <div class="scale" id="r-scale"></div>
+      <div class="bkey" id="r-bkey"></div>
+    </section>
 
-    <section>
-      <h2>What the analysis found</h2>
-      <p class="sec-sub">Each finding links to the evidence behind it.</p>
+    <div class="counts" id="r-numbers"></div>
+
+    <section class="rpanel" id="sec-field">
+      <div class="r-eyebrow">02 — The field</div>
+      <h2 id="r-fieldh"></h2>
+      <p class="sec-sub" id="r-fieldsub"></p>
+      <div class="chips" id="r-chips"></div>
+      <div class="tabs">
+        <div class="modes">
+          <button aria-pressed="true"  data-go="0">Difference</button>
+          <button aria-pressed="false" data-go="1">Overlap</button>
+          <button aria-pressed="false" data-go="2">Standing out</button>
+        </div>
+        <div class="dots">
+          <button class="dot on" data-go="0" aria-label="Difference"></button>
+          <button class="dot" data-go="1" aria-label="Overlap"></button>
+          <button class="dot" data-go="2" aria-label="Standing out"></button>
+        </div>
+      </div>
+      <div class="figbox">
+        <div class="rail" id="rail">
+          <div class="panelx" id="p0"></div>
+          <div class="panelx" id="p1"></div>
+          <div class="panelx" id="p2"></div>
+        </div>
+      </div>
+      <div class="figcap" id="figcap"></div>
+    </section>
+
+    <section class="rpanel" id="sec-map">
+      <div class="r-eyebrow">03 — The territory map</div>
+      <h2>Where the category is crowded, and where it is <span class="hl">empty</span>.</h2>
+      <div class="invtoggle" id="r-invtoggle"></div>
+      <div class="gcap" id="map-legend"></div>
+      <div id="map"></div>
+    </section>
+
+    <section class="rpanel">
+      <div class="r-eyebrow">04 — What the analysis found</div>
       <div id="r-findings"></div>
     </section>
 
-    <section id="sec-lit">
-      <h2>Where the unused territories come from</h2>
-      <p class="sec-sub" id="lit-intro"></p>
-      <details class="working lit">
-        <summary id="lit-summary">Show the evidence behind them</summary>
-        <div class="working-body"><div id="r-literature"></div></div>
-      </details>
-    </section>
-
-
-    <section>
-      <div class="sec-head">
-        <h2>Territories to explore</h2>
-        <button class="why" id="why-daylight">How these are judged</button>
-      </div>
+    <section class="rpanel" id="sec-daylight">
+      <div class="r-eyebrow">05 — Territories to explore</div>
+      <h2>What nobody in this category is <span class="hl">using</span>.</h2>
       <p class="sec-sub" id="daylight-intro"></p>
       <div id="r-daylight"></div>
+      <div style="margin-top:26px"><button class="why" id="why-daylight">How these are judged</button></div>
     </section>
+
+    <div class="colophon" id="r-colophon"></div>
 
     <details class="working">
       <summary>Show the full working</summary>
       <div class="working-body">
 
-        <h2>What each brand does differently</h2>
+        <h3>What each brand does differently</h3>
         <p class="sec-sub">How often a brand departs from what most of the category does, across the territories anyone uses.</p>
         <div id="centre-chart"></div>
 
-        <h2>Where these territories came from</h2>
+        <h3>Where the unused territories come from</h3>
+        <p class="sec-sub" id="lit-intro"></p>
+        <details class="working lit">
+          <summary id="lit-summary">Show the evidence behind them</summary>
+          <div class="working-body" style="padding:0"><div id="r-literature"></div></div>
+        </details>
+
+        <h3>Where these territories came from</h3>
         <p class="sec-sub">Click a source to list the territories in it.</p>
         <table class="prov" id="t-prov"></table>
 
-        <h2>Every territory</h2>
+        <h3>Every messaging territory</h3>
         <table id="t-positions"></table>
 
-        <h2>Brand by brand</h2>
-        <div id="t-brands"></div>
-
-        <h2>How similar each pair of brands is</h2>
-        <p class="sec-sub">Share of territories two brands have in common, out of all either uses.</p>
-        <table id="t-pairwise"></table>
-
-        <h2>Imagery</h2>
+        <h3>Every visual territory</h3>
         <p class="sec-sub" id="visual-exclusions"></p>
         <table id="t-visual"></table>
 
-        <h2>Copy compared with imagery</h2>
-        <p class="sec-sub">A brand can have distinctive copy and generic photography. Scoring them separately is the only way to see it.</p>
+        <h3>Brand by brand</h3>
+        <div id="t-brands"></div>
+
+        <h3>How similar each pair of brands is</h3>
+        <p class="sec-sub">Share of territories two brands have in common, out of all either uses. Messaging first, then art direction.</p>
+        <table id="t-pairwise"></table>
+        <table id="t-imgpairs" style="margin-top:26px"></table>
+
+        <h3>Copy compared with imagery</h3>
+        <p class="sec-sub">A brand can have distinctive copy and generic photography. Scoring them the same way over two inventories is the only way to see it.</p>
         <div id="t-crosscheck"></div>
 
-        <h2>How copy was separated before scoring</h2>
+        <h3>How copy was separated before scoring</h3>
         <p class="sec-sub">Regulatory content is removed. Content the product and label determine is set aside. What remains is what somebody decided, and only that is scored.</p>
         <table id="t-boundary"></table>
 
-        <h2>Limitations</h2>
+        <h3>Limitations</h3>
         <div id="r-limits" class="sec-sub" style="max-width:730px"></div>
 
       </div>
     </details>
 
   </div>
-  <footer><div class="col">The Sameness Index · Rupture · every number here is one click from the sentence on a brand's website that produced it. <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index" id="foot-mail">hello@thisisrupture.com</a></div></footer>
+  <footer><div class="col">The Sameness Index · Rupture · every number here is one click from the sentence, or the image, on a brand's website that produced it. <a href="mailto:hello@thisisrupture.com?subject=Sameness%20Index" id="foot-mail">hello@thisisrupture.com</a></div></footer>
 </div>
 
 <!-- ============================================ DRAWER -->
@@ -681,7 +822,7 @@
 <script>
 "use strict";
 
-let DATA = null, ACC = {}, DAYLIGHT_RANK = {};
+let DATA = null, ACC = {};
 
 const TIER_NAMES = {
   open: "Explore now",
@@ -700,7 +841,9 @@ const TIER_EXPLAIN = {
 const $ = (s, r) => (r || document).querySelector(s);
 const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const pos = id => DATA.positions.find(p => p.id === id);
+/* A territory by id, from either inventory — the two id series never collide,
+   and every drawer takes ids rather than objects. */
+const pos = id => (DATA.positions || []).concat(DATA.visual_positions || []).find(p => p.id === id);
 const pct = v => Math.round(v * 100) + "%";
 const shortLabel = l => { const c = l.split(" — ")[0]; return c.length > 54 ? c.slice(0, 52) + "…" : c; };
 
@@ -1062,50 +1205,135 @@ if (PERMALINK && !OFFLINE) {
   pollRun(PERMALINK);
 }
 
-/* ---------------------------------------------------- render */
+/* ---------------------------------------------------- render
+   Everything below is computed from the payload in the browser, not read off
+   it, so that deselecting a brand recomputes the whole report rather than
+   greying part of it out. With every brand selected the figures reproduce the
+   server's exactly — same formula, same order of operations. */
+
+const BANDS = [
+  { to: 40,  name: "Distinct",          cls: "good", note: "Brands are saying different things. There is still advantage available inside the current frame." },
+  { to: 60,  name: "Converging",        cls: "mid",  note: "The category is drifting together. Differentiation still exists, but it thins with every cycle." },
+  { to: 80,  name: "Converged",         cls: "bad",  note: "Most of what each brand says, a rival also says. Messaging no longer separates the field." },
+  { to: 101, name: "Indistinguishable", cls: "bad",  note: "The category speaks with one voice. Share of voice is the only lever left inside this frame." },
+];
+const bandFor = s => BANDS.find(b => s < b.to) || BANDS[BANDS.length - 1];
+
+let BR = [];          // [{name, key, url, accent}]
+let SEL = [];         // selected brand indices
+let VIS = [];         // indices of brands whose imagery was read
+let GSET = "messaging";
+let IDX = 0;
+let LAST = null;      // the list a drawer came from, so "back" works
+
+const MSG = () => DATA.positions || [];
+const VT  = () => DATA.visual_positions || [];
+const setOf = k => (k === "imagery" ? VT() : MSG());
+const nameOf = i => BR[i].name;
+const inv = t => (t.visual ? "imagery" : "messaging");
+
 function tierChip(t) { return `<span class="tier-chip ${t}">${TIER_NAMES[t] || t}</span>`; }
 function dot(b) { return `<span class="brand-dot" style="background:${ACC[b] || "#999"}"></span>`; }
+
+/* Who, of the brands currently selected, uses this territory. */
+function users(t, pool) {
+  const p = pool || SEL;
+  return p.filter(i => (t.claimers || []).includes(nameOf(i)));
+}
+
+/* The score. For one brand: of the territories it uses, the share a rival also
+   uses. For the category: the mean across the brands. One function, used for
+   messaging and for imagery, which is the whole basis of comparing them. */
+function convergence(items, pool) {
+  const per = pool.map(i => {
+    const used = items.filter(t => users(t, pool).includes(i));
+    const shared = used.filter(t => users(t, pool).length > 1);
+    return {
+      i, name: nameOf(i), key: BR[i].key,
+      used: used.length, shared: shared.length, alone: used.length - shared.length,
+      pct: used.length ? Math.round(shared.length / used.length * 100) : 0,
+    };
+  });
+  const mean = per.length ? Math.round(per.reduce((a, b) => a + b.pct, 0) / per.length) : 0;
+  return { per, mean };
+}
+function visPool() { return SEL.filter(i => VIS.includes(i)); }
+function hasImagery() { return VT().length > 0 && visPool().length >= 2; }
+function overallScore() {
+  const m = convergence(MSG(), SEL);
+  const v = hasImagery() ? convergence(VT(), visPool()) : null;
+  const mean = v ? Math.round((m.mean + v.mean) / 2) : m.mean;
+  return { m, v, mean, band: bandFor(mean) };
+}
+
+/* Segments of one brand's holdings: shared with two or more, shared with one,
+   held alone. Used by the bars and by every drawer that lists them. */
+function segsFor(items, i, pool) {
+  const p = pool || SEL;
+  const many = [], two = [], alone = [];
+  items.forEach(t => {
+    if (!users(t, p).includes(i)) return;
+    const n = users(t, p).length;
+    (n >= 3 ? many : n === 2 ? two : alone).push(t);
+  });
+  return { many, two, alone, used: many.length + two.length + alone.length };
+}
 
 function render(data) {
   DATA = data;
   ACC = {};
   data.meta.brands.forEach(b => ACC[b.name] = b.accent);
-  const m = data.metrics;
+
+  // Only brands that were actually analysed appear; one that could not be read
+  // is named above the score instead.
+  const analysed = (data.positions || []).reduce((s, p) => { (p.claimers || []).forEach(c => s.add(c)); return s; }, new Set());
+  const order = data.meta.brands.filter(b => analysed.has(b.name) || (data.plot || []).some(p => p.brand === b.name));
+  const seen = {};
+  BR = order.map(b => {
+    let k = b.name.trim()[0].toUpperCase();
+    if (seen[k]) k = b.name.trim().slice(0, 2).toUpperCase();
+    seen[k] = 1;
+    return { name: b.name, url: b.url, accent: b.accent, key: k };
+  });
+  SEL = BR.map((_, i) => i);
+  VIS = BR.map((b, i) => (((data.visual || {}).brands || []).includes(b.name) ? i : -1)).filter(i => i >= 0);
+  GSET = "messaging";
+  IDX = 0;
 
   $("#r-meta").textContent = `${data.meta.category} · ${data.meta.market} · captured ${data.meta.captured}`;
 
-  // A brand that could not be read is stated above the headline, not buried in
-  // the limitations. Someone who sends this link on will not read the working,
-  // and a partial run must never be mistakable for a complete one.
+  // A brand that could not be read is stated at the top of the report, not
+  // buried in the working. Someone who is sent this link will not open the
+  // working, and a partial run must never be mistakable for a complete one.
   const missed = data.meta.unreadable || [];
   const note = $("#r-missing");
   if (missed.length) {
     note.hidden = false;
-    note.textContent =
-      `${missed.map(m => m.name).join(" and ")} could not be read — ${missed.length === 1 ? "that site turns" : "those sites turn"} ` +
-      `away automated readers or build ${missed.length === 1 ? "its page" : "their pages"} in the browser. ` +
+    note.innerHTML =
+      `${esc(missed.map(m => m.name).join(" and "))} could not be read — ${missed.length === 1 ? "that site turns" : "those sites turn"} ` +
+      `away automated readers or builds ${missed.length === 1 ? "its page" : "their pages"} in the browser. ` +
       `${missed.length === 1 ? "It is" : "They are"} competing in this category regardless, so a territory shown here as ` +
       `used by nobody may well be used by ${missed.length === 1 ? "it" : "one of them"}.`;
   } else {
     note.hidden = true;
   }
-  $("#r-headline").innerHTML = esc(data.headline).replace(/(\b\d+%?\b)/g, '<span class="num">$1</span>');
 
-  $("#r-numbers").innerHTML = [
-    ["space_size", m.space_size, "Territories", ""],
-    ["occupied", m.occupied, "In use", ""],
-    ["contested", m.contested, "Shared", ""],
-    ["open_empty", m.open_empty, "To explore", "key"],
-  ].map(([k, n, l, cls]) => `<div class="${cls}" data-num="${k}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
-  $("#r-numbers").querySelectorAll("[data-num]").forEach(d =>
-    d.addEventListener("click", () => openNumberDrawer(d.dataset.num)));
-
-  $("#see-breakdown").onclick = () => $("#dash").scrollIntoView({ behavior: "smooth", block: "start" });
-
-  renderPlot(); renderMap(); renderFindings(); renderLiterature(); renderDaylight();
-  renderCentre(); renderProvenance(); renderWorking();
+  buildToggle();
+  renderAll();
+  renderColophon();
+  renderCentre(); renderLiterature(); renderProvenance(); renderWorking();
   showShareLink();
   showScreen("screen-result");
+}
+
+/* Everything that moves when a brand is deselected. */
+function renderAll() {
+  renderChips(); renderScore(); renderNumbers(); renderMap();
+  renderFindings(); renderDaylight(); renderFieldHead();
+  $("#p0").innerHTML = figAxes();
+  $("#p1").innerHTML = figOverlap();
+  $("#p2").innerHTML = figBars();
+  go(IDX);
 }
 
 // A result is only useful inside the account if it can be passed around, and
@@ -1122,602 +1350,662 @@ function showShareLink() {
       btn.textContent = "Link copied — anyone can open it, no login";
       btn.classList.add("done");
     } catch { btn.textContent = location.href; }
-    setTimeout(() => {
-      btn.textContent = "Copy the link to this result";
-      btn.classList.remove("done");
-    }, 3200);
+    setTimeout(() => { btn.textContent = "Copy the link to this result"; btn.classList.remove("done"); }, 3200);
   };
 }
 
-/* ---- the four numbers: the list first, the qualification underneath ---- */
-function openNumberDrawer(key) {
-  const m = DATA.metrics, P = DATA.positions;
-  const ids = a => a.map(p => p.id);
-  const nBrands = DATA.meta.brands.length;
-  const defs = {
-    space_size: ["Every territory in this category", ids(P),
-      `A territory is one argument a brand could build its communications on. These ${m.space_size} came from two places. Some were read off the brands' own websites, so each of those has a user by definition. The rest were established from published research on what patients live with and what stops clinicians prescribing, without looking at what these brands say. Both halves are needed: a list built only from what brands already say would have a user for every entry, and territory nobody uses could never show up. It does mean the percentages describe this list — add more research-based territories and the share in use falls, without anything changing in the market. That is why the counts lead and the percentage follows.`],
-    occupied: ["Territories in use", ids(P.filter(p => p.n > 0)),
-      `${m.occupied} of the ${m.space_size} territories are used by at least one brand. A territory only counts as used where the wording on the site clearly makes that argument. Where it could be read either way it is left out, so this is an undercount rather than an overcount — and every one carries the exact wording from the site that produced it, so you can disagree with any of them.`],
-    contested: ["Territories more than one brand uses", ids(P.filter(p => p.n > 1)),
-      `${m.contested} territories are used by ${nBrands === 2 ? "both brands" : "two or more brands"} — ${pct(m.crowding_rate)} of everything in use. This is the sameness figure, and it is the expensive one. Where two brands make the same argument, neither of them owns it, and the audience is given nothing to tell them apart on.`],
-    open_empty: ["Territories to explore first", (m.open_empty_ids || []),
-      `${m.open_empty} territories are used by nobody and need no new clinical evidence behind them. No extra trial, no new endpoint, nothing further to substantiate — they are decisions about how the disease is described, who the communications speak to, and where they appear, all inside the existing label. They sit unused because nobody chose them, not because nobody could. Whether any of them suits your brand, your label and your review process is a judgement this tool cannot make for you, and anything you pursue still needs medical, legal and regulatory review.`],
-  };
-  const d = defs[key];
-  if (d) listDrawer("The number", d[0], d[1], d[2]);
+/* The heading names the brand furthest from the rest, because that is the
+   first question a brand lead asks of a field chart. Where nobody stands
+   apart, it says so rather than manufacturing a winner. */
+function renderFieldHead() {
+  const o = overallScore();
+  const sorted = [...o.m.per].sort((a, b) => a.pct - b.pct);
+  const low = sorted[0], next = sorted[1];
+  const apart = low && next && (next.pct - low.pct) >= 10;
+  $("#r-fieldh").innerHTML = apart
+    ? `${esc(low.name)} is the only brand <span class="hl">standing apart</span>.`
+    : `No brand is <span class="hl">standing apart</span> from the rest.`;
+  $("#r-fieldsub").textContent = apart
+    ? `${low.name} shares ${low.pct}% of what it says with a rival. The next closest shares ${next.pct}%.`
+    : (() => { const d = next && low ? next.pct - low.pct : 0;
+        return `The two closest brands are within ${d} point${d === 1 ? "" : "s"} of each other on how much they share.`; })();
 }
 
-/* ---- plot ---- */
-function renderPlot() {
-  const sec = $("#sec-plot");
+/* ---- the score panel ---- */
+function renderScore() {
+  const o = overallScore();
+  $("#r-score").textContent = o.mean;
+  const chip = $("#r-band");
+  chip.className = "bandchip " + o.band.cls;
+  chip.textContent = o.band.name;
+  $("#r-scorelab").innerHTML = o.v
+    ? "Category convergence<br>messaging and imagery, each measured<br>the same way, averaged"
+    : "Category convergence<br>messaging only — the imagery<br>could not be read this run";
 
-  // With two brands the plot has nothing to say. Each brand has exactly one
-  // peer, so A's distance from B is B's distance from A by definition, and
-  // both dots land on the same point. Two circles answer the question the
-  // reader actually has at two brands: what do they share, and what does each
-  // hold on its own.
-  if (DATA.meta.brands.length === 2) { renderVenn(); return; }
+  $("#r-imscore").innerHTML =
+    `<span data-act="shared">Messaging <b>${o.m.mean}</b></span>` +
+    (o.v ? `<span data-act="unusedimg">Imagery <b>${o.v.mean}</b></span>` : "");
+  $("#r-imscore").querySelectorAll("[data-act]").forEach(s => s.addEventListener("click", () => {
+    if (s.dataset.act === "shared") listShared(); else listUnusedImagery();
+  }));
 
-  const pts = (DATA.plot || []).filter(p => p.imagery !== null && p.imagery !== undefined);
-  const pm = DATA.plot_meta || {};
-  if (pts.length < 2 || pm.imagery_mean == null) { sec.style.display = "none"; return; }
-  sec.style.display = "";
-  $("#sec-plot h2").textContent = "Convergence and daylight";
-  $("#why-plot").hidden = false;
-
-  const W = 620, H = 440, L = 62, R = 26, T = 34, B = 62;
-  const iw = W - L - R, ih = H - T - B;
-  const span = (arr, mean, minPad) => {
-    const lo = Math.min(...arr, mean), hi = Math.max(...arr, mean);
-    const pad = Math.max((hi - lo) * .35, minPad);
-    return [lo - pad, hi + pad];
-  };
-  const [x0, x1] = span(pts.map(p => p.messaging), pm.messaging_mean, .02);
-  const [y0, y1] = span(pts.map(p => p.imagery), pm.imagery_mean, (pm.imagery_step || .125) * .4);
-  const X = v => L + ((v - x0) / (x1 - x0)) * iw;
-  const Y = v => T + ih - ((v - y0) / (y1 - y0)) * ih;
-  const cx = X(pm.messaging_mean), cy = Y(pm.imagery_mean);
-
-  // The field is read from its origin. Bottom-left is convergence — a brand
-  // saying and showing what everyone else says and shows. Distance out from
-  // that corner is daylight. The shading and the rings carry that reading
-  // without adding any number the data does not support.
-  const ox = L, oy = T + ih;                       // convergence corner
-
-  const svg = [
-    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Convergence against daylight, messaging and imagery">`,
-    `<defs>
-      <linearGradient id="daylight" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0%"   stop-color="#303030" stop-opacity=".13"/>
-        <stop offset="42%"  stop-color="#303030" stop-opacity=".04"/>
-        <stop offset="72%"  stop-color="#51D4B2" stop-opacity=".14"/>
-        <stop offset="100%" stop-color="#51D4B2" stop-opacity=".34"/>
-      </linearGradient>
-      <clipPath id="field"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath>
-    </defs>`,
-    `<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#daylight)"/>`,
-    `<rect class="frame" x="${L}" y="${T}" width="${iw}" height="${ih}"/>`,
-    // category average, kept as the reference point but made quieter
-    `<line class="cross" x1="${cx}" y1="${T}" x2="${cx}" y2="${T + ih}" stroke-dasharray="3 3"/>`,
-    `<line class="cross" x1="${L}" y1="${cy}" x2="${L + iw}" y2="${cy}" stroke-dasharray="3 3"/>`,
-    `<text class="cross-label" x="${cx + 5}" y="${T - 7}">Category average</text>`,
-    // the two poles — the field is read between them
-    `<text class="pole pole-conv" x="${L + 12}" y="${T + ih - 26}">Convergence</text>`,
-    `<text class="pole pole-conv sub" x="${L + 12}" y="${T + ih - 12}">Same as everyone else</text>`,
-    `<text class="pole pole-day" x="${W - R - 12}" y="${T + 22}" text-anchor="end">Daylight</text>`,
-    `<text class="pole pole-day sub" x="${W - R - 12}" y="${T + 36}" text-anchor="end">Unlike anyone else</text>`,
-    `<text class="axis-label" x="${L + iw / 2}" y="${H - 24}" text-anchor="middle">Messaging — converged → distinct</text>`,
-    `<text class="axis-label" transform="translate(${L - 40},${T + ih / 2}) rotate(-90)" text-anchor="middle">Imagery — converged → distinct</text>`,
-  ];
-
-  // Daylight = how far out from the convergence corner a brand sits, read on
-  // the plotted field. A rank within this set, not an absolute score — which
-  // is why it is reported as an order rather than a number.
-  const dayOrder = [...pts].map(p => ({
-    brand: p.brand,
-    r: Math.hypot(X(p.messaging) - ox, oy - Y(p.imagery)),
-  })).sort((a, b) => b.r - a.r);
-  DAYLIGHT_RANK = {};
-  dayOrder.forEach((x, i) => DAYLIGHT_RANK[x.brand] = i + 1);
-
-  const placed = [];
-  const hit = (a, b) => a.x1 > b.x0 && a.x0 < b.x1 && a.y1 > b.y0 && a.y0 < b.y1;
-  for (const p of pts) {
-    const col = ACC[p.brand] || "#999", px = X(p.messaging), py = Y(p.imagery);
-    const w = p.brand.length * 7.4 + 4, h = 15;
-    const cands = [
-      { x: px + 13, y: py + 4, a: "start" }, { x: px - 13, y: py + 4, a: "end" },
-      { x: px, y: py - 15, a: "middle" }, { x: px, y: py + 23, a: "middle" },
-      { x: px + 13, y: py - 11, a: "start" }, { x: px - 13, y: py + 19, a: "end" },
-    ];
-    let pick = null;
-    for (const c of cands) {
-      const bx = c.a === "start" ? c.x : c.a === "end" ? c.x - w : c.x - w / 2;
-      const box = { x0: bx, x1: bx + w, y0: c.y - h + 3, y1: c.y + 4 };
-      if (box.x0 < L - 2 || box.x1 > L + iw + 2 || box.y0 < T || box.y1 > T + ih) continue;
-      if (placed.some(q => hit(box, q))) continue;
-      pick = c; placed.push(box); break;
-    }
-    if (!pick) pick = cands[0];
-    // Dot size = how many territories the brand claims. Without this, a brand
-    // that says very little overlaps with nobody, reads as maximally distinct,
-    // and sits in the daylight corner looking like the winner. Size exposes it:
-    // a small dot far out is distinct because it is barely present.
-    const claimed = ((DATA.brand_position || {})[p.brand] || {}).claimed;
-    const r = claimed == null ? 8 : 5 + Math.sqrt(claimed) * 1.35;
-    svg.push(`<g class="pt" data-brand="${esc(p.brand)}"><circle cx="${px}" cy="${py}" r="${r.toFixed(1)}" fill="${col}"/>` +
-      `<text class="brand-label" x="${pick.x}" y="${pick.y}" text-anchor="${pick.a}" fill="${col}">${esc(p.brand)}</text></g>`);
+  // The headline the model wrote is the finding. The band note underneath is
+  // what the score means, and it is the same sentence every time for a given
+  // band, so two reports at 64 say the same thing about 64.
+  if (SEL.length === BR.length) {
+    $("#r-headline").innerHTML = esc(DATA.headline);
+  } else {
+    const shared = MSG().filter(t => users(t).length > 1).length;
+    const solo = MSG().filter(t => users(t).length === 1).length;
+    const none = MSG().filter(t => users(t).length === 0).length;
+    $("#r-headline").innerHTML =
+      `Comparing ${esc(SEL.map(nameOf).join(", "))} only, this category scores ${o.mean} for convergence — ` +
+      `${esc(o.band.name.toLowerCase())}. Of ${MSG().length} messaging territories, ${shared} are used by more ` +
+      `than one of them, ${solo} by only one, and ${none} by none.` +
+      (o.v ? ` The art direction scores ${o.v.mean}.` : "");
   }
-  svg.push("</svg>");
-  $("#plot").innerHTML = svg.join("");
-  $("#plot").querySelectorAll("[data-brand]").forEach(g =>
-    g.addEventListener("click", () => {
-      const r = (DATA.centre || []).find(x => x.brand === g.dataset.brand);
-      if (r) openBrandDrawer(r);
-    }));
+  $("#r-standfirst").innerHTML =
+    `At ${o.mean}, this category is <span class="hl-c">${esc(o.band.name.toLowerCase())}</span>. ${esc(o.band.note)}`;
+
+  renderScale(o);
+
+  $("#r-bkey").innerHTML = [...o.m.per].sort((a, b) => b.pct - a.pct).map(p => {
+    const v = o.v ? o.v.per.find(x => x.i === p.i) : null;
+    return `<span data-i="${p.i}">${esc(p.name)} <b>${p.pct}</b>${v ? ` / <b>${v.pct}</b>` : ""}</span>`;
+  }).join("");
+  $("#r-bkey").querySelectorAll("[data-i]").forEach(s =>
+    s.addEventListener("click", () => listBrandShared(+s.dataset.i, "messaging")));
 }
 
-/* ---- two brands: overlapping circles ----
-   Areas are honest. Each circle's area is proportional to how many territories
-   that brand uses, and the circles are pushed together until the area of the
-   overlap is proportional to the number they share — solved numerically rather
-   than eyeballed, because a Venn that only looks about right is worse than no
-   Venn at all. The frame around them is the whole category; what falls outside
-   both circles is what neither brand uses. */
-function vennDistance(r1, r2, target) {
-  if (target <= 0) return r1 + r2 + 12;
-  const lens = d => {
-    if (d >= r1 + r2) return 0;
-    if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
-    const a1 = Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1));
-    const a2 = Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2));
-    const tri = .5 * Math.sqrt(Math.max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)));
-    return r1 * r1 * a1 + r2 * r2 * a2 - tri;
-  };
-  let lo = Math.abs(r1 - r2), hi = r1 + r2;
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2;
-    if (lens(mid) > target) lo = mid; else hi = mid;
-  }
-  return (lo + hi) / 2;
-}
-
-function renderVenn() {
-  const sec = $("#sec-plot");
-  sec.style.display = "";
-  const [A, B] = DATA.meta.brands.map(b => b.name);
-  const bp = DATA.brand_position || {};
-  const shared = DATA.positions.filter(p => p.n === 2).map(p => p.id);
-  const onlyA = DATA.positions.filter(p => p.n === 1 && p.claimers[0] === A).map(p => p.id);
-  const onlyB = DATA.positions.filter(p => p.n === 1 && p.claimers[0] === B).map(p => p.id);
-  const unused = DATA.positions.filter(p => p.n === 0).map(p => p.id);
-  const nA = (bp[A] || {}).claimed || onlyA.length + shared.length;
-  const nB = (bp[B] || {}).claimed || onlyB.length + shared.length;
-
-  sec.querySelector("h2").textContent = "What each brand holds, and what they share";
-  sec.querySelector(".sec-sub").textContent =
-    "Each circle is one brand's messaging. Circle size is how many territories that brand uses, and the " +
-    "overlap is drawn to scale — the bigger the overlap, the more of their messaging is interchangeable. " +
-    "Everything outside both circles is territory neither brand uses. Click any part for the list.";
-  $("#why-plot").hidden = true;
-
-  const W = 620, H = 380;
-  const K = Math.min(120 / Math.sqrt(Math.max(nA, nB, 1)), 30);
-  const rA = Math.max(46, Math.sqrt(nA) * K), rB = Math.max(46, Math.sqrt(nB) * K);
-  const targetOverlap = shared.length / Math.max(nA, 1) * Math.PI * rA * rA;
-  const d = vennDistance(rA, rB, targetOverlap);
-  const cxA = W / 2 - d / 2, cxB = W / 2 + d / 2, cy = H / 2 - 4;
-  const colA = ACC[A] || "#FF686B", colB = ACC[B] || "#1F5B4A";
-
-  // Each exclusive count sits in the middle of its own crescent — halfway
-  // between the two circles' left edges, and between their two right edges.
-  // Putting them at the circle centres would drop them into the overlap as
-  // soon as the two brands share much, which is exactly when it matters.
-  const lx = ((cxA - rA) + (cxB - rB)) / 2, rx = ((cxA + rA) + (cxB + rB)) / 2;
-  const svg = `
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Shared and separate messaging territories">
-      <rect class="venn-frame" x="8" y="8" width="${W - 16}" height="${H - 16}" rx="2"/>
-      <text class="venn-frame-label" x="20" y="28">All ${DATA.metrics.space_size} territories in this category</text>
-      <g class="venn-hit" data-set="unused"><rect x="8" y="8" width="${W - 16}" height="${H - 16}" fill="transparent"/></g>
-      <text class="venn-outside" x="${W - 20}" y="${H - 20}" text-anchor="end">${unused.length} used by neither</text>
-
-      <g class="venn-hit" data-set="a">
-        <circle cx="${cxA}" cy="${cy}" r="${rA}" fill="${colA}" fill-opacity=".26" stroke="${colA}" stroke-width="1.5"/>
-      </g>
-      <g class="venn-hit" data-set="b">
-        <circle cx="${cxB}" cy="${cy}" r="${rB}" fill="${colB}" fill-opacity=".26" stroke="${colB}" stroke-width="1.5"/>
-      </g>
-
-      <text class="venn-n" x="${lx}" y="${cy - 2}" text-anchor="middle" fill="${colA}">${onlyA.length}</text>
-      <text class="venn-cap" x="${lx}" y="${cy + 18}" text-anchor="middle">only ${esc(A)}</text>
-      <text class="venn-n" x="${rx}" y="${cy - 2}" text-anchor="middle" fill="${colB}">${onlyB.length}</text>
-      <text class="venn-cap" x="${rx}" y="${cy + 18}" text-anchor="middle">only ${esc(B)}</text>
-      <text class="venn-n mid" x="${W / 2}" y="${cy - 2}" text-anchor="middle">${shared.length}</text>
-      <text class="venn-cap mid" x="${W / 2}" y="${cy + 18}" text-anchor="middle">both</text>
-      <text class="venn-brand" x="${cxA - rA}" y="${cy - rA - 10}" fill="${colA}">${esc(A)} · ${nA} territories</text>
-      <text class="venn-brand" x="${cxB + rB}" y="${cy + rB + 22}" text-anchor="end" fill="${colB}">${esc(B)} · ${nB} territories</text>
-    </svg>`;
-  $("#plot").innerHTML = svg;
-
-  const sets = {
-    a: [`Used only by ${A}`, onlyA, `${A} makes these arguments and ${B} does not. This is where the two brands are actually distinguishable.`],
-    b: [`Used only by ${B}`, onlyB, `${B} makes these arguments and ${A} does not.`],
-    shared: [`Used by both brands`, shared, `Both brands make these arguments. Where two brands say the same thing, neither owns it, and the audience is given no basis for telling them apart on that argument.`],
-    unused: [`Used by neither brand`, unused, `Neither brand makes these arguments anywhere on its website.`],
-  };
-  $("#plot").querySelectorAll(".venn-hit").forEach(g => {
-    g.addEventListener("click", e => {
-      // The overlap is the intersection of both circles, so decide from the
-      // click position rather than which shape received the event.
-      let key = g.dataset.set;
-      if (key === "a" || key === "b") {
-        const pt = $("#plot svg").getBoundingClientRect();
-        const sx = (e.clientX - pt.left) / pt.width * W, sy = (e.clientY - pt.top) / pt.height * H;
-        const inA = Math.hypot(sx - cxA, sy - cy) <= rA, inB = Math.hypot(sx - cxB, sy - cy) <= rB;
-        key = inA && inB ? "shared" : inA ? "a" : "b";
-      }
-      openSetDrawer(...sets[key]);
+/* The scale. Both dimensions on one axis so they can be read against each
+   other and against the bands, with each brand's own score marked on its row. */
+function renderScale(o) {
+  const L = 124, R = 986, X = v => L + (R - L) * v / 100;
+  const zy = 44, zh = 16;
+  const rows = [{ lab: "Messaging", s: o.m, y: 118 }];
+  if (o.v) rows.push({ lab: "Imagery", s: o.v, y: 172 });
+  let g = `<svg viewBox="0 0 1000 ${o.v ? 210 : 156}" xmlns="http://www.w3.org/2000/svg">`;
+  [[0, 40, .07], [40, 60, .13], [60, 80, .2], [80, 100, .28]].forEach(z => {
+    g += `<rect x="${X(z[0])}" y="${zy}" width="${X(z[1]) - X(z[0])}" height="${zh}" fill="#EFEEEA" fill-opacity="${z[2]}"/>`;
+  });
+  g += `<rect x="${X(60)}" y="${zy}" width="${X(100) - X(60)}" height="${zh}" fill="var(--coral)" fill-opacity=".22"/>`;
+  g += `<rect x="${L}" y="${zy}" width="${R - L}" height="${zh}" fill="none" stroke="rgba(239,238,234,.48)" stroke-width="1.5"/>`;
+  [["Distinct", 20], ["Converging", 50], ["Converged", 70], ["Indistinguishable", 90]].forEach(b => {
+    g += `<text x="${X(b[1])}" y="${zy - 10}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.3" fill="rgba(239,238,234,.48)">${b[0].toUpperCase()}</text>`;
+  });
+  g += `<line x1="${X(60)}" y1="${zy}" x2="${X(60)}" y2="${o.v ? 196 : 142}" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+  g += `<line x1="${X(o.mean)}" y1="${zy - 2}" x2="${X(o.mean)}" y2="${zy + zh + 2}" stroke="#51D4B2" stroke-width="3"/>`;
+  g += `<text x="${X(o.mean)}" y="${zy + zh + 22}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="#51D4B2">OVERALL ${o.mean}</text>`;
+  rows.forEach(row => {
+    g += `<line x1="${L}" y1="${row.y}" x2="${R}" y2="${row.y}" stroke="rgba(239,238,234,.22)" stroke-width="1"/>`;
+    g += `<text x="${L - 16}" y="${row.y + 4}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="1.3" fill="rgba(239,238,234,.72)">${row.lab.toUpperCase()}</text>`;
+    g += `<text x="${L - 16}" y="${row.y - 16}" text-anchor="end" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="20" fill="${row.s.mean >= 60 ? "#FE1849" : "#EFEEEA"}">${row.s.mean}</text>`;
+    const groups = {};
+    row.s.per.forEach(p => (groups[p.pct] = groups[p.pct] || []).push(p));
+    Object.keys(groups).forEach(v => {
+      const gp = groups[v], w = Math.max(26, gp.length * 24);
+      const x = Math.min(Math.max(X(+v), L + w / 2), R - w / 2);
+      g += `<g class="sc-pill" data-dim="${row.lab.toLowerCase()}" data-i="${gp[0].i}" style="cursor:pointer">` +
+        `<rect x="${x - w / 2}" y="${row.y - 13}" width="${w}" height="26" rx="13" fill="#1f1f1f" stroke="#EFEEEA" stroke-width="1.5"/>` +
+        `<text x="${x}" y="${row.y + 4}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="1.4" fill="#EFEEEA">${gp.map(p => p.key).join(" ")}</text></g>`;
     });
   });
+  g += "</svg>";
+  $("#r-scale").innerHTML = g;
+  $("#r-scale").querySelectorAll(".sc-pill").forEach(n =>
+    n.addEventListener("click", () => listBrandShared(+n.dataset.i, n.dataset.dim)));
 }
 
-function openSetDrawer(title, ids, note) {
-  listDrawer("Territories", title, ids, note);
+/* ---- the counts ---- */
+function renderNumbers() {
+  const m = MSG(), v = VT();
+  const mUnused = m.filter(t => users(t).length === 0).length;
+  const cells = [
+    { v: m.length, l: "messaging territories<br>mapped", act: "allmsg" },
+    { v: mUnused, l: "messaging territories<br>used by nobody", act: "unusedmsg", cls: "open" },
+  ];
+  if (v.length) {
+    const vUnused = v.filter(t => users(t, visPool()).length === 0).length;
+    cells.push({ v: v.length, l: "visual territories<br>mapped", act: "allimg" });
+    cells.push({ v: vUnused, l: "visual territories<br>unclaimed", act: "unusedimg", cls: "open" });
+  } else {
+    cells.push({ v: m.filter(t => users(t).length > 1).length, l: "messaging territories<br>shared", act: "shared" });
+    cells.push({ v: m.filter(t => users(t).length === 0 && t.tier === "open").length, l: "need no new<br>clinical evidence", act: "unusedmsg", cls: "open" });
+  }
+  $("#r-numbers").innerHTML = cells.map(c =>
+    `<div class="ct ${c.cls || ""}" data-act="${c.act}"><div class="v">${c.v}</div><div class="l">${c.l}</div></div>`).join("");
+  $("#r-numbers").querySelectorAll("[data-act]").forEach(d => d.addEventListener("click", () => {
+    ({ allmsg: listAll, unusedmsg: listUnused, allimg: listAllImagery, unusedimg: listUnusedImagery, shared: listShared }[d.dataset.act])();
+  }));
 }
 
-/* One list-of-territories drawer, used by the circles and by the four numbers.
-   The list comes first because it is the answer; the qualification sits under
-   it, where it belongs — a reader who wants the caveat will look for it, and a
-   reader who does not should not have to read past it. */
-function listDrawer(kicker, title, ids, note) {
-  const items = ids.map(id => pos(id)).filter(Boolean);
-  const body = items.length
-    ? items.map(p => `<div class="receipt" style="border-color:${p.n ? "var(--divider)" : "var(--coral)"}">
-        <div class="r-quote" style="font-style:normal"><a data-ref="${p.id}" style="cursor:pointer">${esc(p.label)}</a></div>
-        <div class="dr-src" style="margin-top:3px">${p.n
-          ? "used by " + esc(p.claimers.join(", "))
-          : "used by nobody · " + esc((TIER_NAMES[p.tier] || p.tier).toLowerCase())}</div>
-      </div>`).join("")
-    : `<p class="dr-empty">None.</p>`;
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">${esc(kicker)}</span>
-    <div class="dr-label">${esc(title)}</div>
-    <div class="dr-desc">${items.length} ${items.length === 1 ? "territory" : "territories"}. Click any one to see the wording behind it.</div>
-    ${body}
-    ${note ? `<div class="dr-h">What this counts</div><p class="dr-src">${esc(note)}</p>` : ""}`;
-  $("#drawer-content").querySelectorAll("[data-ref]").forEach(a =>
-    a.addEventListener("click", () => openDrawer(a.dataset.ref)));
-  showDrawer();
-}
-
-/* ---- map ---- */
-function renderMap() {
-  const map = $("#map"); map.innerHTML = "";
-  const maxN = DATA.meta.brands.length;
-  [...DATA.positions].sort((a, b) => b.n - a.n || a.id.localeCompare(b.id)).forEach(p => {
-    const shade = p.n === 0 ? "empty" : "n" + Math.min(4, Math.ceil(p.n / maxN * 4));
-    const c = el("div", `cell ${shade} tier-${p.tier}`);
-    c.innerHTML = `<div><div class="c-id">${p.id}</div><div class="c-label">${esc(shortLabel(p.label))}</div></div>
-      <div class="c-foot">${p.n === 0 ? "Unused" : p.n + " of " + maxN}</div>`;
-    c.addEventListener("click", () => openDrawer(p.id));
-    map.appendChild(c);
+/* ---- brand chips ---- */
+function renderChips() {
+  const c = $("#r-chips");
+  c.innerHTML = "";
+  BR.forEach((b, i) => {
+    const on = SEL.includes(i);
+    const btn = el("button", "chip" + (on ? " on" : ""));
+    btn.textContent = b.name;
+    btn.disabled = on && SEL.length <= 2;
+    btn.onclick = () => { SEL = on ? SEL.filter(x => x !== i) : SEL.concat(i).sort((a, b2) => a - b2); renderAll(); };
+    c.appendChild(btn);
   });
-  $("#map-legend").innerHTML =
-    `<span><span class="sw e"></span>unused</span>
-     <span><span class="sw" style="background:rgba(31,91,74,.10)"></span>one brand</span>
-     <span><span class="sw" style="background:rgba(31,91,74,.48)"></span>several</span>
-     <span><span class="sw" style="background:#1F5B4A"></span>every brand</span>`;
+}
+
+/* ---- the field: three views on one rail ---- */
+const CAPS = [
+  "Each brand placed by how far its copy, and separately its art direction, sits from the rest. Thin lines run to the category centre. Click a brand for what puts it there.",
+  "Circles sized by territories used. Overlaps are labelled, not drawn to scale — the number is true, the shape would not be.",
+  "Each brand on both dimensions: shared at the left, held alone in mint at the right.",
+];
+/* The rail can be driven two ways — the buttons and a swipe — and both have to
+   end up agreeing. A programmatic scroll animates, and the scroll listener sees
+   the intermediate positions; without this latch it reads one of them as a new
+   choice and drags the rail back to where it started. */
+let RAIL_LOCK = 0;
+function go(i) {
+  IDX = i;
+  const r = $("#rail");
+  RAIL_LOCK = Date.now() + 700;
+  r.scrollTo({ left: r.clientWidth * i });
+  document.querySelectorAll(".modes button").forEach((b, n) => b.setAttribute("aria-pressed", n === i ? "true" : "false"));
+  document.querySelectorAll(".dot").forEach((b, n) => b.classList.toggle("on", n === i));
+  $("#figcap").textContent = CAPS[i] + (i === 2 && !hasImagery() ? " The imagery could not be read this run, so only the messaging bar is drawn." : "");
+}
+
+/* The two-axis field. Both axes are the same question — how unlike the other
+   brands is this one — asked of the messaging and of the art direction. The
+   view is zoomed to the brands plotted, so position is relative. */
+function figAxes() {
+  const P = (DATA.plot || []).filter(p => SEL.some(i => nameOf(i) === p.brand));
+  if (!P.length) return "";
+  const withImg = P.filter(p => p.imagery !== null && p.imagery !== undefined);
+  const twoD = withImg.length >= 2;
+  const span = (vals) => {
+    const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * .35 || .1;
+    return { lo: lo - pad, hi: hi + pad };
+  };
+  const sx = span(P.map(p => p.messaging));
+  const sy = twoD ? span(withImg.map(p => p.imagery)) : { lo: 0, hi: 1 };
+  const X = v => 78 + ((v - sx.lo) / (sx.hi - sx.lo || 1)) * 470;
+  const Y = v => 330 - ((v - sy.lo) / (sy.hi - sy.lo || 1)) * 286;
+  const idxOf = n => BR.findIndex(b => b.name === n);
+
+  const pts = P.map(p => ({
+    i: idxOf(p.brand), name: p.brand,
+    x: X(p.messaging), y: twoD ? (p.imagery == null ? 330 : Y(p.imagery)) : 190,
+    m: p.messaging, im: p.imagery,
+  }));
+  const cx = pts.reduce((a, b) => a + b.x, 0) / pts.length;
+  const cy = pts.reduce((a, b) => a + b.y, 0) / pts.length;
+  const dist = pts.map(p => Math.hypot(p.x - cx, p.y - cy));
+  const far = dist.indexOf(Math.max(...dist));
+
+  let s = '<svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg">';
+  s += '<line x1="78" y1="332" x2="596" y2="332" stroke="#303030" stroke-width="1.5"/>';
+  s += '<line x1="78" y1="24" x2="78" y2="332" stroke="#303030" stroke-width="1.5"/>';
+  s += '<text x="596" y="356" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">MESSAGING →</text>';
+  if (twoD) s += '<text x="66" y="24" text-anchor="end" transform="rotate(-90 66 24)" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">IMAGERY →</text>';
+  pts.forEach((p, n) => { if (n !== far) s += `<line x1="${p.x}" y1="${p.y}" x2="${cx}" y2="${cy}" stroke="#303030" stroke-width="1" opacity=".5"/>`; });
+  s += `<circle cx="${cx}" cy="${cy}" r="7" fill="#FE1849"/>`;
+  s += `<text x="${cx}" y="${cy + 26}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.2" fill="#FE1849">THE CATEGORY</text>`;
+  const placed = [];
+  pts.forEach(p => {
+    p.ly = p.y + 4;
+    while (placed.some(q => Math.abs(q.ly - p.ly) < 15 && Math.abs(q.x - p.x) < 130)) p.ly += 16;
+    placed.push(p);
+  });
+  pts.forEach((p, n) => {
+    s += `<g class="ax-pt" data-i="${p.i}" style="cursor:pointer">` +
+      `<circle cx="${p.x}" cy="${p.y}" r="15" fill="${n === far ? "#51D4B2" : "#EFEEEA"}" stroke="#303030" stroke-width="1.5"/>` +
+      `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#303030">${esc(BR[p.i] ? BR[p.i].key : "?")}</text>` +
+      `<text x="${p.x + 22}" y="${p.ly}" font-family="Epilogue, sans-serif" font-size="13.5" fill="#303030">${esc(p.name)}</text></g>`;
+  });
+  if (pts.length > 1) s += `<text x="${pts[far].x}" y="${pts[far].y - 26}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1.2" fill="#1F5B4A">FURTHEST OUT</text>`;
+  s += "</svg>";
+  return '<div class="figsvg">' + s + "</div>";
+}
+
+/* Overlap. Circles up to three brands, a matrix above that — a Venn of four is
+   fifteen regions and nobody reads it. */
+function figOverlap() {
+  const M = MSG();
+  const unused = M.filter(t => users(t).length === 0).length;
+  if (SEL.length > 3) {
+    let h = `<div class="notice">A Venn is unreadable above three brands — four make fifteen regions. <a data-three="1">Compare three</a>, or read the counts.</div>`;
+    h += `<table class="matrix"><thead><tr><th></th>${SEL.map(i => `<th>${esc(nameOf(i))}</th>`).join("")}</tr></thead><tbody>`;
+    SEL.forEach(i => {
+      h += `<tr><th style="text-align:left">${esc(nameOf(i))}</th>`;
+      SEL.forEach(j => {
+        if (i === j) {
+          const n = M.filter(t => { const u = users(t); return u.length === 1 && u[0] === i; }).length;
+          h += `<td class="self">${n}</td>`;
+        } else {
+          const n = M.filter(t => users(t).includes(i) && users(t).includes(j)).length;
+          h += `<td class="cell2" data-pair="${i},${j}">${n}</td>`;
+        }
+      });
+      h += "</tr>";
+    });
+    h += `</tbody></table><div class="figcap">Mint diagonal — territories that brand holds alone. Other cells — territories the pair share. ${unused} territories are used by none of them.</div>`;
+    return h;
+  }
+  const two = SEL.length === 2;
+  const posn = two ? [[236, 190], [372, 190]] : [[228, 164], [386, 164], [306, 296]];
+  const cnts = SEL.map(i => M.filter(t => users(t).includes(i)).length);
+  const rad = cnts.map(c => 54 + Math.sqrt(c) * 15);
+  let s = '<svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg">';
+  SEL.forEach((i, n) => { s += `<circle cx="${posn[n][0]}" cy="${posn[n][1]}" r="${rad[n]}" fill="#51D4B2" fill-opacity=".16" stroke="#303030" stroke-width="1.5"/>`; });
+  const lp = two ? [[236 - rad[0] - 10, 190, "end"], [372 + rad[1] + 10, 190, "start"]]
+                 : [[228 - rad[0] - 10, 154, "end"], [386 + rad[1] + 10, 154, "start"], [306, 296 + rad[2] + 26, "middle"]];
+  SEL.forEach((i, n) => {
+    s += `<text x="${lp[n][0]}" y="${lp[n][1]}" text-anchor="${lp[n][2]}" font-family="Epilogue, sans-serif" font-size="14" fill="#303030">${esc(nameOf(i))}</text>`;
+    s += `<text x="${lp[n][0]}" y="${lp[n][1] + 18}" text-anchor="${lp[n][2]}" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">${cnts[n]}</text>`;
+  });
+  const cnt = a => M.filter(t => { const u = users(t); return u.length === a.length && a.every(x => u.includes(x)); }).length;
+  const put = (x, y, n, big) => n ? `<text x="${x}" y="${y}" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="${big ? 28 : 20}" fill="#303030">${n}</text>` : "";
+  if (two) {
+    s += put(236 - rad[0] / 2.1, 198, cnt([SEL[0]])) + put(372 + rad[1] / 2.1, 198, cnt([SEL[1]])) + put(304, 196, cnt(SEL), true);
+  } else {
+    s += put(178, 136, cnt([SEL[0]])) + put(436, 136, cnt([SEL[1]])) + put(306, 348, cnt([SEL[2]]))
+       + put(306, 150, cnt([SEL[0], SEL[1]])) + put(226, 240, cnt([SEL[0], SEL[2]])) + put(388, 240, cnt([SEL[1], SEL[2]])) + put(306, 224, cnt(SEL), true);
+  }
+  s += `<text x="306" y="386" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" fill="rgba(48,48,48,.62)">${unused} OUTSIDE EVERY CIRCLE</text></svg>`;
+
+  const m = {};
+  M.forEach(t => { const u = users(t); if (!u.length) return; (m[u.join(",")] = m[u.join(",")] || []).push(t); });
+  let side = '<div class="lab" style="padding-bottom:8px;border-bottom:1.5px solid var(--ink)">Regions</div>';
+  Object.keys(m).sort((a, b) => m[b].length - m[a].length).forEach(k => {
+    side += `<div class="vrow" data-key="${k}"><span>${k.split(",").map(x => esc(nameOf(+x))).join(" + ")}</span><span>${m[k].length}</span></div>`;
+  });
+  side += `<div class="vrow" data-key="none"><span>Nobody</span><span>${unused}</span></div>`;
+  return `<div class="vwrap"><div class="figsvg">${s}</div><div>${side}</div></div>`;
+}
+
+/* Standing out. Both inventories per brand, shared at the left and held alone
+   in mint at the right, so a brand that is distinctive in copy and generic in
+   art direction shows it in one glance. */
+function figBars() {
+  const vp = visPool();
+  const ranked = SEL.map(i => {
+    const m = segsFor(MSG(), i), v = hasImagery() && VIS.includes(i) ? segsFor(VT(), i, vp) : null;
+    const alone = m.alone.length + (v ? v.alone.length : 0);
+    const used = m.used + (v ? v.used : 0);
+    return { i, m, v, alone, used };
+  }).sort((a, b) => (b.used ? b.alone / b.used : 0) - (a.used ? a.alone / a.used : 0));
+  const maxM = Math.max(1, ...ranked.map(r => r.m.used));
+  const maxV = Math.max(1, ...ranked.map(r => (r.v ? r.v.used : 0)));
+  const track = (s, max, i, dim) => {
+    const w = n => (n / max * 100) + "%";
+    return `<div class="track">` +
+      (s.many.length  ? `<div class="seg many"  style="width:${w(s.many.length)}"  data-dim="${dim}" data-kind="many"  data-i="${i}"></div>` : "") +
+      (s.two.length   ? `<div class="seg two"   style="width:${w(s.two.length)}"   data-dim="${dim}" data-kind="two"   data-i="${i}"></div>` : "") +
+      (s.alone.length ? `<div class="seg alone" style="width:${w(s.alone.length)}" data-dim="${dim}" data-kind="alone" data-i="${i}"></div>` : "") +
+      `<div class="seg pad" style="width:${w(Math.max(0, max - s.used))}"></div></div>`;
+  };
+  return ranked.map(r =>
+    `<div class="bar-row"><div class="bar-top"><span class="nm">${esc(nameOf(r.i))}</span>` +
+    `<span class="rt">${r.alone} of ${r.used} territories its own</span></div>` +
+    `<div class="dimrow"><span class="dimlab">Messaging</span>${track(r.m, maxM, r.i, "messaging")}</div>` +
+    (r.v ? `<div class="dimrow"><span class="dimlab">Imagery</span>${track(r.v, maxV, r.i, "imagery")}</div>` : "") +
+    `</div>`).join("");
+}
+
+/* ---- the territory map ---- */
+function buildToggle() {
+  const t = $("#r-invtoggle");
+  const v = VT();
+  t.innerHTML = `<button aria-pressed="true" data-set="messaging">Messaging territories ${MSG().length}</button>` +
+    (v.length ? `<button aria-pressed="false" data-set="imagery">Visual territories ${v.length}</button>` : "");
+  t.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
+    GSET = b.dataset.set;
+    t.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", "true");
+    renderMap();
+  }));
+}
+function shade(n, of) { if (n === 0) return 0; if (n === of) return 4; if (n >= 3) return 3; return n === 2 ? 2 : 1; }
+function renderMap() {
+  const items = setOf(GSET);
+  const pool = GSET === "imagery" ? visPool() : SEL;
+  const order = [...items].sort((a, b) => users(b, pool).length - users(a, pool).length || a.id.localeCompare(b.id));
+  $("#map-legend").textContent =
+    (GSET === "imagery" ? "visual territories" : "messaging territories") +
+    " · darker — more brands using it · mint — nobody there";
+  const g = $("#map");
+  g.innerHTML = "";
+  order.forEach(t => {
+    const s = shade(users(t, pool).length, pool.length);
+    const c = el("div", "c s" + s + (s === 0 && t.tier === "open" ? " ready" : ""));
+    c.textContent = t.label;
+    c.title = t.description || "";
+    c.onclick = () => detail(t.id);
+    g.appendChild(c);
+  });
 }
 
 /* ---- findings ---- */
 function renderFindings() {
-  const w = $("#r-findings"); w.innerHTML = "";
-  (DATA.findings || []).forEach((f, i) => {
-    const links = (f.refs || []).map(r => {
-      if (r.startsWith("visual:")) {
-        const d = (DATA.visual.dimensions || []).find(x => x.key === r.slice(7));
-        return `<a data-vref="${r.slice(7)}">${esc(d ? d.label.toLowerCase() : r.slice(7))}</a>`;
-      }
-      const p = pos(r);
-      return `<a data-ref="${r}">${esc(p ? shortLabel(p.label).toLowerCase() : r)}</a>`;
-    }).join("");
-    const d = el("div", "finding");
-    d.innerHTML = `<div class="f-n">${String(i + 1).padStart(2, "0")}</div>
-      <div><p>${esc(f.text)}</p><div class="f-ev">${links}</div></div>`;
-    w.appendChild(d);
-  });
-  w.querySelectorAll("[data-ref]").forEach(a => a.addEventListener("click", () => openDrawer(a.dataset.ref)));
-  w.querySelectorAll("[data-vref]").forEach(a => a.addEventListener("click", () => openVisualDrawer(a.dataset.vref)));
-}
-
-/* ---- the research behind the territories nobody uses ----
-   The claim that some territories were established independently of the brands
-   is the load-bearing one: without it, every territory on the list would have a
-   user by construction and empty ground could never appear. So the claim has to
-   be inspectable. Each entry shows what kind of published work it rests on. */
-function renderLiterature() {
-  const sec = $("#sec-lit");
-  const lit = DATA.positions.filter(p => p.provenance && p.provenance !== "observed in category");
-  if (!lit.length) { sec.style.display = "none"; return; }
-  sec.style.display = "";
-
-  const unused = lit.filter(p => p.n === 0);
-  const nBrands = DATA.meta.brands.length;
-
-  // Grouped by whatever provenances the run actually produced, not by a fixed
-  // pair — the evidence layer is named differently outside pharma, and older
-  // stored results carry the earlier names.
-  const prov = [];
-  lit.forEach(p => { if (!prov.includes(p.provenance)) prov.push(p.provenance); });
-  const meta = k => (DATA.provenance_breakdown || []).find(x => x.key === k) || {};
-
-  $("#lit-intro").textContent =
-    `${lit.length} of the ${DATA.metrics.space_size} territories on this list were not read off the brands' websites. ` +
-    `They were established from published evidence about this category, identified without reference to anything ` +
-    `these brands say — which is why ${unused.length} of them turn out to be used by ` +
-    `${nBrands === 2 ? "neither brand" : "no brand in this set"}.`;
-  $("#lit-summary").textContent = `Show all ${lit.length}, and the evidence behind each`;
-
-  const group = (key) => {
-    const items = lit.filter(p => p.provenance === key);
-    if (!items.length) return "";
-    const m = meta(key);
-    return `
-      <h2>${esc(m.label || key)}</h2>
-      ${m.note ? `<p class="sec-sub">${esc(m.note)}</p>` : ""}
-      ${items.map(p => `<div class="lit-item" data-ref="${p.id}">
-          <div>
-            <div class="d-label">${esc(p.label)}</div>
-            <div class="d-desc">${esc(p.description)}</div>
-            <div class="lit-src">${esc(p.source || "")}</div>
-          </div>
-          <div class="lit-use ${p.n ? "" : "none"}">${p.n ? "used by " + esc(p.claimers.join(", ")) : "used by nobody"}</div>
-        </div>`).join("")}`;
-  };
-
-  $("#r-literature").innerHTML =
-    prov.map(group).join("") +
-    `<p class="sec-sub" style="margin-top:26px;max-width:730px">These are described at the level of the kind of evidence they rest on rather than by individual citation. The full source list sits behind the paid version of this analysis.</p>`;
-
-  $("#r-literature").querySelectorAll("[data-ref]").forEach(d =>
-    d.addEventListener("click", () => openDrawer(d.dataset.ref)));
+  $("#r-findings").innerHTML = (DATA.findings || []).map((f, n) => {
+    const refs = (f.refs || []).map(r => {
+      const id = r.replace(/^visual:/, "");
+      const p = pos(id);
+      return p ? `<a data-id="${esc(id)}">${esc(shortLabel(p.label))}</a>` : "";
+    }).filter(Boolean).join("");
+    return `<div class="fd"><span class="n">${String(n + 1).padStart(2, "0")}</span>` +
+      `<div><p>${esc(f.text)}</p>${refs ? `<div class="f-ev">${refs}</div>` : ""}</div></div>`;
+  }).join("");
+  $("#r-findings").querySelectorAll("[data-id]").forEach(a =>
+    a.addEventListener("click", () => detail(a.dataset.id)));
 }
 
 /* ---- territories to explore ---- */
 function renderDaylight() {
-  const empty = DATA.positions.filter(p => p.n === 0);
-  const order = { open: 0, frame_only: 1, constrained: 2, closed: 3 };
-  const shown = empty.filter(p => p.tier !== "closed").sort((a, b) => order[a.tier] - order[b.tier]);
-  const open = empty.filter(p => p.tier === "open");
-  $("#daylight-intro").textContent =
-    `${empty.length} territories are used by no brand in this set. ${shown.length} are worth exploring, ` +
-    `starting with the ${open.length} that need no new clinical evidence to work with. ` +
-    `Each is a starting point for the conversation, not a recommendation — what survives review is your call.`;
-  const w = $("#r-daylight"); w.innerHTML = "";
-  shown.forEach(p => {
-    const d = el("div", "day-item");
-    d.innerHTML = `<div><div class="d-label">${esc(p.label)}</div><div class="d-desc">${esc(p.description)}</div></div>${tierChip(p.tier)}`;
-    d.addEventListener("click", () => openDrawer(p.id));
-    w.appendChild(d);
-  });
+  const RANK = { open: 0, frame_only: 1, constrained: 2, closed: 3 };
+  const all = MSG().concat(VT());
+  const items = all.filter(t => users(t, t.visual ? visPool() : SEL).length === 0 && t.tier !== "closed")
+    .sort((a, b) => RANK[a.tier] - RANK[b.tier] || a.id.localeCompare(b.id));
+  const open = items.filter(t => t.tier === "open").length;
+  const vis = items.filter(t => t.visual).length;
+  $("#daylight-intro").innerHTML =
+    `${items.length} territories are used by nobody in this set and are worth a conversation` +
+    `${vis ? ` — ${items.length - vis} messaging, ${vis} art direction` : ""}. ` +
+    `${open} of them need no new clinical evidence. Ratings are a strategic read, not a regulatory one.`;
+  $("#r-daylight").innerHTML = items.map(t =>
+    `<div class="day-item" data-id="${esc(t.id)}">` +
+    `<div><div class="d-label">${esc(t.label)}</div><div class="d-desc">${esc(t.description || "")}</div></div>` +
+    `${tierChip(t.tier)}</div>`).join("") || `<p class="dr-empty">Every territory in this list is used by at least one brand.</p>`;
+  $("#r-daylight").querySelectorAll("[data-id]").forEach(d =>
+    d.addEventListener("click", () => detail(d.dataset.id)));
 }
 
-/* ---- bar chart ---- */
+/* ---- the colophon: the method, one click away, at the foot of the report ---- */
+function renderColophon() {
+  const c = DATA.convergence || {};
+  const v = DATA.visual || {};
+  const parts = [
+    `Public brand websites · ${esc(DATA.meta.captured)} · label-determined content removed before analysis`,
+    `<a data-note="score">convergence score</a>`,
+  ];
+  if ((DATA.visual_positions || []).length) parts.push(`<a data-note="visual">visual territories</a>`);
+  parts.push(`<a data-note="method">method</a>`);
+  $("#r-colophon").innerHTML = parts.join(" · ");
+  $("#r-colophon").querySelectorAll("[data-note]").forEach(a => a.addEventListener("click", () => {
+    if (a.dataset.note === "score") {
+      noteDrawer("Method", "How the convergence score is built",
+        `<p>${esc(c.basis || "")}</p><p class="dr-src">${esc(c.bands_note || "")}</p>` +
+        `<p class="dr-src">Nothing is weighted or modelled. Every point traces to a territory, and every territory to the wording, or the image, on a site.</p>`);
+    } else if (a.dataset.note === "visual") {
+      noteDrawer("Method", "How visual territories are built",
+        `<p>${esc(v.exclusions || "")}</p>` +
+        `<p class="dr-src">Imagery convergence is then calculated exactly as messaging convergence is. Coding an image involves more judgement than quoting a sentence does, which is why every visual territory opens the image it was coded from, so you can disagree with the call.</p>`);
+    } else {
+      noteDrawer("Method", "Method and limitations",
+        `<p>Regulatory content, indication statements, safety information and anything the label determines were removed before analysis; what remains is elective messaging.</p>` +
+        `<p class="dr-src">${(DATA.provenance_breakdown || []).map(p => `${p.total} ${esc(p.label.toLowerCase())}`).join("; ")}.</p>` +
+        `<p class="dr-src">This reads public brand websites in one market on one date — not congress material, sales aids or paid media.</p>`);
+    }
+  }));
+}
+
+/* ---- the working ---- */
 function renderCentre() {
-  const rows = DATA.centre || [], chart = $("#centre-chart");
-  chart.innerHTML = "";
-  if (!rows.length) return;
-  const max = Math.max(...rows.map(r => r.distance), .05);
-  rows.forEach(r => {
-    const col = ACC[r.brand] || "#999", p = (r.distance / max) * 100;
-    const row = el("div", "centre-row");
-    row.innerHTML = `<div class="cr-name">${esc(r.brand)}</div>
-      <div class="cr-track"><div class="cr-bar" style="width:${p}%;background:${col};opacity:.4"></div>
-      <div class="cr-dot" style="left:${p}%;background:${col}"></div></div>
-      <div class="cr-val">${r.departures} of ${r.of}</div>`;
-    row.addEventListener("click", () => openBrandDrawer(r));
-    chart.appendChild(row);
-  });
+  const rows = DATA.centre || [];
+  if (!rows.length) { $("#centre-chart").innerHTML = ""; return; }
+  const max = Math.max(...rows.map(r => r.distance)) || 1;
+  $("#centre-chart").innerHTML = rows.map(r =>
+    `<div class="centre-row" data-b="${esc(r.brand)}">
+       <div class="cr-name">${esc(r.brand)}</div>
+       <div class="cr-track">
+         <div class="cr-bar" style="width:${(r.distance / max) * 100}%;background:${ACC[r.brand] || "#999"}"></div>
+         <div class="cr-dot" style="left:${(r.distance / max) * 100}%;background:${ACC[r.brand] || "#999"}"></div>
+       </div>
+       <div class="cr-val">${r.departures} of ${r.of} territories</div>
+     </div>`).join("");
+  $("#centre-chart").querySelectorAll("[data-b]").forEach(n => n.addEventListener("click", () => {
+    const r = rows.find(x => x.brand === n.dataset.b);
+    listDrawer("Brand", r.brand, r.departure_ids,
+      "Territories where this brand departs from what most of the category does — either using something most do not, or leaving out something most do.");
+  }));
 }
 
-/* ---- provenance ---- */
+function renderLiterature() {
+  const lit = MSG().concat(VT()).filter(t => t.provenance !== "observed in category");
+  const unused = lit.filter(t => users(t, t.visual ? visPool() : SEL).length === 0).length;
+  $("#lit-intro").innerHTML =
+    `${lit.length} of the territories on this page were established from published literature rather than from anything these brands publish. ` +
+    `${unused} of them are used by nobody here.`;
+  $("#r-literature").innerHTML = lit.map(t => {
+    const n = users(t, t.visual ? visPool() : SEL).length;
+    return `<div class="lit-item" data-id="${esc(t.id)}">
+      <div><div class="d-label">${esc(t.label)}</div><div class="lit-src">${esc(t.source || "")}</div></div>
+      <div class="lit-use ${n ? "" : "none"}">${n ? "used by " + n : "used by nobody"}</div></div>`;
+  }).join("");
+  $("#r-literature").querySelectorAll("[data-id]").forEach(d =>
+    d.addEventListener("click", () => detail(d.dataset.id)));
+}
+
 function renderProvenance() {
-  const rows = DATA.provenance_breakdown || [], t = $("#t-prov");
-  if (!rows.length) { t.innerHTML = ""; return; }
-  const tt = rows.reduce((a, r) => a + r.total, 0), tu = rows.reduce((a, r) => a + r.unused, 0);
-  t.innerHTML = `<tr><th>Source</th><th class="num">Territories</th><th class="num">Unused</th></tr>` +
-    rows.map(r => `<tr class="clickable" data-prov="${esc(r.key)}"><td>${esc(r.label)}</td>
-      <td class="num">${r.total}</td><td class="num">${r.unused}</td></tr>`).join("") +
-    `<tr class="total"><td>Total</td><td class="num">${tt}</td><td class="num">${tu}</td></tr>`;
-  t.querySelectorAll("[data-prov]").forEach(tr =>
-    tr.addEventListener("click", () => openProvenanceDrawer(tr.dataset.prov)));
+  const rows = (DATA.provenance_breakdown || []).concat(DATA.visual_provenance || []);
+  $("#t-prov").innerHTML =
+    `<thead><tr><th>Source</th><th class="num">Territories</th><th class="num">Used by nobody</th></tr></thead><tbody>` +
+    rows.map(r => `<tr class="clickable" data-key="${esc(r.key)}"><td class="serif">${esc(r.label)}<div class="b-stats">${esc(r.note)}</div></td>` +
+      `<td class="num">${r.total}</td><td class="num">${r.unused}</td></tr>`).join("") + "</tbody>";
+  $("#t-prov").querySelectorAll("[data-key]").forEach(tr => tr.addEventListener("click", () => {
+    const k = tr.dataset.key;
+    const items = MSG().concat(VT()).filter(p => p.provenance === k);
+    listDrawer("Source", k, items.map(p => p.id), "");
+  }));
 }
 
-/* ---- full working tables ---- */
 function renderWorking() {
-  const m = DATA.metrics;
+  const brandCols = BR.map(b => `<th class="num">${esc(b.key)}</th>`).join("");
+  const rowFor = p => `<tr class="clickable" data-id="${esc(p.id)}">
+      <td class="num">${esc(p.id)}</td>
+      <td class="serif">${esc(p.label)}<div class="b-stats">${esc(p.description || "")}</div></td>
+      ${BR.map(b => `<td class="num">${(p.claimers || []).includes(b.name) ? "●" : "·"}</td>`).join("")}
+      <td class="num">${esc(TIER_NAMES[p.tier] || p.tier)}</td></tr>`;
 
-  const tp = $("#t-positions");
-  tp.innerHTML = `<tr><th></th><th>Territory</th><th>Availability</th><th>Source</th><th class="num">Brands</th></tr>` +
-    DATA.positions.map(p => `<tr class="clickable" data-ref="${p.id}"><td>${p.id}</td>
-      <td class="serif">${esc(p.label)}</td><td>${tierChip(p.tier)}</td>
-      <td>${esc(p.provenance)}</td><td class="num">${p.claimers.map(dot).join("")}${p.n || "—"}</td></tr>`).join("");
-  tp.querySelectorAll("[data-ref]").forEach(tr => tr.addEventListener("click", () => openDrawer(tr.dataset.ref)));
+  $("#t-positions").innerHTML =
+    `<thead><tr><th>Id</th><th>Messaging territory</th>${brandCols}<th class="num">Availability</th></tr></thead><tbody>` +
+    MSG().map(rowFor).join("") + "</tbody>";
 
-  const tb = $("#t-brands"); tb.innerHTML = "";
-  const you = DATA.meta.brands[0].name;
-  DATA.meta.brands.forEach(b => {
-    const s = DATA.brand_position[b.name]; if (!s) return;
-    const owned = (s.uniquely_owned || []).map(id => {
-      const p = pos(id); return p ? `<a data-ref="${id}" style="cursor:pointer">${esc(shortLabel(p.label))}</a>` : id;
-    }).join(" · ") || `<span class="muted">none — every territory it uses is also used by a competitor</span>`;
-    const d = el("div", "brand-block");
-    d.innerHTML = `<h3>${dot(b.name)}${esc(b.name)}${b.name === you ? ` <span class="muted" style="font-weight:400">(your brand)</span>` : ""}</h3>
-      <div class="b-stats">uses ${s.claimed} of ${m.space_size} · ${s.n_unique} used by no competitor · appears in ${pct(s.crowding)} of the territories most of the category shares</div>
-      <div class="b-owned">Used by no competitor: ${owned}</div>`;
-    tb.appendChild(d);
-  });
-  tb.querySelectorAll("[data-ref]").forEach(a => a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+  const v = VT();
+  $("#visual-exclusions").textContent = (DATA.visual || {}).exclusions || "";
+  $("#t-visual").innerHTML = v.length
+    ? `<thead><tr><th>Id</th><th>Visual territory</th>${brandCols}<th class="num">Availability</th></tr></thead><tbody>` +
+      v.map(rowFor).join("") + "</tbody>"
+    : "";
 
-  $("#t-pairwise").innerHTML = `<tr><th>Pair</th><th class="num">In common</th></tr>` +
-    Object.entries(m.pairwise || {}).sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `<tr><td class="serif">${esc(k)}</td><td class="num">${pct(v)}</td></tr>`).join("");
+  document.querySelectorAll("#t-positions [data-id], #t-visual [data-id]").forEach(tr =>
+    tr.addEventListener("click", () => detail(tr.dataset.id)));
 
-  $("#visual-exclusions").textContent = (DATA.visual && DATA.visual.exclusions) || "";
-  const dims = (DATA.visual && DATA.visual.dimensions) || [];
-  const names = DATA.meta.brands.map(b => b.name);
-  $("#t-visual").innerHTML = `<tr><th>Dimension</th>${names.map(n => `<th>${esc(n)}</th>`).join("")}<th class="num">Agree</th></tr>` +
-    dims.map(d => `<tr class="clickable" data-vref="${d.key}"><td class="serif">${esc(d.label)}</td>` +
-      names.map(n => `<td>${esc(d.per_brand && d.per_brand[n] !== undefined ? d.per_brand[n] : "—")}</td>`).join("") +
-      `<td class="num">${pct(d.agreement)}</td></tr>`).join("");
-  $("#t-visual").querySelectorAll("[data-vref]").forEach(tr =>
-    tr.addEventListener("click", () => openVisualDrawer(tr.dataset.vref)));
+  $("#t-brands").innerHTML = BR.map(b => {
+    const bp = (DATA.brand_position || {})[b.name];
+    if (!bp) return "";
+    const own = (bp.uniquely_owned || []).map(id => { const p = pos(id); return p ? esc(p.label) : id; }).join(" · ");
+    return `<div class="brand-block"><div class="serif" style="font-family:var(--serif);font-size:18px;font-weight:900">${dot(b.name)}${esc(b.name)}</div>
+      <div class="b-stats">uses ${bp.claimed} of ${MSG().length} messaging territories · ${bp.n_unique} held alone</div>
+      ${own ? `<div class="b-owned">${own}</div>` : ""}</div>`;
+  }).join("");
 
-  const tc = $("#t-crosscheck"); tc.innerHTML = "";
-  (DATA.cross_check || []).forEach(r => {
-    const d = el("div", "brand-block");
-    d.innerHTML = `<h3>${dot(r.brand)}${esc(r.brand)}</h3>
-      <div class="b-stats">${pct(r.verbal_ownership)} of the territories it uses are used by no competitor</div>
-      <div class="b-owned">${esc(r.comment || "")}</div>`;
-    tc.appendChild(d);
-  });
+  const pw = (DATA.metrics || {}).pairwise || {};
+  $("#t-pairwise").innerHTML =
+    `<thead><tr><th>Pair</th><th class="num">Messaging in common</th></tr></thead><tbody>` +
+    Object.keys(pw).sort((a, b) => pw[b] - pw[a]).map(k =>
+      `<tr><td>${esc(k)}</td><td class="num">${Math.round(pw[k] * 100)}%</td></tr>`).join("") + "</tbody>";
 
-  $("#t-boundary").innerHTML = `<tr><th>Content</th><th>Treated as</th><th>Why</th></tr>` +
+  const ip = DATA.imagery_pairs || [];
+  $("#t-imgpairs").innerHTML = ip.length
+    ? `<thead><tr><th>Pair</th><th class="num">Art direction in common</th><th>Shared visual territories</th></tr></thead><tbody>` +
+      ip.map(r => `<tr><td>${esc(r.pair.join(" / "))}</td><td class="num">${Math.round(r.match * 100)}%</td><td>${esc((r.shared || []).join(" · "))}</td></tr>`).join("") + "</tbody>"
+    : "";
+
+  $("#t-crosscheck").innerHTML = (DATA.cross_check || []).map(r =>
+    `<div class="brand-block"><div style="font-family:var(--serif);font-size:18px;font-weight:900">${dot(r.brand)}${esc(r.brand)}</div>
+      <div class="b-stats">${Math.round((r.verbal_ownership || 0) * 100)}% of its messaging held alone · ${Math.round((r.visual_ownership || 0) * 100)}% of its art direction held alone · ${Math.round((r.visual_distance || 0) * 100)}% of the visual territories anyone uses are ones it departs from</div>
+      ${r.hero_notes ? `<div class="b-owned">${esc(r.hero_notes)}</div>` : ""}
+      ${r.comment ? `<div class="b-owned">${esc(r.comment)}</div>` : ""}</div>`).join("");
+
+  $("#t-boundary").innerHTML =
+    `<thead><tr><th>Element</th><th class="num">Layer</th><th>Why</th></tr></thead><tbody>` +
     (DATA.boundary_rules || []).map(r =>
-      `<tr><td class="serif">${r.element}</td><td>${r.layer === 2 ? "Set by the label" : "A decision"}</td><td>${esc(r.rule)}</td></tr>`).join("");
+      `<tr><td>${esc(r.element)}</td><td class="num">${r.layer}</td><td>${esc(r.rule)}</td></tr>`).join("") + "</tbody>";
 
-  $("#r-limits").innerHTML = (DATA.limitations || []).map(x => `<p style="margin-bottom:11px">${esc(x)}</p>`).join("");
+  $("#r-limits").innerHTML = (DATA.limitations || []).map(l => `<p>${esc(l)}</p>`).join("");
 }
 
 /* ---------------------------------------------------- drawers */
-function openDrawer(id) {
-  const p = pos(id); if (!p) return;
-  // Each quote links to the page it appears on, using a text fragment so the
-  // browser scrolls to the wording and highlights it. Chrome, Edge and Safari
-  // honour that; Firefox opens the page and ignores the highlight. Where the
-  // wording could not be found again on the page, no link is offered rather
-  // than a link that lands nowhere.
-  const links = p.receipt_links || {};
-  const receipts = p.n === 0
-    ? `<p class="dr-empty">No brand in this set uses this territory anywhere on its website. It is unexplored.</p>`
-    : p.claimers.map(b => `<div class="receipt" style="border-color:${ACC[b] || "var(--divider)"}">
-        <div class="r-brand" style="color:${ACC[b] || "inherit"}">${esc(b)}</div>
-        <div class="r-quote">${esc(p.receipts[b])}</div>
-        ${links[b] ? `<a class="r-see" href="${esc(links[b])}" target="_blank" rel="noopener nofollow">See it on ${esc(b)}'s site →</a>` : ""}
-      </div>`).join("");
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">${p.id} · ${esc(p.provenance)}</span>
-    <div class="dr-label">${esc(p.label)}</div>
-    <div class="dr-desc">${esc(p.description)}</div>
-    <div class="dr-h">Who uses it, and the wording on their site</div>
-    ${receipts}
-    <div class="dr-h">Could you explore this</div>
-    <p>${tierChip(p.tier)}</p>
-    <p>${esc(p.tier_reasoning)}</p>
-    <p class="dr-src">${esc(TIER_EXPLAIN[p.tier] || "")}</p>
-    <p class="dr-src">A strategic assessment, not a regulatory one, and a starting point for a conversation rather than a recommendation. Whether it fits your brand, your label and your review process is your judgement, and anything you pursue needs medical, legal and regulatory review.</p>
-    <div class="dr-h">Where it came from</div>
-    <p class="dr-src">${esc(p.source || p.provenance)}</p>`;
-  showDrawer();
+function showDrawer() { $("#drawer").classList.add("on"); $("#drawer-scrim").classList.add("on"); $("#drawer").scrollTop = 0; }
+function hideDrawer() { $("#drawer").classList.remove("on"); $("#drawer-scrim").classList.remove("on"); }
+
+function drawerHTML(kicker, title, sub, body, back) {
+  return `<div class="dr-sub" style="display:flex;justify-content:space-between;gap:12px">` +
+    `<span>${back ? '<button id="dr-back">← back</button>' : esc(kicker || "")}</span></div>` +
+    `<div class="dr-label">${title}</div><div class="dr-sub">${sub}</div>${body}`;
 }
 
-function openBrandDrawer(r) {
-  const dep = (r.departure_ids || []).map(id => pos(id)).filter(Boolean);
-  const own = dep.filter(p => p.claimers.includes(r.brand));
-  const declined = dep.filter(p => !p.claimers.includes(r.brand));
-  const list = a => a.length ? a.map(p => `<div class="receipt" style="border-color:${ACC[r.brand] || "var(--divider)"}">
-      <div class="r-quote" style="font-style:normal">${esc(p.label)}</div>
-      <div class="dr-src" style="margin-top:2px">used by ${p.n} of ${DATA.meta.brands.length}</div></div>`).join("")
-    : `<p class="dr-empty">None.</p>`;
-  const pt = (DATA.plot || []).find(p => p.brand === r.brand), pm = DATA.plot_meta || {};
-  let plotBlock = "";
-  if (pt) {
-    const n = Object.keys(DAYLIGHT_RANK).length, rank = DAYLIGHT_RANK[r.brand];
-    const ord = ["", "most", "second-most", "third-most", "fourth-most", "fifth-most", "sixth-most", "seventh-most"][rank] || `${rank}th-most`;
-    const cmp = (v, mean) => v == null ? "—" : `${v > mean ? "more distinct" : "more converged"} than the category average`;
-    plotBlock = `<div class="dr-h">Daylight</div>
-      <p>${rank === n ? "The most converged brand in the set" : `The ${ord} daylight of ${n} brands`} — how far it sits from the corner where a brand says and shows what everyone else does.</p>
-      <p>Messaging: ${cmp(pt.messaging, pm.messaging_mean)}</p>
-      <p>Imagery: ${cmp(pt.imagery, pm.imagery_mean)}</p>
-      <p class="dr-src">A rank within this set, read off the plotted field, not an absolute score. The lists below answer a different question — where specifically it breaks from the majority. A brand that claims a great deal overlaps with everybody and so sits closer to convergence, while departing from the majority more often than anyone.</p>`;
+/* One territory, with the evidence under it. A messaging territory shows the
+   verbatim wording and a link that opens the page with it highlighted; a visual
+   territory shows the observation and the image it was coded from. */
+function detail(id) {
+  const t = pos(id);
+  if (!t) return;
+  const pool = t.visual ? visPool() : SEL;
+  const n = users(t, pool).length;
+  const back = LAST;
+  const sub = `${t.visual ? "Visual" : "Messaging"} territory ${esc(t.id)} · ` +
+    `${n ? `${n} of ${pool.length} brands` : "used by nobody"} · ${esc(TIER_NAMES[t.tier] || t.tier)}`;
+
+  let body = t.description ? `<p class="dr-desc">${esc(t.description)}</p>` : "";
+  if (t.provenance !== "observed in category" && t.source) {
+    body += `<div class="dr-h">Where this territory comes from</div><p class="dr-src">${esc(t.source)}</p>`;
   }
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">Brand</span>
-    <div class="dr-label">${esc(r.brand)}</div>
-    <div class="dr-desc">Departs from what most of the category does in ${r.departures} of the ${r.of} territories anyone uses.</div>
-    ${plotBlock}
-    <div class="dr-h">Makes an argument most competitors do not</div>
-    ${list(own)}
-    <div class="dr-h">Declines an argument most competitors make</div>
-    ${list(declined)}`;
+  if (t.tier_reasoning) {
+    body += `<div class="dr-h">Availability</div><p class="dr-src">${tierChip(t.tier)} ${esc(t.tier_reasoning)}</p>`;
+  }
+  const claimers = (t.claimers || []).filter(b => pool.some(i => nameOf(i) === b));
+  if (claimers.length) {
+    body += `<div class="dr-h">${t.visual ? "What is in the picture" : "The wording on each site"}</div>`;
+    claimers.forEach(b => {
+      const q = (t.receipts || {})[b] || "";
+      const link = (t.receipt_links || {})[b];
+      body += `<div class="receipt"><div class="r-brand">${esc(b)}</div>` +
+        `<div class="r-quote${t.visual ? "" : " said"}">${t.visual ? esc(q) : "“" + esc(q) + "”"}</div>` +
+        (link ? (t.visual
+          ? `<img class="r-shot" src="${esc(link)}" alt="${esc(b)} — the image this was coded from" loading="lazy">
+             <a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the image →</a>`
+          : `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, highlighted →</a>`) : "") +
+        `</div>`;
+    });
+  }
+  const miss = pool.map(nameOf).filter(b => !claimers.includes(b));
+  if (miss.length) body += `<div class="dr-h">Absent from</div><p class="dr-empty">${esc(miss.join(", "))}</p>`;
+
+  $("#drawer-content").innerHTML = drawerHTML("", esc(t.label), sub, body, !!back);
+  if (back) $("#dr-back").addEventListener("click", () => listDrawer(back.kicker, back.title, back.ids, back.note));
   showDrawer();
 }
 
-function openProvenanceDrawer(key) {
-  const meta = (DATA.provenance_breakdown || []).find(r => r.key === key); if (!meta) return;
-  const items = DATA.positions.filter(p => p.provenance === key);
-  const render = a => a.length ? a.map(p => `<div class="receipt" style="border-color:${p.n ? "var(--divider)" : "var(--coral)"}">
-      <div class="r-quote" style="font-style:normal"><a data-ref="${p.id}" style="cursor:pointer">${esc(p.label)}</a></div>
-      <div class="dr-src" style="margin-top:2px">${p.n ? "used by " + esc(p.claimers.join(", ")) : "unused · " + esc(TIER_NAMES[p.tier].toLowerCase())}</div>
-    </div>`).join("") : `<p class="dr-empty">None.</p>`;
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">Source</span>
-    <div class="dr-label">${esc(meta.label)}</div>
-    <div class="dr-desc">${esc(meta.note)}</div>
-    <div class="dr-h">Unused (${meta.unused})</div>${render(items.filter(p => p.n === 0))}
-    <div class="dr-h">In use (${meta.total - meta.unused})</div>${render(items.filter(p => p.n > 0))}`;
-  $("#drawer-content").querySelectorAll("[data-ref]").forEach(a =>
-    a.addEventListener("click", () => openDrawer(a.dataset.ref)));
+/* A list of territories, each one click from its own evidence. */
+function listDrawer(kicker, title, ids, note) {
+  LAST = { kicker, title, ids, note };
+  const items = ids.map(pos).filter(Boolean);
+  const body = (note ? `<p class="dr-src" style="margin-bottom:14px">${esc(note)}</p>` : "") +
+    items.map(t => {
+      const pool = t.visual ? visPool() : SEL;
+      return `<div class="ti" data-id="${esc(t.id)}"><span class="lb">${esc(t.label)}` +
+        `<em class="av2">${esc(TIER_NAMES[t.tier] || t.tier)}</em></span><span>` +
+        pool.map(i => `<i class="mk${(t.claimers || []).includes(nameOf(i)) ? " on" : ""}">${esc(BR[i].key)}</i>`).join("") +
+        `</span></div>`;
+    }).join("");
+  $("#drawer-content").innerHTML = drawerHTML(kicker, esc(title), `${items.length} territor${items.length === 1 ? "y" : "ies"}`, body, false);
+  $("#drawer-content").querySelectorAll("[data-id]").forEach(d =>
+    d.addEventListener("click", () => detail(d.dataset.id)));
   showDrawer();
 }
+function listSet(kicker, title, items, note) { listDrawer(kicker, title, items.map(t => t.id), note); }
 
-function openVisualDrawer(key) {
-  const d = (DATA.visual.dimensions || []).find(x => x.key === key); if (!d) return;
-  $("#drawer-content").innerHTML = `
-    <span class="eyebrow">Imagery · commissioned photography only</span>
-    <div class="dr-label">${esc(d.label)}</div>
-    <div class="dr-desc">${pct(d.agreement)} of brands share the most common value: <strong>${esc(d.modal_value)}</strong>.</div>
-    <div class="dr-h">Each brand's lead image, coded</div>
-    ${Object.entries(d.per_brand || {}).map(([b, v]) => `<div class="receipt" style="border-color:${ACC[b] || "var(--divider)"}">
-      <div class="r-brand" style="color:${ACC[b] || "inherit"}">${esc(b)}</div>
-      <div class="r-quote" style="font-style:normal">${esc(v)}</div>
-      <div class="dr-src" style="margin-top:3px">${esc((DATA.visual.notes || {})[b] || "")}</div></div>`).join("")}
-    <div class="dr-h">What is excluded</div>
-    <p class="dr-src">${esc(DATA.visual.exclusions || "")}</p>`;
-  showDrawer();
+function listAll()          { listSet("Inventory", "Every messaging territory", MSG(), `${MSG().length} in the category — those read off the sites, and those established from published literature.`); }
+function listAllImagery()   { listSet("Inventory", "Every visual territory", VT(), `${VT().length} coded in the category, built the same way the messaging territories are.`); }
+function listShared()       { listSet("Convergence", "Shared messaging territories", MSG().filter(t => users(t).length > 1), "Used by more than one brand. This is where the category sounds the same."); }
+function listUnused()       { listSet("Empty", "Empty messaging territories", MSG().filter(t => users(t).length === 0), "Used by no brand in this set."); }
+function listUnusedImagery(){ listSet("Empty", "Unclaimed visual territories", VT().filter(t => users(t, visPool()).length === 0), "Art direction no brand in this category uses."); }
+function listBrandShared(i, dim) {
+  const items = dim === "imagery" ? VT() : MSG();
+  const pool = dim === "imagery" ? visPool() : SEL;
+  const s = segsFor(items, i, pool);
+  const shared = s.many.concat(s.two);
+  const pctv = s.used ? Math.round(shared.length / s.used * 100) : 0;
+  listSet("Brand", `${nameOf(i)} — ${dim}`, shared,
+    `${pctv} convergence · ${shared.length} of its ${s.used} ${dim === "imagery" ? "visual" : "messaging"} territories a rival also uses.`);
 }
-
-/* ---- the "why" buttons ---- */
+function listSeg(dim, kind, i) {
+  const items = dim === "imagery" ? VT() : MSG();
+  const pool = dim === "imagery" ? visPool() : SEL;
+  const s = segsFor(items, i, pool);
+  const m = { many: "shared with two or more", two: "shared with one other", alone: "held alone" };
+  listSet("Brand", `${nameOf(i)} — ${dim}`, s[kind],
+    `${s[kind].length} ${dim === "imagery" ? "visual" : "messaging"} territories ${m[kind]}.`);
+}
+function listRegion(key) {
+  if (key === "none") return listUnused();
+  const a = key.split(",").map(Number);
+  listSet("Overlap", a.map(x => nameOf(x)).join(" + "),
+    MSG().filter(t => { const u = users(t); return u.length === a.length && a.every(x => u.includes(x)); }),
+    a.length === 1 ? "Held alone." : "Shared by these brands and no others.");
+}
 function noteDrawer(kicker, title, body) {
-  $("#drawer-content").innerHTML = `<span class="eyebrow">${esc(kicker)}</span>
-    <div class="dr-label">${esc(title)}</div>${body}`;
+  LAST = null;
+  $("#drawer-content").innerHTML = drawerHTML(kicker, esc(title), "", body, false);
   showDrawer();
 }
-$("#why-headline").addEventListener("click", () => noteDrawer("Reading this", "What the headline means", `
-  <p>Requiring no new clinical evidence means exactly that: no additional trial, no new endpoint, nothing further to substantiate.</p>
-  <p>These territories are decisions about how the disease is described, who the communications address, and where they appear — all of which sit inside the existing label. They are unused because nobody chose them, not because nobody could.</p>
-  <p class="dr-src">Every unused territory listed on this page carries the published evidence it rests on, and can be checked.</p>`));
 
-$("#why-plot").addEventListener("click", () => {
-  const pm = DATA.plot_meta || {};
-  noteDrawer("Method", "How the plot is measured", `
-    <p>Both axes ask the same question of each brand — how unlike the other brands is it — once of its messaging, once of its imagery. Using one calculation for both is what makes the axes comparable, and it is what makes distance from the bottom-left corner readable as daylight.</p>
-    <p class="dr-src">${esc(pm.caveat || "")}</p>
-    <p class="dr-src">Read the field by position, not by absolute score. The corner is the direction of full convergence rather than a measured zero, so what the plot supports is the order the brands sit in and how far apart they are — not a percentage of daylight.</p>
-    <p class="dr-src"><strong>One trap worth knowing.</strong> A brand that claims very few territories overlaps with nobody, and low overlap reads as distinctiveness. It can therefore sit far into the daylight corner while having taken no position at all. Dot size guards against this: it shows how much each brand claims, so a small dot far out is distinct because it is barely present, not because it has found daylight. Check the size before reading the position.</p>
-    <p class="dr-src">Of the ${pm.imagery_dimensions} imagery dimensions coded, only ${pm.imagery_dimensions_with_majority} have a value most brands share — the rest split evenly. That is why imagery is measured as distance from the other brands rather than from a category centre: at this number of brands there is no stable centre in the imagery to measure from.</p>`);
+/* The field is redrawn on every selection change, so its clicks are delegated
+   from the section rather than bound to elements that will not exist. */
+$("#sec-field").addEventListener("click", e => {
+  const goBtn = e.target.closest("[data-go]");
+  if (goBtn) return go(+goBtn.dataset.go);
+  const pt = e.target.closest(".ax-pt");
+  if (pt) return listBrandShared(+pt.dataset.i, "messaging");
+  const seg = e.target.closest(".seg[data-i]");
+  if (seg) return listSeg(seg.dataset.dim, seg.dataset.kind, +seg.dataset.i);
+  const row = e.target.closest(".vrow[data-key]");
+  if (row) return listRegion(row.dataset.key);
+  const cell = e.target.closest("td.cell2[data-pair]");
+  if (cell) {
+    const [i, j] = cell.dataset.pair.split(",").map(Number);
+    return listSet("Overlap", `${nameOf(i)} + ${nameOf(j)}`,
+      MSG().filter(t => users(t).includes(i) && users(t).includes(j)),
+      "Territories both of these brands use, whether or not anyone else does.");
+  }
+  if (e.target.closest("[data-three]")) { SEL = SEL.slice(0, 3); renderAll(); }
 });
 
-$("#why-map").addEventListener("click", () => openNumberDrawer("space_size"));
+$("#rail").addEventListener("scroll", () => {
+  if (Date.now() < RAIL_LOCK) return;
+  const r = $("#rail"), i = Math.round(r.scrollLeft / r.clientWidth);
+  if (i !== IDX) go(i);
+});
+
+/* ---- the "why" buttons ---- */
+$("#why-headline").addEventListener("click", () => {
+  const c = DATA.convergence || {};
+  const o = overallScore();
+  noteDrawer("Method", "What the score means", `
+    <p>${esc(o.band.note)}</p>
+    <p class="dr-src">${esc(c.basis || "")}</p>
+    <p class="dr-src">${esc(c.bands_note || "")}</p>
+    <p class="dr-src">Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. More investment behind a shared territory buys share of voice rather than preference.</p>
+    <p class="dr-src">One trap worth knowing: a brand that says very little overlaps with nobody, and low overlap reads as distinctiveness. Check how many territories a brand uses before reading its score — the count sits beside it in every list.</p>`);
+});
 
 $("#why-daylight").addEventListener("click", () => noteDrawer("Method", "How these are judged", `
   ${Object.keys(TIER_NAMES).map(t => `<p>${tierChip(t)}</p><p class="dr-src">${esc(TIER_EXPLAIN[t])}</p>`).join("")}
   <p class="dr-src" style="margin-top:16px">Ratings are a strategic assessment, not a regulatory one. They are a prompt for the conversation, not a recommendation — some territories will not fit your brand, your label or your appetite, and that is a judgement for your team. Anything pursued needs medical, legal and regulatory review.</p>
   <p class="dr-src">Territories needing substantiation are often worth the difficulty: one requiring no new evidence can be copied within a campaign cycle, whereas one built on evidence a competitor does not have stays yours until they generate it.</p>`));
 
-function showDrawer() { $("#drawer").classList.add("on"); $("#drawer-scrim").classList.add("on"); $("#drawer").scrollTop = 0; }
-function hideDrawer() { $("#drawer").classList.remove("on"); $("#drawer-scrim").classList.remove("on"); }
 $("#drawer-close").addEventListener("click", hideDrawer);
 $("#drawer-scrim").addEventListener("click", hideDrawer);
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer(); });
@@ -1760,8 +2048,195 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
       }
     ]
   },
-  "headline": "73% of what these four brands say, they say together. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody.",
+  "headline": "This category scores 79 for convergence — converged. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody. The art direction scores 69, with 9 of 22 visual territories depicted by nobody.",
   "standfirst": "Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. Of the 18 territories nobody explores, 9 need no new clinical evidence to work with — no additional trial, no new endpoint, nothing further to substantiate. They are decisions about how the disease is described, who the communications address, and where they appear, all inside the existing label. They are unexplored because nobody chose them, not because nobody could.",
+  "convergence": {
+    "overall": 79,
+    "band": {
+      "name": "Converged",
+      "cls": "bad",
+      "note": "Most of what each brand says, a rival also says. Messaging no longer separates the field."
+    },
+    "messaging": {
+      "per": [
+        {
+          "brand": "Zoryve",
+          "used": 16,
+          "shared": 14,
+          "alone": 2,
+          "pct": 88,
+          "shared_ids": [
+            "C01",
+            "C03",
+            "C05",
+            "C06",
+            "C07",
+            "C08",
+            "C09",
+            "C10",
+            "C11",
+            "C15",
+            "C16",
+            "C17",
+            "C18",
+            "C20"
+          ],
+          "alone_ids": [
+            "C13",
+            "H09"
+          ]
+        },
+        {
+          "brand": "Vtama",
+          "used": 12,
+          "shared": 10,
+          "alone": 2,
+          "pct": 83,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C05",
+            "C06",
+            "C09",
+            "C14",
+            "C16",
+            "C17",
+            "C20"
+          ],
+          "alone_ids": [
+            "C19",
+            "H04"
+          ]
+        },
+        {
+          "brand": "Opzelura",
+          "used": 11,
+          "shared": 9,
+          "alone": 2,
+          "pct": 82,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C05",
+            "C06",
+            "C10",
+            "C11",
+            "C15",
+            "C18"
+          ],
+          "alone_ids": [
+            "C04",
+            "C12"
+          ]
+        },
+        {
+          "brand": "Eucrisa",
+          "used": 8,
+          "shared": 8,
+          "alone": 0,
+          "pct": 100,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C07",
+            "C08",
+            "C14",
+            "C15",
+            "C20"
+          ],
+          "alone_ids": []
+        }
+      ],
+      "mean": 88
+    },
+    "imagery": {
+      "per": [
+        {
+          "brand": "Zoryve",
+          "used": 7,
+          "shared": 3,
+          "alone": 4,
+          "pct": 43,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V11"
+          ],
+          "alone_ids": [
+            "V04",
+            "V07",
+            "V08",
+            "V12"
+          ]
+        },
+        {
+          "brand": "Vtama",
+          "used": 4,
+          "shared": 4,
+          "alone": 0,
+          "pct": 100,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V03",
+            "V10"
+          ],
+          "alone_ids": []
+        },
+        {
+          "brand": "Opzelura",
+          "used": 7,
+          "shared": 4,
+          "alone": 3,
+          "pct": 57,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V03",
+            "V10"
+          ],
+          "alone_ids": [
+            "V05",
+            "V09",
+            "V13"
+          ]
+        },
+        {
+          "brand": "Eucrisa",
+          "used": 4,
+          "shared": 3,
+          "alone": 1,
+          "pct": 75,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V11"
+          ],
+          "alone_ids": [
+            "V06"
+          ]
+        }
+      ],
+      "mean": 69
+    },
+    "imagery_brands": [
+      "Zoryve",
+      "Vtama",
+      "Opzelura",
+      "Eucrisa"
+    ],
+    "basis": "For each brand, the share of its territories that at least one rival also uses. The category score is the mean across the brands analysed, calculated the same way for messaging and for imagery, and the headline is the mean of the two.",
+    "bands_note": "Under 40 distinct, 40 to 59 converging, 60 to 79 converged, 80 and above indistinguishable. Scores compare within a category over time, not between categories of different size."
+  },
+  "tier_labels": {
+    "open": "Explore now",
+    "frame_only": "Raise, not claim",
+    "constrained": "Needs substantiation",
+    "closed": "Not viable"
+  },
   "metrics": {
     "space_size": 40,
     "occupied": 22,
@@ -2603,57 +3078,65 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
     {
       "brand": "Zoryve",
       "messaging": 0.615,
-      "imagery": 0.708
+      "imagery": 0.745
     },
     {
       "brand": "Vtama",
       "messaging": 0.663,
-      "imagery": 0.667
+      "imagery": 0.624
     },
     {
       "brand": "Opzelura",
       "messaging": 0.678,
-      "imagery": 0.708
+      "imagery": 0.68
     },
     {
       "brand": "Eucrisa",
       "messaging": 0.689,
-      "imagery": 0.667
+      "imagery": 0.69
     }
   ],
   "plot_meta": {
     "messaging_mean": 0.661,
-    "imagery_mean": 0.688,
-    "imagery_step": 0.125,
-    "imagery_dimensions": 8,
-    "imagery_dimensions_with_majority": 2,
-    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to messaging and to imagery. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. Imagery moves in steps of 12 percentage points because there are only 8 coded dimensions, so small vertical differences are coarse."
+    "imagery_mean": 0.685,
+    "imagery_territories": 22,
+    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to the messaging territories and to the visual territories. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. There are 22 visual territories against 40 messaging ones, so the vertical axis moves in coarser steps than the horizontal."
   },
   "imagery_pairs": [
-    {
-      "pair": [
-        "Zoryve",
-        "Eucrisa"
-      ],
-      "match": 0.5,
-      "shared": [
-        "Who is in the picture",
-        "Is the eczema shown",
-        "What is happening",
-        "Graphic device used"
-      ]
-    },
     {
       "pair": [
         "Vtama",
         "Opzelura"
       ],
-      "match": 0.5,
+      "match": 0.571,
       "shared": [
-        "Who is in the picture",
-        "Is anyone touching anyone",
-        "What is happening",
-        "How it is meant to feel"
+        "A child as the central figure",
+        "An ordinary domestic setting",
+        "An adult and child touching",
+        "Expressive display typography as the graphic device"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "match": 0.375,
+      "shared": [
+        "A child as the central figure",
+        "An ordinary domestic setting",
+        "Badges and roundels carrying the claims"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "match": 0.333,
+      "shared": [
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -2661,21 +3144,10 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
         "Zoryve",
         "Vtama"
       ],
-      "match": 0.25,
+      "match": 0.222,
       "shared": [
-        "What is happening",
-        "Graphic device used"
-      ]
-    },
-    {
-      "pair": [
-        "Vtama",
-        "Eucrisa"
-      ],
-      "match": 0.25,
-      "shared": [
-        "What is happening",
-        "Graphic device used"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -2683,10 +3155,10 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
         "Opzelura",
         "Eucrisa"
       ],
-      "match": 0.25,
+      "match": 0.222,
       "shared": [
-        "Range of skin tones",
-        "What is happening"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -2694,9 +3166,10 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
         "Zoryve",
         "Opzelura"
       ],
-      "match": 0.125,
+      "match": 0.167,
       "shared": [
-        "What is happening"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     }
   ],
@@ -2723,177 +3196,435 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
       "note": "Territories evidenced in the prescribing, adherence and guideline literature, identified independently of anything these brands say."
     }
   ],
-  "visual": {
-    "dimensions": [
-      {
-        "key": "life_moment",
-        "label": "What is happening",
-        "modal_value": "ordinary domestic",
-        "agreement": 1.0,
-        "spread": {
-          "ordinary domestic": 4
-        },
-        "per_brand": {
-          "Zoryve": "ordinary domestic",
-          "Vtama": "ordinary domestic",
-          "Opzelura": "ordinary domestic",
-          "Eucrisa": "ordinary domestic"
-        }
-      },
-      {
-        "key": "abstraction_motif",
-        "label": "Graphic device used",
-        "modal_value": "none",
-        "agreement": 0.75,
-        "spread": {
-          "none": 3,
-          "celestial": 1
-        },
-        "per_brand": {
-          "Zoryve": "none",
-          "Vtama": "none",
-          "Opzelura": "celestial",
-          "Eucrisa": "none"
-        }
-      },
-      {
-        "key": "human_configuration",
-        "label": "Who is in the picture",
-        "modal_value": "individual alone",
-        "agreement": 0.5,
-        "spread": {
-          "individual alone": 2,
-          "caregiver-child dyad": 2
-        },
-        "per_brand": {
-          "Zoryve": "individual alone",
-          "Vtama": "caregiver-child dyad",
-          "Opzelura": "caregiver-child dyad",
-          "Eucrisa": "individual alone"
-        }
-      },
-      {
-        "key": "touch",
-        "label": "Is anyone touching anyone",
-        "modal_value": "interpersonal touch",
-        "agreement": 0.5,
-        "spread": {
-          "self-touch": 1,
-          "interpersonal touch": 2,
-          "absent": 1
-        },
-        "per_brand": {
-          "Zoryve": "self-touch",
-          "Vtama": "interpersonal touch",
-          "Opzelura": "interpersonal touch",
-          "Eucrisa": "absent"
-        }
-      },
-      {
-        "key": "disease_depiction",
-        "label": "Is the eczema shown",
-        "modal_value": "absent",
-        "agreement": 0.5,
-        "spread": {
-          "absent": 2,
-          "implied only": 1,
-          "visible on lifestyle model": 1
-        },
-        "per_brand": {
-          "Zoryve": "absent",
-          "Vtama": "implied only",
-          "Opzelura": "visible on lifestyle model",
-          "Eucrisa": "absent"
-        }
-      },
-      {
-        "key": "skin_tone_range",
-        "label": "Range of skin tones",
-        "modal_value": "single",
-        "agreement": 0.5,
-        "spread": {
-          "broad": 1,
-          "limited": 1,
-          "single": 2
-        },
-        "per_brand": {
-          "Zoryve": "broad",
-          "Vtama": "limited",
-          "Opzelura": "single",
-          "Eucrisa": "single"
-        }
-      },
-      {
-        "key": "emotional_register",
-        "label": "How it is meant to feel",
-        "modal_value": "tenderness",
-        "agreement": 0.5,
-        "spread": {
-          "calm control": 1,
-          "tenderness": 2,
-          "neutral clinical": 1
-        },
-        "per_brand": {
-          "Zoryve": "calm control",
-          "Vtama": "tenderness",
-          "Opzelura": "tenderness",
-          "Eucrisa": "neutral clinical"
-        }
-      },
-      {
-        "key": "category_borrow",
-        "label": "What it looks like it is selling",
-        "modal_value": "beauty and skincare",
-        "agreement": 0.25,
-        "spread": {
-          "beauty and skincare": 1,
-          "consumer tech": 1,
-          "wellness": 1,
-          "pharma": 1
-        },
-        "per_brand": {
-          "Zoryve": "beauty and skincare",
-          "Vtama": "consumer tech",
-          "Opzelura": "wellness",
-          "Eucrisa": "pharma"
-        }
+  "visual_positions": [
+    {
+      "id": "V01",
+      "label": "A child as the central figure",
+      "description": "The person the photography is built around is a child rather than an adult patient.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "Available only to a brand whose label covers the age it casts. The picture makes an age claim whether or not the copy does.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "Child with arms raised in a living room, one panel of a split triptych.",
+        "Vtama": "A child lying face to face with an adult on a striped blanket.",
+        "Opzelura": "A shirtless toddler on an adult's lap in a nursery.",
+        "Eucrisa": "An infant in a nappy crawling towards the camera, smiling."
       }
+    },
+    {
+      "id": "V02",
+      "label": "An ordinary domestic setting",
+      "description": "The scene is a home — living room, bedroom, nursery — rather than a clinic or an outdoor location.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A location decision. Nothing in the label or the evidence base constrains it.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "Living room interior across the triptych.",
+        "Vtama": "A darkened bedroom.",
+        "Opzelura": "A nursery.",
+        "Eucrisa": "A domestic interior, floor level."
+      }
+    },
+    {
+      "id": "V03",
+      "label": "An adult and child touching",
+      "description": "Two figures in contact, the touch itself carrying the emotional argument.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A casting and direction decision. It claims nothing the label has to support.",
+      "visual": true,
+      "claimers": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "Mother and child lying face to face, laughing, in contact on the blanket.",
+        "Opzelura": "Mother reading to a toddler held on her lap."
+      }
+    },
+    {
+      "id": "V10",
+      "label": "Expressive display typography as the graphic device",
+      "description": "The type itself carries the art direction, in place of a graphic motif.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A design decision. Nothing to substantiate.",
+      "visual": true,
+      "claimers": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "Gradient display typography running orange to magenta to violet.",
+        "Opzelura": "Condensed serif display type."
+      }
+    },
+    {
+      "id": "V11",
+      "label": "Badges and roundels carrying the claims",
+      "description": "Claims are set in circular badges over the imagery rather than in body copy.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A layout decision. The claims inside the badges carry their own requirements; the device does not.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "Allure and Glamour beauty award roundels sit in the hero.",
+        "Eucrisa": "Badge system reading '3 months & up FDA approved', '100% steroid free', 'works at and below'."
+      }
+    },
+    {
+      "id": "V04",
+      "label": "Someone touching their own skin",
+      "description": "The figure's hand is on their own face or body, making the skin the subject without showing disease.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A direction decision that implies nothing about outcome, provided no result is shown.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Adult woman with eyes closed, touching her own face."
+      }
+    },
+    {
+      "id": "V05",
+      "label": "The disease visible on the model",
+      "description": "Eczema is shown on the person in the lifestyle photography rather than in clinical imagery.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "Showing severity in a lifestyle image implies a baseline, and anything nearby implies a result. Expect close review of both the image and its captioning.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Visible erythematous lesions on the toddler's torso and arms."
+      }
+    },
+    {
+      "id": "V06",
+      "label": "Clear skin shown as the outcome",
+      "description": "The central figure's skin is visibly clear, and the image is doing the work of the efficacy claim.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "An image of clear skin reads as a result. It needs the endpoint behind it and the disclaimer beside it.",
+      "visual": true,
+      "claimers": [
+        "Eucrisa"
+      ],
+      "n": 1,
+      "receipts": {
+        "Eucrisa": "Infant with clear skin, smiling, filling the frame."
+      }
+    },
+    {
+      "id": "V07",
+      "label": "A range of skin tones in one execution",
+      "description": "More than one skin tone appears across the lead imagery rather than a single casting.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A casting decision, and the evidence base supports it. Nothing needs substantiating.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Triptych casts a broad range of skin tones across its three panels."
+      }
+    },
+    {
+      "id": "V08",
+      "label": "An adult as the central figure",
+      "description": "An adult patient, rather than a parent or a child, is the person the photography is about.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "An audience decision inside every label in this set. Adults are the larger patient population.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Adult male laughing and adult woman touching her face occupy two of the three panels."
+      }
+    },
+    {
+      "id": "V09",
+      "label": "An illustrated overlay on the photography",
+      "description": "Drawn elements sit over the image — clouds, stars, marks — softening the register.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A treatment decision with no claim attached.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Illustrated cloud and star overlays across the hero."
+      }
+    },
+    {
+      "id": "V12",
+      "label": "Borrowing the codes of beauty and skincare",
+      "description": "The photography, awards and endorsements read as a cosmetics brand rather than a prescription medicine.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A register decision. Awards are earned rather than claimed, and the borrow itself substantiates nothing.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Beauty-press award roundels and celebrity endorsement below the fold."
+      }
+    },
+    {
+      "id": "V13",
+      "label": "The product pack in frame",
+      "description": "The tube or bottle appears inside the lifestyle photography rather than in a separate pack shot.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A composition decision, subject to the usual requirements on how a pack is shown.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Product tube visible within the nursery scene."
+      }
+    },
+    {
+      "id": "VH01",
+      "label": "Eczema on darker skin",
+      "description": "The disease shown as it presents on darker skin tones, where it looks different and is recognised later.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Depicting disease carries the same requirements whatever the skin tone. The reason nobody does it is not that the tier is high.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH02",
+      "label": "The hands, the most-affected site",
+      "description": "Hand involvement, which the literature records as both the commonest visible site and the hardest to conceal.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "A body site shown is a body site claimed. It needs the label and the data to cover it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH03",
+      "label": "Face and eyelid involvement",
+      "description": "The sites patients report as most distressing and clinicians treat most cautiously.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Sensitive-site depiction implies sensitive-site use, which needs the label behind it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH04",
+      "label": "A clinician in the frame",
+      "description": "The consultation itself, rather than the patient alone at home.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "open",
+      "tier_reasoning": "A casting decision. It makes no claim, and it is routine elsewhere in healthcare advertising.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX01",
+      "label": "The itch, and scratching",
+      "description": "The dominant symptom of the disease, shown as it is experienced rather than named in copy.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Itch can be depicted as part of the disease. An image implying it is resolved would need the endpoint that supports it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX02",
+      "label": "Night waking and lost sleep",
+      "description": "The night-time scene the burden literature describes — the patient or the parent awake.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Sleep loss is documented and can be depicted as part of the disease. Showing it resolved would need a sleep endpoint none of these trials measured.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX03",
+      "label": "The daily routine of emollients and bathing",
+      "description": "The work the regimen takes, shown as an ordinary domestic task.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "Disease education. Depicting the routine claims nothing about the product.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX04",
+      "label": "An older adult with the disease",
+      "description": "A central figure who reads as over fifty, rather than a child or a young adult.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A casting decision inside every label in the set. The disease does not stop at forty.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX05",
+      "label": "A school or workplace setting",
+      "description": "The public settings where visible symptoms are most often described as difficult.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A location decision. Nothing about it requires substantiation.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    }
+  ],
+  "visual_provenance": [
+    {
+      "key": "observed in category",
+      "label": "Read off the four websites",
+      "total": 13,
+      "unused": 0,
+      "note": "Visual territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the imagery means."
+    },
+    {
+      "key": "patient burden literature",
+      "label": "Established from patient burden literature",
+      "total": 5,
+      "unused": 5,
+      "note": "Visual territories evidenced in the burden-of-illness and lived-experience literature, identified independently of anything these brands show."
+    },
+    {
+      "key": "clinical barrier literature",
+      "label": "Established from representation and barrier literature",
+      "total": 4,
+      "unused": 4,
+      "note": "Visual territories evidenced in the literature on who this disease affects and where it is under-recognised, identified independently of anything these brands show."
+    }
+  ],
+  "visual": {
+    "brands": [
+      "Zoryve",
+      "Vtama",
+      "Opzelura",
+      "Eucrisa"
     ],
-    "child_in_hero": 4,
     "notes": {
       "Zoryve": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
       "Vtama": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
       "Opzelura": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
       "Eucrisa": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'"
     },
-    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below."
+    "images": {},
+    "territories": 22,
+    "unclaimed": 9,
+    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. The visual territories are built for this category the same way the messaging territories are — from what these brands show, plus what the literature evidences and nobody shows. This worked example is a stored capture, so the images themselves are not served with it; each territory carries the recorded observation instead."
   },
   "cross_check": [
     {
       "brand": "Zoryve",
       "verbal_ownership": 0.125,
-      "visual_distance": 0.375,
+      "visual_ownership": 0.571,
+      "visual_distance": 0.385,
       "hero_notes": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
       "comment": "Makes the most claims of any brand in the set and appears in almost every territory the category shares. Its borrow from beauty and skincare is the most visually differentiated decision in the category."
     },
     {
       "brand": "Vtama",
       "verbal_ownership": 0.167,
-      "visual_distance": 0.5,
+      "visual_ownership": 0.0,
+      "visual_distance": 0.154,
       "hero_notes": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
       "comment": "The clearest example of the copy-versus-imagery gap. Its verbal positioning — skin science — is the most distinctive in the set, but its hero image matches Opzelura on who is pictured, whether they touch, the emotional register and the scene."
     },
     {
       "brand": "Opzelura",
       "verbal_ownership": 0.182,
-      "visual_distance": 0.5,
+      "visual_ownership": 0.429,
+      "visual_distance": 0.385,
       "hero_notes": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
       "comment": "Copy and imagery are consistent with each other. The touch-avoidance narrative in the messaging is delivered as restored touch in the photography. Highly similar to competitors, but internally coherent."
     },
     {
       "brand": "Eucrisa",
       "verbal_ownership": 0.0,
-      "visual_distance": 0.375,
+      "visual_ownership": 0.25,
+      "visual_distance": 0.154,
       "hero_notes": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'",
       "comment": "Holds no position exclusively, and its imagery is the most conventionally pharmaceutical in the set. It has not been out-positioned by competitors; it has not taken a position."
     }
@@ -2924,11 +3655,20 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") hideDrawer()
       ]
     },
     {
-      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — is visually almost identical to Opzelura.",
+      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — makes the same three art direction decisions as Opzelura.",
       "refs": [
-        "visual:life_moment",
-        "visual:touch",
-        "visual:human_configuration"
+        "visual:V01",
+        "visual:V02",
+        "visual:V03"
+      ]
+    },
+    {
+      "text": "The art direction is the more converged of the two dimensions. Ten of the twenty-two visual territories are used by nobody in this set, including the itch itself, the night waking the burden literature records, an adult over fifty, and how the disease presents on darker skin.",
+      "refs": [
+        "visual:VX01",
+        "visual:VX02",
+        "visual:VX04",
+        "visual:VH01"
       ]
     },
     {

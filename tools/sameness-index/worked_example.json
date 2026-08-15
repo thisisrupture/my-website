@@ -33,8 +33,195 @@
       }
     ]
   },
-  "headline": "73% of what these four brands say, they say together. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody.",
+  "headline": "This category scores 79 for convergence — converged. 16 of the 22 messaging territories in play are shared with a competitor, and 2 are used by every brand in the category. A further 18, each with published evidence behind it, are explored by nobody. The art direction scores 69, with 9 of 22 visual territories depicted by nobody.",
   "standfirst": "Shared territory is the expensive part. Where several brands make the same argument, none of them owns it, and the audience is given no basis on which to tell them apart. Of the 18 territories nobody explores, 9 need no new clinical evidence to work with — no additional trial, no new endpoint, nothing further to substantiate. They are decisions about how the disease is described, who the communications address, and where they appear, all inside the existing label. They are unexplored because nobody chose them, not because nobody could.",
+  "convergence": {
+    "overall": 79,
+    "band": {
+      "name": "Converged",
+      "cls": "bad",
+      "note": "Most of what each brand says, a rival also says. Messaging no longer separates the field."
+    },
+    "messaging": {
+      "per": [
+        {
+          "brand": "Zoryve",
+          "used": 16,
+          "shared": 14,
+          "alone": 2,
+          "pct": 88,
+          "shared_ids": [
+            "C01",
+            "C03",
+            "C05",
+            "C06",
+            "C07",
+            "C08",
+            "C09",
+            "C10",
+            "C11",
+            "C15",
+            "C16",
+            "C17",
+            "C18",
+            "C20"
+          ],
+          "alone_ids": [
+            "C13",
+            "H09"
+          ]
+        },
+        {
+          "brand": "Vtama",
+          "used": 12,
+          "shared": 10,
+          "alone": 2,
+          "pct": 83,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C05",
+            "C06",
+            "C09",
+            "C14",
+            "C16",
+            "C17",
+            "C20"
+          ],
+          "alone_ids": [
+            "C19",
+            "H04"
+          ]
+        },
+        {
+          "brand": "Opzelura",
+          "used": 11,
+          "shared": 9,
+          "alone": 2,
+          "pct": 82,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C05",
+            "C06",
+            "C10",
+            "C11",
+            "C15",
+            "C18"
+          ],
+          "alone_ids": [
+            "C04",
+            "C12"
+          ]
+        },
+        {
+          "brand": "Eucrisa",
+          "used": 8,
+          "shared": 8,
+          "alone": 0,
+          "pct": 100,
+          "shared_ids": [
+            "C01",
+            "C02",
+            "C03",
+            "C07",
+            "C08",
+            "C14",
+            "C15",
+            "C20"
+          ],
+          "alone_ids": []
+        }
+      ],
+      "mean": 88
+    },
+    "imagery": {
+      "per": [
+        {
+          "brand": "Zoryve",
+          "used": 7,
+          "shared": 3,
+          "alone": 4,
+          "pct": 43,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V11"
+          ],
+          "alone_ids": [
+            "V04",
+            "V07",
+            "V08",
+            "V12"
+          ]
+        },
+        {
+          "brand": "Vtama",
+          "used": 4,
+          "shared": 4,
+          "alone": 0,
+          "pct": 100,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V03",
+            "V10"
+          ],
+          "alone_ids": []
+        },
+        {
+          "brand": "Opzelura",
+          "used": 7,
+          "shared": 4,
+          "alone": 3,
+          "pct": 57,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V03",
+            "V10"
+          ],
+          "alone_ids": [
+            "V05",
+            "V09",
+            "V13"
+          ]
+        },
+        {
+          "brand": "Eucrisa",
+          "used": 4,
+          "shared": 3,
+          "alone": 1,
+          "pct": 75,
+          "shared_ids": [
+            "V01",
+            "V02",
+            "V11"
+          ],
+          "alone_ids": [
+            "V06"
+          ]
+        }
+      ],
+      "mean": 69
+    },
+    "imagery_brands": [
+      "Zoryve",
+      "Vtama",
+      "Opzelura",
+      "Eucrisa"
+    ],
+    "basis": "For each brand, the share of its territories that at least one rival also uses. The category score is the mean across the brands analysed, calculated the same way for messaging and for imagery, and the headline is the mean of the two.",
+    "bands_note": "Under 40 distinct, 40 to 59 converging, 60 to 79 converged, 80 and above indistinguishable. Scores compare within a category over time, not between categories of different size."
+  },
+  "tier_labels": {
+    "open": "Explore now",
+    "frame_only": "Raise, not claim",
+    "constrained": "Needs substantiation",
+    "closed": "Not viable"
+  },
   "metrics": {
     "space_size": 40,
     "occupied": 22,
@@ -876,57 +1063,65 @@
     {
       "brand": "Zoryve",
       "messaging": 0.615,
-      "imagery": 0.708
+      "imagery": 0.745
     },
     {
       "brand": "Vtama",
       "messaging": 0.663,
-      "imagery": 0.667
+      "imagery": 0.624
     },
     {
       "brand": "Opzelura",
       "messaging": 0.678,
-      "imagery": 0.708
+      "imagery": 0.68
     },
     {
       "brand": "Eucrisa",
       "messaging": 0.689,
-      "imagery": 0.667
+      "imagery": 0.69
     }
   ],
   "plot_meta": {
     "messaging_mean": 0.661,
-    "imagery_mean": 0.688,
-    "imagery_step": 0.125,
-    "imagery_dimensions": 8,
-    "imagery_dimensions_with_majority": 2,
-    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to messaging and to imagery. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. Imagery moves in steps of 12 percentage points because there are only 8 coded dimensions, so small vertical differences are coarse."
+    "imagery_mean": 0.685,
+    "imagery_territories": 22,
+    "caveat": "Both axes measure how unlike the other brands each brand is — the same calculation, applied to the messaging territories and to the visual territories. The view is zoomed to the brands plotted, so read position relative to the crosshair rather than as an absolute score. There are 22 visual territories against 40 messaging ones, so the vertical axis moves in coarser steps than the horizontal."
   },
   "imagery_pairs": [
-    {
-      "pair": [
-        "Zoryve",
-        "Eucrisa"
-      ],
-      "match": 0.5,
-      "shared": [
-        "Who is in the picture",
-        "Is the eczema shown",
-        "What is happening",
-        "Graphic device used"
-      ]
-    },
     {
       "pair": [
         "Vtama",
         "Opzelura"
       ],
-      "match": 0.5,
+      "match": 0.571,
       "shared": [
-        "Who is in the picture",
-        "Is anyone touching anyone",
-        "What is happening",
-        "How it is meant to feel"
+        "A child as the central figure",
+        "An ordinary domestic setting",
+        "An adult and child touching",
+        "Expressive display typography as the graphic device"
+      ]
+    },
+    {
+      "pair": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "match": 0.375,
+      "shared": [
+        "A child as the central figure",
+        "An ordinary domestic setting",
+        "Badges and roundels carrying the claims"
+      ]
+    },
+    {
+      "pair": [
+        "Vtama",
+        "Eucrisa"
+      ],
+      "match": 0.333,
+      "shared": [
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -934,21 +1129,10 @@
         "Zoryve",
         "Vtama"
       ],
-      "match": 0.25,
+      "match": 0.222,
       "shared": [
-        "What is happening",
-        "Graphic device used"
-      ]
-    },
-    {
-      "pair": [
-        "Vtama",
-        "Eucrisa"
-      ],
-      "match": 0.25,
-      "shared": [
-        "What is happening",
-        "Graphic device used"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -956,10 +1140,10 @@
         "Opzelura",
         "Eucrisa"
       ],
-      "match": 0.25,
+      "match": 0.222,
       "shared": [
-        "Range of skin tones",
-        "What is happening"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     },
     {
@@ -967,9 +1151,10 @@
         "Zoryve",
         "Opzelura"
       ],
-      "match": 0.125,
+      "match": 0.167,
       "shared": [
-        "What is happening"
+        "A child as the central figure",
+        "An ordinary domestic setting"
       ]
     }
   ],
@@ -996,177 +1181,435 @@
       "note": "Territories evidenced in the prescribing, adherence and guideline literature, identified independently of anything these brands say."
     }
   ],
-  "visual": {
-    "dimensions": [
-      {
-        "key": "life_moment",
-        "label": "What is happening",
-        "modal_value": "ordinary domestic",
-        "agreement": 1.0,
-        "spread": {
-          "ordinary domestic": 4
-        },
-        "per_brand": {
-          "Zoryve": "ordinary domestic",
-          "Vtama": "ordinary domestic",
-          "Opzelura": "ordinary domestic",
-          "Eucrisa": "ordinary domestic"
-        }
-      },
-      {
-        "key": "abstraction_motif",
-        "label": "Graphic device used",
-        "modal_value": "none",
-        "agreement": 0.75,
-        "spread": {
-          "none": 3,
-          "celestial": 1
-        },
-        "per_brand": {
-          "Zoryve": "none",
-          "Vtama": "none",
-          "Opzelura": "celestial",
-          "Eucrisa": "none"
-        }
-      },
-      {
-        "key": "human_configuration",
-        "label": "Who is in the picture",
-        "modal_value": "individual alone",
-        "agreement": 0.5,
-        "spread": {
-          "individual alone": 2,
-          "caregiver-child dyad": 2
-        },
-        "per_brand": {
-          "Zoryve": "individual alone",
-          "Vtama": "caregiver-child dyad",
-          "Opzelura": "caregiver-child dyad",
-          "Eucrisa": "individual alone"
-        }
-      },
-      {
-        "key": "touch",
-        "label": "Is anyone touching anyone",
-        "modal_value": "interpersonal touch",
-        "agreement": 0.5,
-        "spread": {
-          "self-touch": 1,
-          "interpersonal touch": 2,
-          "absent": 1
-        },
-        "per_brand": {
-          "Zoryve": "self-touch",
-          "Vtama": "interpersonal touch",
-          "Opzelura": "interpersonal touch",
-          "Eucrisa": "absent"
-        }
-      },
-      {
-        "key": "disease_depiction",
-        "label": "Is the eczema shown",
-        "modal_value": "absent",
-        "agreement": 0.5,
-        "spread": {
-          "absent": 2,
-          "implied only": 1,
-          "visible on lifestyle model": 1
-        },
-        "per_brand": {
-          "Zoryve": "absent",
-          "Vtama": "implied only",
-          "Opzelura": "visible on lifestyle model",
-          "Eucrisa": "absent"
-        }
-      },
-      {
-        "key": "skin_tone_range",
-        "label": "Range of skin tones",
-        "modal_value": "single",
-        "agreement": 0.5,
-        "spread": {
-          "broad": 1,
-          "limited": 1,
-          "single": 2
-        },
-        "per_brand": {
-          "Zoryve": "broad",
-          "Vtama": "limited",
-          "Opzelura": "single",
-          "Eucrisa": "single"
-        }
-      },
-      {
-        "key": "emotional_register",
-        "label": "How it is meant to feel",
-        "modal_value": "tenderness",
-        "agreement": 0.5,
-        "spread": {
-          "calm control": 1,
-          "tenderness": 2,
-          "neutral clinical": 1
-        },
-        "per_brand": {
-          "Zoryve": "calm control",
-          "Vtama": "tenderness",
-          "Opzelura": "tenderness",
-          "Eucrisa": "neutral clinical"
-        }
-      },
-      {
-        "key": "category_borrow",
-        "label": "What it looks like it is selling",
-        "modal_value": "beauty and skincare",
-        "agreement": 0.25,
-        "spread": {
-          "beauty and skincare": 1,
-          "consumer tech": 1,
-          "wellness": 1,
-          "pharma": 1
-        },
-        "per_brand": {
-          "Zoryve": "beauty and skincare",
-          "Vtama": "consumer tech",
-          "Opzelura": "wellness",
-          "Eucrisa": "pharma"
-        }
+  "visual_positions": [
+    {
+      "id": "V01",
+      "label": "A child as the central figure",
+      "description": "The person the photography is built around is a child rather than an adult patient.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "Available only to a brand whose label covers the age it casts. The picture makes an age claim whether or not the copy does.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "Child with arms raised in a living room, one panel of a split triptych.",
+        "Vtama": "A child lying face to face with an adult on a striped blanket.",
+        "Opzelura": "A shirtless toddler on an adult's lap in a nursery.",
+        "Eucrisa": "An infant in a nappy crawling towards the camera, smiling."
       }
+    },
+    {
+      "id": "V02",
+      "label": "An ordinary domestic setting",
+      "description": "The scene is a home — living room, bedroom, nursery — rather than a clinic or an outdoor location.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A location decision. Nothing in the label or the evidence base constrains it.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Vtama",
+        "Opzelura",
+        "Eucrisa"
+      ],
+      "n": 4,
+      "receipts": {
+        "Zoryve": "Living room interior across the triptych.",
+        "Vtama": "A darkened bedroom.",
+        "Opzelura": "A nursery.",
+        "Eucrisa": "A domestic interior, floor level."
+      }
+    },
+    {
+      "id": "V03",
+      "label": "An adult and child touching",
+      "description": "Two figures in contact, the touch itself carrying the emotional argument.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A casting and direction decision. It claims nothing the label has to support.",
+      "visual": true,
+      "claimers": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "Mother and child lying face to face, laughing, in contact on the blanket.",
+        "Opzelura": "Mother reading to a toddler held on her lap."
+      }
+    },
+    {
+      "id": "V10",
+      "label": "Expressive display typography as the graphic device",
+      "description": "The type itself carries the art direction, in place of a graphic motif.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A design decision. Nothing to substantiate.",
+      "visual": true,
+      "claimers": [
+        "Vtama",
+        "Opzelura"
+      ],
+      "n": 2,
+      "receipts": {
+        "Vtama": "Gradient display typography running orange to magenta to violet.",
+        "Opzelura": "Condensed serif display type."
+      }
+    },
+    {
+      "id": "V11",
+      "label": "Badges and roundels carrying the claims",
+      "description": "Claims are set in circular badges over the imagery rather than in body copy.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A layout decision. The claims inside the badges carry their own requirements; the device does not.",
+      "visual": true,
+      "claimers": [
+        "Zoryve",
+        "Eucrisa"
+      ],
+      "n": 2,
+      "receipts": {
+        "Zoryve": "Allure and Glamour beauty award roundels sit in the hero.",
+        "Eucrisa": "Badge system reading '3 months & up FDA approved', '100% steroid free', 'works at and below'."
+      }
+    },
+    {
+      "id": "V04",
+      "label": "Someone touching their own skin",
+      "description": "The figure's hand is on their own face or body, making the skin the subject without showing disease.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A direction decision that implies nothing about outcome, provided no result is shown.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Adult woman with eyes closed, touching her own face."
+      }
+    },
+    {
+      "id": "V05",
+      "label": "The disease visible on the model",
+      "description": "Eczema is shown on the person in the lifestyle photography rather than in clinical imagery.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "Showing severity in a lifestyle image implies a baseline, and anything nearby implies a result. Expect close review of both the image and its captioning.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Visible erythematous lesions on the toddler's torso and arms."
+      }
+    },
+    {
+      "id": "V06",
+      "label": "Clear skin shown as the outcome",
+      "description": "The central figure's skin is visibly clear, and the image is doing the work of the efficacy claim.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "constrained",
+      "tier_reasoning": "An image of clear skin reads as a result. It needs the endpoint behind it and the disclaimer beside it.",
+      "visual": true,
+      "claimers": [
+        "Eucrisa"
+      ],
+      "n": 1,
+      "receipts": {
+        "Eucrisa": "Infant with clear skin, smiling, filling the frame."
+      }
+    },
+    {
+      "id": "V07",
+      "label": "A range of skin tones in one execution",
+      "description": "More than one skin tone appears across the lead imagery rather than a single casting.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A casting decision, and the evidence base supports it. Nothing needs substantiating.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Triptych casts a broad range of skin tones across its three panels."
+      }
+    },
+    {
+      "id": "V08",
+      "label": "An adult as the central figure",
+      "description": "An adult patient, rather than a parent or a child, is the person the photography is about.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "An audience decision inside every label in this set. Adults are the larger patient population.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Adult male laughing and adult woman touching her face occupy two of the three panels."
+      }
+    },
+    {
+      "id": "V09",
+      "label": "An illustrated overlay on the photography",
+      "description": "Drawn elements sit over the image — clouds, stars, marks — softening the register.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A treatment decision with no claim attached.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Illustrated cloud and star overlays across the hero."
+      }
+    },
+    {
+      "id": "V12",
+      "label": "Borrowing the codes of beauty and skincare",
+      "description": "The photography, awards and endorsements read as a cosmetics brand rather than a prescription medicine.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A register decision. Awards are earned rather than claimed, and the borrow itself substantiates nothing.",
+      "visual": true,
+      "claimers": [
+        "Zoryve"
+      ],
+      "n": 1,
+      "receipts": {
+        "Zoryve": "Beauty-press award roundels and celebrity endorsement below the fold."
+      }
+    },
+    {
+      "id": "V13",
+      "label": "The product pack in frame",
+      "description": "The tube or bottle appears inside the lifestyle photography rather than in a separate pack shot.",
+      "provenance": "observed in category",
+      "source": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+      "tier": "open",
+      "tier_reasoning": "A composition decision, subject to the usual requirements on how a pack is shown.",
+      "visual": true,
+      "claimers": [
+        "Opzelura"
+      ],
+      "n": 1,
+      "receipts": {
+        "Opzelura": "Product tube visible within the nursery scene."
+      }
+    },
+    {
+      "id": "VH01",
+      "label": "Eczema on darker skin",
+      "description": "The disease shown as it presents on darker skin tones, where it looks different and is recognised later.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Depicting disease carries the same requirements whatever the skin tone. The reason nobody does it is not that the tier is high.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH02",
+      "label": "The hands, the most-affected site",
+      "description": "Hand involvement, which the literature records as both the commonest visible site and the hardest to conceal.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "A body site shown is a body site claimed. It needs the label and the data to cover it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH03",
+      "label": "Face and eyelid involvement",
+      "description": "The sites patients report as most distressing and clinicians treat most cautiously.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "constrained",
+      "tier_reasoning": "Sensitive-site depiction implies sensitive-site use, which needs the label behind it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VH04",
+      "label": "A clinician in the frame",
+      "description": "The consultation itself, rather than the patient alone at home.",
+      "provenance": "clinical barrier literature",
+      "source": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+      "tier": "open",
+      "tier_reasoning": "A casting decision. It makes no claim, and it is routine elsewhere in healthcare advertising.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX01",
+      "label": "The itch, and scratching",
+      "description": "The dominant symptom of the disease, shown as it is experienced rather than named in copy.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Itch can be depicted as part of the disease. An image implying it is resolved would need the endpoint that supports it.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX02",
+      "label": "Night waking and lost sleep",
+      "description": "The night-time scene the burden literature describes — the patient or the parent awake.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "frame_only",
+      "tier_reasoning": "Sleep loss is documented and can be depicted as part of the disease. Showing it resolved would need a sleep endpoint none of these trials measured.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX03",
+      "label": "The daily routine of emollients and bathing",
+      "description": "The work the regimen takes, shown as an ordinary domestic task.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "Disease education. Depicting the routine claims nothing about the product.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX04",
+      "label": "An older adult with the disease",
+      "description": "A central figure who reads as over fifty, rather than a child or a young adult.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A casting decision inside every label in the set. The disease does not stop at forty.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    },
+    {
+      "id": "VX05",
+      "label": "A school or workplace setting",
+      "description": "The public settings where visible symptoms are most often described as difficult.",
+      "provenance": "patient burden literature",
+      "source": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+      "tier": "open",
+      "tier_reasoning": "A location decision. Nothing about it requires substantiation.",
+      "visual": true,
+      "claimers": [],
+      "n": 0,
+      "receipts": {}
+    }
+  ],
+  "visual_provenance": [
+    {
+      "key": "observed in category",
+      "label": "Read off the four websites",
+      "total": 13,
+      "unused": 0,
+      "note": "Visual territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the imagery means."
+    },
+    {
+      "key": "patient burden literature",
+      "label": "Established from patient burden literature",
+      "total": 5,
+      "unused": 5,
+      "note": "Visual territories evidenced in the burden-of-illness and lived-experience literature, identified independently of anything these brands show."
+    },
+    {
+      "key": "clinical barrier literature",
+      "label": "Established from representation and barrier literature",
+      "total": 4,
+      "unused": 4,
+      "note": "Visual territories evidenced in the literature on who this disease affects and where it is under-recognised, identified independently of anything these brands show."
+    }
+  ],
+  "visual": {
+    "brands": [
+      "Zoryve",
+      "Vtama",
+      "Opzelura",
+      "Eucrisa"
     ],
-    "child_in_hero": 4,
     "notes": {
       "Zoryve": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
       "Vtama": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
       "Opzelura": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
       "Eucrisa": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'"
     },
-    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below."
+    "images": {},
+    "territories": 22,
+    "unclaimed": 9,
+    "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. The visual territories are built for this category the same way the messaging territories are — from what these brands show, plus what the literature evidences and nobody shows. This worked example is a stored capture, so the images themselves are not served with it; each territory carries the recorded observation instead."
   },
   "cross_check": [
     {
       "brand": "Zoryve",
       "verbal_ownership": 0.125,
-      "visual_distance": 0.375,
+      "visual_ownership": 0.571,
+      "visual_distance": 0.385,
       "hero_notes": "Split triptych: child arms raised in living room, adult male laughing, adult woman eyes closed touching own face. Allure and Glamour beauty award roundels in hero. Celebrity endorsement (Tori Spelling, Max Homa) below fold.",
       "comment": "Makes the most claims of any brand in the set and appears in almost every territory the category shares. Its borrow from beauty and skincare is the most visually differentiated decision in the category."
     },
     {
       "brand": "Vtama",
       "verbal_ownership": 0.167,
-      "visual_distance": 0.5,
+      "visual_ownership": 0.0,
+      "visual_distance": 0.154,
       "hero_notes": "Mother and child lying face to face on striped blanket in darkened bedroom, laughing. Gradient display typography (orange to magenta to violet). 'Not actual patients/caregiver'.",
       "comment": "The clearest example of the copy-versus-imagery gap. Its verbal positioning — skin science — is the most distinctive in the set, but its hero image matches Opzelura on who is pictured, whether they touch, the emotional register and the scene."
     },
     {
       "brand": "Opzelura",
       "verbal_ownership": 0.182,
-      "visual_distance": 0.5,
+      "visual_ownership": 0.429,
+      "visual_distance": 0.385,
       "hero_notes": "Mother reading to shirtless toddler on lap in nursery; visible erythematous lesions on torso and arms. Illustrated cloud and star overlays. Condensed serif display type. Product tube in frame.",
       "comment": "Copy and imagery are consistent with each other. The touch-avoidance narrative in the messaging is delivered as restored touch in the photography. Highly similar to competitors, but internally coherent."
     },
     {
       "brand": "Eucrisa",
       "verbal_ownership": 0.0,
-      "visual_distance": 0.375,
+      "visual_ownership": 0.25,
+      "visual_distance": 0.154,
       "hero_notes": "Infant in nappy crawling toward camera, smiling, clear skin. Badge/roundel system: '3 months & up FDA approved', '100% steroid free', 'works at and below'. Hero claim footnoted 'The specific way EUCRISA works is not well defined.'",
       "comment": "Holds no position exclusively, and its imagery is the most conventionally pharmaceutical in the set. It has not been out-positioned by competitors; it has not taken a position."
     }
@@ -1197,11 +1640,20 @@
       ]
     },
     {
-      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — is visually almost identical to Opzelura.",
+      "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — makes the same three art direction decisions as Opzelura.",
       "refs": [
-        "visual:life_moment",
-        "visual:touch",
-        "visual:human_configuration"
+        "visual:V01",
+        "visual:V02",
+        "visual:V03"
+      ]
+    },
+    {
+      "text": "The art direction is the more converged of the two dimensions. Ten of the twenty-two visual territories are used by nobody in this set, including the itch itself, the night waking the burden literature records, an adult over fifty, and how the disease presents on darker skin.",
+      "refs": [
+        "visual:VX01",
+        "visual:VX02",
+        "visual:VX04",
+        "visual:VH01"
       ]
     },
     {

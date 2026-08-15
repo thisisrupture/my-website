@@ -10,11 +10,12 @@ Run: python3 generate_worked_example.py
 """
 
 import json
+import math
 from collections import Counter
 from itertools import combinations
 
 from concepts import CONCEPTS, CODING, PROVENANCE
-from corpus import VISUAL, VISUAL_DIMENSIONS, VISUAL_LABELS
+from corpus import VISUAL
 
 BRANDS = list(CODING)
 SPACE = list(CONCEPTS)
@@ -204,6 +205,204 @@ LIMITATIONS = [
     "Availability ratings are a strategic assessment, not a regulatory one. Every position requires medical, legal and regulatory review before use.",
 ]
 
+# ---------------------------------------------------------------------------
+# The visual opportunity space.
+#
+# Built the same way the messaging space is, and from the same material: the
+# art direction observations recorded for each brand's lead imagery in
+# corpus.py. Every V-series territory is derived from those observations, and
+# the evidence string under each brand is the observation itself — nothing here
+# is asserted that the recorded reading does not support. The X and H series
+# are established from the literature and depicted by nobody, which is the
+# whole reason for having them: an inventory built only from what these four
+# brands show would have a user for every territory by construction.
+#
+# The live pipeline builds this per category from the images. This fixture
+# stands in for that, so the worked example exercises the same report.
+# ---------------------------------------------------------------------------
+
+VISUAL_SPACE = [
+    {
+        "id": "V01", "label": "A child as the central figure",
+        "description": "The person the photography is built around is a child rather than an adult patient.",
+        "tier": "constrained",
+        "tier_reasoning": "Available only to a brand whose label covers the age it casts. The picture makes an age claim whether or not the copy does.",
+        "coding": {
+            "Zoryve": "Child with arms raised in a living room, one panel of a split triptych.",
+            "Vtama": "A child lying face to face with an adult on a striped blanket.",
+            "Opzelura": "A shirtless toddler on an adult's lap in a nursery.",
+            "Eucrisa": "An infant in a nappy crawling towards the camera, smiling.",
+        },
+    },
+    {
+        "id": "V02", "label": "An ordinary domestic setting",
+        "description": "The scene is a home — living room, bedroom, nursery — rather than a clinic or an outdoor location.",
+        "tier": "open",
+        "tier_reasoning": "A location decision. Nothing in the label or the evidence base constrains it.",
+        "coding": {
+            "Zoryve": "Living room interior across the triptych.",
+            "Vtama": "A darkened bedroom.",
+            "Opzelura": "A nursery.",
+            "Eucrisa": "A domestic interior, floor level.",
+        },
+    },
+    {
+        "id": "V03", "label": "An adult and child touching",
+        "description": "Two figures in contact, the touch itself carrying the emotional argument.",
+        "tier": "open",
+        "tier_reasoning": "A casting and direction decision. It claims nothing the label has to support.",
+        "coding": {
+            "Vtama": "Mother and child lying face to face, laughing, in contact on the blanket.",
+            "Opzelura": "Mother reading to a toddler held on her lap.",
+        },
+    },
+    {
+        "id": "V04", "label": "Someone touching their own skin",
+        "description": "The figure's hand is on their own face or body, making the skin the subject without showing disease.",
+        "tier": "open",
+        "tier_reasoning": "A direction decision that implies nothing about outcome, provided no result is shown.",
+        "coding": {"Zoryve": "Adult woman with eyes closed, touching her own face."},
+    },
+    {
+        "id": "V05", "label": "The disease visible on the model",
+        "description": "Eczema is shown on the person in the lifestyle photography rather than in clinical imagery.",
+        "tier": "constrained",
+        "tier_reasoning": "Showing severity in a lifestyle image implies a baseline, and anything nearby implies a result. Expect close review of both the image and its captioning.",
+        "coding": {"Opzelura": "Visible erythematous lesions on the toddler's torso and arms."},
+    },
+    {
+        "id": "V06", "label": "Clear skin shown as the outcome",
+        "description": "The central figure's skin is visibly clear, and the image is doing the work of the efficacy claim.",
+        "tier": "constrained",
+        "tier_reasoning": "An image of clear skin reads as a result. It needs the endpoint behind it and the disclaimer beside it.",
+        "coding": {"Eucrisa": "Infant with clear skin, smiling, filling the frame."},
+    },
+    {
+        "id": "V07", "label": "A range of skin tones in one execution",
+        "description": "More than one skin tone appears across the lead imagery rather than a single casting.",
+        "tier": "open",
+        "tier_reasoning": "A casting decision, and the evidence base supports it. Nothing needs substantiating.",
+        "coding": {"Zoryve": "Triptych casts a broad range of skin tones across its three panels."},
+    },
+    {
+        "id": "V08", "label": "An adult as the central figure",
+        "description": "An adult patient, rather than a parent or a child, is the person the photography is about.",
+        "tier": "open",
+        "tier_reasoning": "An audience decision inside every label in this set. Adults are the larger patient population.",
+        "coding": {"Zoryve": "Adult male laughing and adult woman touching her face occupy two of the three panels."},
+    },
+    {
+        "id": "V09", "label": "An illustrated overlay on the photography",
+        "description": "Drawn elements sit over the image — clouds, stars, marks — softening the register.",
+        "tier": "open",
+        "tier_reasoning": "A treatment decision with no claim attached.",
+        "coding": {"Opzelura": "Illustrated cloud and star overlays across the hero."},
+    },
+    {
+        "id": "V10", "label": "Expressive display typography as the graphic device",
+        "description": "The type itself carries the art direction, in place of a graphic motif.",
+        "tier": "open",
+        "tier_reasoning": "A design decision. Nothing to substantiate.",
+        "coding": {
+            "Vtama": "Gradient display typography running orange to magenta to violet.",
+            "Opzelura": "Condensed serif display type.",
+        },
+    },
+    {
+        "id": "V11", "label": "Badges and roundels carrying the claims",
+        "description": "Claims are set in circular badges over the imagery rather than in body copy.",
+        "tier": "open",
+        "tier_reasoning": "A layout decision. The claims inside the badges carry their own requirements; the device does not.",
+        "coding": {
+            "Zoryve": "Allure and Glamour beauty award roundels sit in the hero.",
+            "Eucrisa": "Badge system reading '3 months & up FDA approved', '100% steroid free', 'works at and below'.",
+        },
+    },
+    {
+        "id": "V12", "label": "Borrowing the codes of beauty and skincare",
+        "description": "The photography, awards and endorsements read as a cosmetics brand rather than a prescription medicine.",
+        "tier": "open",
+        "tier_reasoning": "A register decision. Awards are earned rather than claimed, and the borrow itself substantiates nothing.",
+        "coding": {"Zoryve": "Beauty-press award roundels and celebrity endorsement below the fold."},
+    },
+    {
+        "id": "V13", "label": "The product pack in frame",
+        "description": "The tube or bottle appears inside the lifestyle photography rather than in a separate pack shot.",
+        "tier": "open",
+        "tier_reasoning": "A composition decision, subject to the usual requirements on how a pack is shown.",
+        "coding": {"Opzelura": "Product tube visible within the nursery scene."},
+    },
+    {
+        "id": "X01", "label": "The itch, and scratching",
+        "description": "The dominant symptom of the disease, shown as it is experienced rather than named in copy.",
+        "tier": "frame_only",
+        "tier_reasoning": "Itch can be depicted as part of the disease. An image implying it is resolved would need the endpoint that supports it.",
+        "coding": {},
+    },
+    {
+        "id": "X02", "label": "Night waking and lost sleep",
+        "description": "The night-time scene the burden literature describes — the patient or the parent awake.",
+        "tier": "frame_only",
+        "tier_reasoning": "Sleep loss is documented and can be depicted as part of the disease. Showing it resolved would need a sleep endpoint none of these trials measured.",
+        "coding": {},
+    },
+    {
+        "id": "X03", "label": "The daily routine of emollients and bathing",
+        "description": "The work the regimen takes, shown as an ordinary domestic task.",
+        "tier": "open",
+        "tier_reasoning": "Disease education. Depicting the routine claims nothing about the product.",
+        "coding": {},
+    },
+    {
+        "id": "X04", "label": "An older adult with the disease",
+        "description": "A central figure who reads as over fifty, rather than a child or a young adult.",
+        "tier": "open",
+        "tier_reasoning": "A casting decision inside every label in the set. The disease does not stop at forty.",
+        "coding": {},
+    },
+    {
+        "id": "X05", "label": "A school or workplace setting",
+        "description": "The public settings where visible symptoms are most often described as difficult.",
+        "tier": "open",
+        "tier_reasoning": "A location decision. Nothing about it requires substantiation.",
+        "coding": {},
+    },
+    {
+        "id": "H01", "label": "Eczema on darker skin",
+        "description": "The disease shown as it presents on darker skin tones, where it looks different and is recognised later.",
+        "tier": "constrained",
+        "tier_reasoning": "Depicting disease carries the same requirements whatever the skin tone. The reason nobody does it is not that the tier is high.",
+        "coding": {},
+    },
+    {
+        "id": "H02", "label": "The hands, the most-affected site",
+        "description": "Hand involvement, which the literature records as both the commonest visible site and the hardest to conceal.",
+        "tier": "constrained",
+        "tier_reasoning": "A body site shown is a body site claimed. It needs the label and the data to cover it.",
+        "coding": {},
+    },
+    {
+        "id": "H03", "label": "Face and eyelid involvement",
+        "description": "The sites patients report as most distressing and clinicians treat most cautiously.",
+        "tier": "constrained",
+        "tier_reasoning": "Sensitive-site depiction implies sensitive-site use, which needs the label behind it.",
+        "coding": {},
+    },
+    {
+        "id": "H04", "label": "A clinician in the frame",
+        "description": "The consultation itself, rather than the patient alone at home.",
+        "tier": "open",
+        "tier_reasoning": "A casting decision. It makes no claim, and it is routine elsewhere in healthcare advertising.",
+        "coding": {},
+    },
+]
+
+VISUAL_SOURCES = {
+    "observed in category": "Observed in category — recorded in the art direction reading of at least one brand's lead imagery.",
+    "patient burden literature": "Established from patient burden literature — AD burden-of-illness and lived-experience studies on itch, sleep loss, the daily regimen and where the disease is seen. See sources.md (X-series).",
+    "clinical barrier literature": "Established from representation and barrier literature — presentation and recognition in darker skin, body-site distribution, and the consultation itself. See sources.md (H-series).",
+}
+
 FINDINGS = [
     {
         "text": "All four brands build their core message from the same three elements: steroid avoidance as the lead benefit, the parent as the audience, and paediatric reassurance. Four different molecules, one shared message hierarchy.",
@@ -218,14 +417,24 @@ FINDINGS = [
         "refs": ["H01", "C01", "X06"],
     },
     {
-        "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — is visually almost identical to Opzelura.",
-        "refs": ["visual:life_moment", "visual:touch", "visual:human_configuration"],
+        "text": "Differentiation present in the copy is absent from the imagery. All four brand heroes show an everyday domestic scene with a child, and Vtama — which has the most distinctive verbal positioning in the set, built on science — makes the same three art direction decisions as Opzelura.",
+        "refs": ["visual:V01", "visual:V02", "visual:V03"],
+    },
+    {
+        "text": "The art direction is the more converged of the two dimensions. Ten of the twenty-two visual territories are used by nobody in this set, including the itch itself, the night waking the burden literature records, an adult over fifty, and how the disease presents on darker skin.",
+        "refs": ["visual:VX01", "visual:VX02", "visual:VX04", "visual:VH01"],
     },
     {
         "text": "Treatment guidelines point towards maintenance and flare prevention, and almost no brand messaging follows. Vtama's treatment-free-months claim is the only partial move in that direction, and the stronger version — a quantified reduction in steroid use — is unavailable to everyone until someone runs the trial to support it.",
         "refs": ["H04", "C19", "H05"],
     },
 ]
+
+
+def r0(x):
+    """Round half up. Python breaks ties to even and JavaScript rounds half up,
+    so a score landing on .5 disagreed with the page that recalculated it."""
+    return int(math.floor(float(x) + 0.5))
 
 
 def jaccard(a, b):
@@ -280,22 +489,74 @@ def build():
             "crowding": round(len(own & crowded_set) / len(crowded_set), 3) if crowded_set else 0.0,
         }
 
-    # Visual agreement + modal profile
-    visual_rows = []
-    modal_profile = {}
-    for dim in VISUAL_DIMENSIONS:
-        vals = Counter(VISUAL[b][dim] for b in VISUAL)
-        modal, n = vals.most_common(1)[0]
-        modal_profile[dim] = modal
-        visual_rows.append({
-            "key": dim,
-            "label": VISUAL_LABELS[dim],
-            "modal_value": modal,
-            "agreement": round(n / len(VISUAL), 3),
-            "spread": dict(vals),
-            "per_brand": {b: VISUAL[b][dim] for b in VISUAL},
+    # The visual inventory, coded exactly as the messaging one is.
+    visual_brands = list(VISUAL)
+    vid_of = lambda t: t["id"] if t["id"][0] == "V" else "V" + t["id"]
+    visual_coding = {b: {vid_of(t): t["coding"][b] for t in VISUAL_SPACE if b in t["coding"]}
+                     for b in visual_brands}
+    visual_positions = []
+    for t in VISUAL_SPACE:
+        prov = ("observed in category" if t["id"][0] == "V"
+                else "patient burden literature" if t["id"][0] == "X"
+                else "clinical barrier literature")
+        claimers = [b for b in visual_brands if b in t["coding"]]
+        # Namespaced with a leading V: the messaging inventory already has an
+        # X01 and an H01, and an id has to identify one territory on the page.
+        vid = t["id"] if t["id"][0] == "V" else "V" + t["id"]
+        visual_positions.append({
+            "id": vid,
+            "label": t["label"],
+            "description": t["description"],
+            "provenance": prov,
+            "source": VISUAL_SOURCES[prov],
+            "tier": t["tier"],
+            "tier_reasoning": t["tier_reasoning"],
+            "visual": True,
+            "claimers": claimers,
+            "n": len(claimers),
+            "receipts": {b: t["coding"][b] for b in claimers},
         })
-    visual_rows.sort(key=lambda r: -r["agreement"])
+    visual_positions.sort(key=lambda p: (-p["n"], p["id"]))
+
+    # The convergence score. For one brand, the share of its territories a
+    # rival also uses; for the category, the mean across brands. Identical
+    # calculation over each inventory, and the headline is the mean of the two.
+    def convergence(items, pool):
+        per = []
+        for b in pool:
+            used = [p for p in items if b in p["claimers"]]
+            shared = [p for p in used if len(p["claimers"]) > 1]
+            per.append({
+                "brand": b, "used": len(used), "shared": len(shared),
+                "alone": len(used) - len(shared),
+                "pct": r0(len(shared) / len(used) * 100) if used else 0,
+                "shared_ids": [p["id"] for p in shared],
+                "alone_ids": [p["id"] for p in used if len(p["claimers"]) == 1],
+            })
+        return {"per": per, "mean": r0(sum(p["pct"] for p in per) / len(per)) if per else 0}
+
+    conv_msg = convergence(positions, BRANDS)
+    conv_img = convergence(visual_positions, visual_brands)
+    overall = r0((conv_msg["mean"] + conv_img["mean"]) / 2)
+    bands = [
+        (40, "Distinct", "good", "Brands are saying different things. There is still advantage available inside the current frame."),
+        (60, "Converging", "mid", "The category is drifting together. Differentiation still exists, but it thins with every cycle."),
+        (80, "Converged", "bad", "Most of what each brand says, a rival also says. Messaging no longer separates the field."),
+        (101, "Indistinguishable", "bad", "The category speaks with one voice. Share of voice is the only lever left inside this frame."),
+    ]
+    to, bname, bcls, bnote = next(b for b in bands if overall < b[0])
+    convergence_block = {
+        "overall": overall,
+        "band": {"name": bname, "cls": bcls, "note": bnote},
+        "messaging": conv_msg,
+        "imagery": conv_img,
+        "imagery_brands": visual_brands,
+        "basis": ("For each brand, the share of its territories that at least one rival also uses. The category "
+                  "score is the mean across the brands analysed, calculated the same way for messaging and for "
+                  "imagery, and the headline is the mean of the two."),
+        "bands_note": ("Under 40 distinct, 40 to 59 converging, 60 to 79 converged, 80 and above indistinguishable. "
+                       "Scores compare within a category over time, not between categories of different size."),
+    }
 
     # ---------------------------------------------------------------------
     # Distance from the category centre.
@@ -348,13 +609,10 @@ def build():
     for b in BRANDS:
         msg = 1 - sum(jaccard_sets(CODING[b], CODING[o]) for o in others(b)) / len(others(b))
         img = None
-        if b in VISUAL:
-            peers = [o for o in others(b) if o in VISUAL]
+        if b in visual_coding:
+            peers = [o for o in others(b) if o in visual_coding]
             if peers:
-                img = 1 - sum(
-                    sum(1 for dv in VISUAL_DIMENSIONS if VISUAL[b][dv] == VISUAL[o][dv]) / len(VISUAL_DIMENSIONS)
-                    for o in peers
-                ) / len(peers)
+                img = 1 - sum(jaccard_sets(visual_coding[b], visual_coding[o]) for o in peers) / len(peers)
         plot.append({
             "brand": b,
             "messaging": round(msg, 3),
@@ -365,44 +623,48 @@ def build():
     plot_meta = {
         "messaging_mean": round(sum(p["messaging"] for p in plot) / len(plot), 3),
         "imagery_mean": round(sum(p["imagery"] for p in plotted) / len(plotted), 3) if plotted else None,
-        "imagery_step": round(1 / len(VISUAL_DIMENSIONS), 3),
-        "imagery_dimensions": len(VISUAL_DIMENSIONS),
-        "imagery_dimensions_with_majority": sum(
-            1 for dv in VISUAL_DIMENSIONS
-            if max(Counter(VISUAL[b][dv] for b in VISUAL).values()) > len(VISUAL) / 2
-        ),
+        "imagery_territories": len(visual_positions),
         "caveat": (
-            "Both axes measure how unlike the other brands each brand is — the same calculation, "
-            "applied to messaging and to imagery. The view is zoomed to the brands plotted, so read "
-            "position relative to the crosshair rather than as an absolute score. Imagery moves in "
-            f"steps of {round(100 / len(VISUAL_DIMENSIONS))} percentage points because there are only "
-            f"{len(VISUAL_DIMENSIONS)} coded dimensions, so small vertical differences are coarse."
+            "Both axes measure how unlike the other brands each brand is — the same calculation, applied to "
+            "the messaging territories and to the visual territories. The view is zoomed to the brands "
+            "plotted, so read position relative to the crosshair rather than as an absolute score. "
+            f"There are {len(visual_positions)} visual territories against {len(positions)} messaging ones, "
+            "so the vertical axis moves in coarser steps than the horizontal."
         ),
     }
 
     # Which brands actually match each other on imagery. This is where the
     # finding lives, and it survives the small sample better than any distance.
+    vlabels = {p["id"]: p["label"] for p in visual_positions}
     imagery_pairs = []
-    for a, b in combinations(BRANDS, 2):
-        if a not in VISUAL or b not in VISUAL:
-            continue
-        same = [d for d in VISUAL_DIMENSIONS if VISUAL[a][d] == VISUAL[b][d]]
+    for a, b in combinations(visual_brands, 2):
+        same = sorted(set(visual_coding[a]) & set(visual_coding[b]))
+        union = set(visual_coding[a]) | set(visual_coding[b])
         imagery_pairs.append({
             "pair": [a, b],
-            "match": round(len(same) / len(VISUAL_DIMENSIONS), 3),
-            "shared": [VISUAL_LABELS[d] for d in same],
+            "match": round(len(same) / len(union), 3) if union else 0.0,
+            "shared": [vlabels[k] for k in same],
         })
     imagery_pairs.sort(key=lambda r: -r["match"])
 
-    # Verbal/visual cross-check
+    # Verbal/visual cross-check, both sides now measured the same way.
+    v_counts = Counter()
+    for b in visual_brands:
+        v_counts.update(visual_coding[b].keys())
+    v_occupied = [p["id"] for p in visual_positions if p["n"] > 0]
     cross_check = []
-    ownership_rank = sorted(BRANDS, key=lambda b: -brand_position[b]["ownership"])
     for b in BRANDS:
-        vdist = sum(1 for d in VISUAL_DIMENSIONS if VISUAL[b][d] != modal_profile[d]) / len(VISUAL_DIMENSIONS)
+        if b not in visual_coding:
+            continue
+        departures = [pid for pid in v_occupied
+                      if (pid in visual_coding[b]) != (v_counts[pid] > len(visual_brands) / 2)]
+        v_used = len(visual_coding[b])
+        v_alone = sum(1 for pid in visual_coding[b] if v_counts[pid] == 1)
         cross_check.append({
             "brand": b,
             "verbal_ownership": brand_position[b]["ownership"],
-            "visual_distance": round(vdist, 3),
+            "visual_ownership": round(v_alone / v_used, 3) if v_used else 0.0,
+            "visual_distance": round(len(departures) / len(v_occupied), 3) if v_occupied else 0.0,
             "hero_notes": VISUAL[b]["notes"],
         })
 
@@ -421,11 +683,14 @@ def build():
     lit_empty = [k for k in empty if k[0] in "XH"]
     universal = [k for k in occupied if c[k] == len(BRANDS)]
 
+    v_unused = sum(1 for p in visual_positions if p["n"] == 0)
     headline = (
-        f"{crowd_rate:.0%} of what these four brands say, they say together. "
+        f"This category scores {overall} for convergence — {bname.lower()}. "
         f"{len(contested)} of the {len(occupied)} messaging territories in play are shared with a competitor, "
         f"and {len(universal)} are used by every brand in the category. "
-        f"A further {len(lit_empty)}, each with published evidence behind it, are explored by nobody."
+        f"A further {len(lit_empty)}, each with published evidence behind it, are explored by nobody. "
+        f"The art direction scores {conv_img['mean']}, with {v_unused} of {len(visual_positions)} "
+        "visual territories depicted by nobody."
     )
 
     standfirst = (
@@ -441,6 +706,13 @@ def build():
         "meta": META,
         "headline": headline,
         "standfirst": standfirst,
+        "convergence": convergence_block,
+        "tier_labels": {
+            "open": "Explore now",
+            "frame_only": "Raise, not claim",
+            "constrained": "Needs substantiation",
+            "closed": "Not viable",
+        },
         "metrics": {
             "space_size": len(SPACE),
             "occupied": len(occupied),
@@ -485,11 +757,32 @@ def build():
                  "Territories evidenced in the prescribing, adherence and guideline literature, identified independently of anything these brands say."),
             ]
         ],
+        "visual_positions": visual_positions,
+        "visual_provenance": [
+            {
+                "key": k,
+                "label": label,
+                "total": sum(1 for p in visual_positions if p["provenance"] == k),
+                "unused": sum(1 for p in visual_positions if p["provenance"] == k and p["n"] == 0),
+                "note": note,
+            }
+            for k, label, note in [
+                ("observed in category", "Read off the four websites",
+                 "Visual territories at least one brand actually uses. Every one has a user by definition — that is what identifying them from the imagery means."),
+                ("patient burden literature", "Established from patient burden literature",
+                 "Visual territories evidenced in the burden-of-illness and lived-experience literature, identified independently of anything these brands show."),
+                ("clinical barrier literature", "Established from representation and barrier literature",
+                 "Visual territories evidenced in the literature on who this disease affects and where it is under-recognised, identified independently of anything these brands show."),
+            ]
+            if sum(1 for p in visual_positions if p["provenance"] == k)
+        ],
         "visual": {
-            "dimensions": visual_rows,
-            "child_in_hero": sum(1 for b in VISUAL if VISUAL[b]["child_present"]),
+            "brands": visual_brands,
             "notes": {b: VISUAL[b]["notes"] for b in VISUAL},
-            "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. Each brand's lead image is coded on the dimensions below.",
+            "images": {},
+            "territories": len(visual_positions),
+            "unclaimed": sum(1 for p in visual_positions if p["n"] == 0),
+            "exclusions": "Only commissioned photography is scored here. Clinical images, diagrams of how the drug works and pack shots are excluded, because they were determined by the product rather than chosen by art direction. The visual territories are built for this category the same way the messaging territories are — from what these brands show, plus what the literature evidences and nobody shows. This worked example is a stored capture, so the images themselves are not served with it; each territory carries the recorded observation instead.",
         },
         "cross_check": cross_check,
         "findings": FINDINGS,
