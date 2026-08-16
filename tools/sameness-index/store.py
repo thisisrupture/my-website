@@ -55,6 +55,7 @@ class Store:
         self.dsn = dsn if dsn is not None else os.environ.get("DATABASE_URL", "")
         self.pool = None
         self._mem = {}
+        self._mem_brands = {}
         self._lock = asyncio.Lock()
 
     @property
@@ -225,6 +226,89 @@ class Store:
             "result": row.get("result"),
             "error": row.get("error"),
         }
+
+    # -- the brand directory ------------------------------------------------
+    #
+    # Guessing a brand's web address and fetching candidates to see which one
+    # answers is the slowest part of a run, and the answer is the same for
+    # everybody. So it is remembered. A run in a category somebody has looked at
+    # before does no discovery at all.
+
+    async def brand_sites(self, brands):
+        """What is already known about these brands. Missing ones are simply
+        absent from the result."""
+        keys = [b.strip().lower() for b in brands if b and b.strip()]
+        if not keys:
+            return {}
+        if self.pool is None:
+            async with self._lock:
+                return {k: dict(v) for k, v in self._mem_brands.items() if k in keys}
+        async with self.pool.acquire() as c:
+            rows = await c.fetch(
+                """select brand, display_name, generic_name, company, pharm_class,
+                          patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by
+                     from brand_sites where brand = any($1::text[])""",
+                keys,
+            )
+        return {r["brand"]: dict(r) for r in rows}
+
+    async def remember_brand(self, brand, *, display_name=None, generic_name=None,
+                             company=None, pharm_class=None, patient_url=None,
+                             hcp_url=None, patient_ok=None, hcp_ok=None,
+                             confirmed_by="crawler"):
+        """Write down an address that was proved to work.
+
+        A human correction is never overwritten by the crawler: somebody who
+        looked at the page knows something the fetcher does not, and the whole
+        point of the table is that a wrong entry can be fixed once and stay
+        fixed. A human write, on the other hand, overwrites anything.
+        """
+        key = (brand or "").strip().lower()
+        if not key:
+            return
+        record = {
+            "brand": key,
+            "display_name": display_name or brand,
+            "generic_name": generic_name,
+            "company": company,
+            "pharm_class": pharm_class,
+            "patient_url": patient_url,
+            "hcp_url": hcp_url,
+            "patient_ok": patient_ok,
+            "hcp_ok": hcp_ok,
+            "confirmed_by": confirmed_by,
+        }
+        if self.pool is None:
+            async with self._lock:
+                existing = self._mem_brands.get(key)
+                if existing and existing.get("confirmed_by") == "human" and confirmed_by != "human":
+                    return
+                merged = dict(existing or {})
+                merged.update({k: v for k, v in record.items() if v is not None})
+                self._mem_brands[key] = merged
+            return
+        async with self.pool.acquire() as c:
+            await c.execute(
+                """insert into brand_sites
+                     (brand, display_name, generic_name, company, pharm_class,
+                      patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by, checked_at)
+                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
+                   on conflict (brand) do update set
+                     display_name = coalesce(excluded.display_name, brand_sites.display_name),
+                     generic_name = coalesce(excluded.generic_name, brand_sites.generic_name),
+                     company      = coalesce(excluded.company,      brand_sites.company),
+                     pharm_class  = coalesce(excluded.pharm_class,  brand_sites.pharm_class),
+                     patient_url  = coalesce(excluded.patient_url,  brand_sites.patient_url),
+                     hcp_url      = coalesce(excluded.hcp_url,      brand_sites.hcp_url),
+                     patient_ok   = coalesce(excluded.patient_ok,   brand_sites.patient_ok),
+                     hcp_ok       = coalesce(excluded.hcp_ok,       brand_sites.hcp_ok),
+                     confirmed_by = excluded.confirmed_by,
+                     checked_at   = now(),
+                     updated_at   = now()
+                   where brand_sites.confirmed_by <> 'human' or excluded.confirmed_by = 'human'""",
+                key, record["display_name"], generic_name, company, pharm_class,
+                patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by,
+            )
 
     async def runs_since(self, client_ip, seconds):
         """How many runs this address has started recently. The cost control:

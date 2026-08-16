@@ -646,3 +646,105 @@ def test_one_brand_s_imagery_is_described_rather_than_discarded():
     assert only["summary"], "the reader gets a description"
     assert len(only["observations"]) == 2
     assert result["convergence"]["imagery_absent"] and "described" in result["convergence"]["imagery_absent"]
+
+
+# ---------------------------------------------------------------------------
+# The finder. Competitors are looked up, not recalled, and an address proved
+# once is not guessed again.
+# ---------------------------------------------------------------------------
+
+_NDC_BRAND = {"results": [
+    {"brand_name": "Ozempic", "generic_name": "Semaglutide", "labeler_name": "Novo Nordisk",
+     "marketing_category": "NDA", "route": ["SUBCUTANEOUS"],
+     "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]", "GLP-1 Agonists [MoA]"]}]}
+
+_NDC_CLASS = {"results": [
+    {"brand_name": "OZEMPIC 0.5 MG/DOSE", "generic_name": "Semaglutide", "labeler_name": "Novo Nordisk",
+     "marketing_category": "NDA", "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]},
+    {"brand_name": "TRULICITY", "generic_name": "Dulaglutide", "labeler_name": "Eli Lilly",
+     "marketing_category": "NDA", "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]},
+    {"brand_name": "TRULICITY", "generic_name": "Dulaglutide", "labeler_name": "Eli Lilly",
+     "marketing_category": "NDA", "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]},
+    {"brand_name": "MOUNJARO PEN", "generic_name": "Tirzepatide", "labeler_name": "Eli Lilly",
+     "marketing_category": "NDA", "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]},
+    {"brand_name": "SEMAGLUTIDE", "generic_name": "Semaglutide", "labeler_name": "A Generics Co",
+     "marketing_category": "ANDA", "pharm_class": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]},
+]}
+
+
+class _FDA:
+    """Stands in for api.fda.gov, returning its documented shapes."""
+    def __init__(self): self.calls = 0
+    async def get(self, url, params=None, timeout=None):
+        self.calls += 1
+        search = (params or {}).get("search", "")
+
+        class R:
+            status_code = 200
+            def __init__(self, payload): self._p = payload
+            def json(self): return self._p
+        if "/ndc.json" in url and "pharm_class" in search:
+            return R(_NDC_CLASS)
+        if "/ndc.json" in url:
+            return R(_NDC_BRAND)
+        return R({"results": [{"indications_and_usage": [
+            "OZEMPIC is indicated as an adjunct to diet and exercise to improve glycemic "
+            "control in adults with type 2 diabetes mellitus."]}]})
+
+
+@pytest.mark.anyio
+async def test_competitors_come_from_the_register_not_from_recall():
+    """A model asked for a fact it does not have produces something shaped like
+    one — which is how a run ended up reading a corporate portal instead of a
+    brand site. The class is a field on the record."""
+    import drugs
+    drugs._cache.data.clear()
+    fda = _FDA()
+    prof = await drugs.profile(fda, "Ozempic")
+    assert prof["generic"] == "Semaglutide"
+    assert prof["classes"] == ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"], "only EPC classes"
+
+    got = await drugs.peers(fda, prof)
+    names = [p["brand"] for p in got]
+    assert "Trulicity" in names and "Mounjaro" in names
+    assert names.count("Trulicity") == 1, "one entry per brand, not one per pack size"
+    assert not any(n.lower() == "ozempic" for n in names), "a brand does not compete with itself"
+    assert not any("Semaglutide" == n for n in names), "an ANDA generic is not competing on messaging"
+    assert "Mounjaro" in names and "Mounjaro Pen" not in names, "dose form is not part of the brand"
+
+
+@pytest.mark.anyio
+async def test_the_register_is_asked_once_per_process():
+    import drugs
+    drugs._cache.data.clear()
+    fda = _FDA()
+    prof = await drugs.profile(fda, "Ozempic")
+    first = fda.calls
+    await drugs.profile(fda, "Ozempic")
+    await drugs.profile(fda, "OZEMPIC ")
+    assert fda.calls == first, "the same question must not be asked twice"
+
+
+def test_an_address_is_guessed_in_a_sensible_order():
+    import drugs
+    patient = drugs.candidate_urls("Trulicity")
+    hcp = drugs.candidate_urls("Trulicity", "hcp")
+    assert patient[0] == "https://www.trulicity.com"
+    assert hcp[0] == "https://www.trulicityhcp.com"
+    assert all("trulicity" in u for u in patient + hcp)
+    assert drugs.candidate_urls("") == []
+
+
+@pytest.mark.anyio
+async def test_a_human_correction_survives_the_crawler():
+    """The point of the directory is that a wrong address can be fixed once and
+    stay fixed."""
+    from store import Store
+    st = Store(dsn="")
+    await st.remember_brand("Ozempic", patient_url="https://www.ozempic.com", patient_ok=True)
+    await st.remember_brand("Ozempic", patient_url="https://correct.example",
+                            patient_ok=True, confirmed_by="human")
+    await st.remember_brand("Ozempic", patient_url="https://wrong.example", confirmed_by="crawler")
+    row = (await st.brand_sites(["ozempic"]))["ozempic"]
+    assert row["patient_url"] == "https://correct.example"
+    assert row["confirmed_by"] == "human"

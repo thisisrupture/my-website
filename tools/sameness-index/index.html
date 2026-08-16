@@ -257,6 +257,9 @@
   #f-category { flex: 1 1 200px; }
   #f-category-manual { width: 100%; }
   .group-label { margin: 26px 0 6px; }
+  .aud { display: flex; align-items: center; gap: 14px; margin-top: 22px; flex-wrap: wrap; }
+  .aud-lab { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
+  #f-audience { margin-bottom: 0; }
   #find-btn { border: 0; }
   .find-status { font-family: var(--sans); font-size: 14px; color: var(--fg-muted); margin-top: 16px; }
   .find-status.err { color: var(--coral); }
@@ -767,6 +770,16 @@
               <input id="f-brand" type="text" placeholder="Your brand, e.g. Ozempic" autocomplete="off">
               <input id="f-category" type="text" placeholder="Therapy area, e.g. type 2 diabetes" autocomplete="off">
             </div>
+            <!-- Two different sites saying two different things to two different
+                 audiences. Reading a mixture of them produces a report about a
+                 conversation nobody is having. -->
+            <div class="aud">
+              <span class="aud-lab">Read the</span>
+              <div class="invtoggle" id="f-audience">
+                <button type="button" aria-pressed="true"  data-aud="patient">Patient sites</button>
+                <button type="button" aria-pressed="false" data-aud="hcp">Professional sites</button>
+              </div>
+            </div>
             <div class="cta-row" style="margin-top:26px">
               <button id="find-btn" class="btn btn-mint" type="button">Find competitors</button>
               <a class="mode-link" id="to-manual" href="#">Enter addresses yourself</a>
@@ -1161,6 +1174,15 @@ $("#add-competitor").addEventListener("click", () => { $("#competitors").appendC
 // A page opened as a file cannot reach the analysis server, and a browser
 // cannot crawl other domains on its own. Say so before the form is filled in,
 // not after the request fails.
+let AUDIENCE = "patient";
+$("#f-audience").addEventListener("click", e => {
+  const b = e.target.closest("[data-aud]");
+  if (!b) return;
+  AUDIENCE = b.dataset.aud;
+  $("#f-audience").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
+  b.setAttribute("aria-pressed", "true");
+});
+
 const OFFLINE = location.protocol === "file:";
 if (OFFLINE) {
   $("#offline-note").style.display = "block";
@@ -1211,7 +1233,7 @@ $("#find-btn").addEventListener("click", async () => {
   try {
     const r = await fetch("/api/find", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brand, category: therapy }),
+      body: JSON.stringify({ brand, category: therapy, audience: AUDIENCE }),
     });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || "Lookup failed.");
@@ -1236,10 +1258,19 @@ function renderFound(data) {
   const usable = data.brands.filter(b => b.any_readable).length;
   const blocked = data.brands.filter(b => !b.any_readable).map(b => b.name);
 
+  const provenance = data.source === "openFDA"
+    ? `These share ${data.generic ? data.generic + "'s" : "your brand's"} pharmacologic class` +
+      `${data.pharm_class ? ` — ${data.pharm_class.replace(/\s*\[EPC\]$/, "")}` : ""}, ` +
+      `read from the FDA's register of marketed products rather than recalled.`
+    : `openFDA does not list this brand — it registers US products — so this set was proposed rather than looked up. ` +
+      `Check it before running.`;
+  const directory = data.known
+    ? ` ${data.known} of these addresses ${data.known === 1 ? "was" : "were"} already known, so ${data.known === 1 ? "it" : "they"} did not need finding again.`
+    : "";
+
   $("#found-intro").textContent =
-    `${data.brands.length} brands in ${data.category || "this category"}. ` +
-    `Tick the ones to include and choose which site to read for each — the patient site and the professional site ` +
-    `say different things to different people, so keep the set consistent.` +
+    `${data.brands.length} brands in ${data.category || "this category"}. ${provenance}${directory} ` +
+    `Tick the ones to include and choose which site to read for each.` +
     (blocked.length
       ? ` ${blocked.join(" and ")} could not be read: ${blocked.length === 1 ? "that site turns" : "those sites turn"} away automated readers. ` +
         `You can still run without ${blocked.length === 1 ? "it" : "them"}, and the report will say so.`

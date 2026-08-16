@@ -43,6 +43,7 @@ from bs4 import BeautifulSoup
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 
+import drugs
 from store import Store
 
 MODEL = os.environ.get("SAMENESS_MODEL", "claude-sonnet-5")
@@ -1400,6 +1401,40 @@ Return ONLY JSON:
     return await llm_json(prompt, max_tokens=3000, stage="finding the category and competitors")
 
 
+async def stage_shortlist(prof, peers, category):
+    """Narrow a real competitive set to the brands a marketing team would name.
+
+    The list going in is from openFDA, so nothing here is being recalled — the
+    model is asked which of these actually compete for the same prescription,
+    which is judgement it is good at. It returns names, and anything it returns
+    that was not on the list is thrown away by the caller. It cannot add.
+    """
+    listing = "\n".join(
+        f'- {p["brand"]} ({p.get("generic", "")}, {p.get("company", "")})' for p in peers)
+    prompt = f"""A brand manager at "{prof['brand']}" ({prof.get('generic', '')}) is naming
+the competitors they benchmark against. Category: {category or 'not stated'}.
+
+Every brand below shares {prof['brand']}'s established pharmacologic class, so
+all of them are real and currently marketed. Choose the 4 to 6 that a marketing
+team at {prof['brand']} would actually name in the room.
+
+Prefer brands that:
+- treat the same population for the same indication, not a niche sub-use
+- are actively promoted rather than legacy products past their patent
+- would appear on a share-of-voice chart in that category
+
+Exclude:
+- the same company's other presentations of the same molecule
+- products whose only overlap is the class, in a different disease
+
+Brands in the class:
+{listing}
+
+Return ONLY JSON: {{"brands": ["<name exactly as written above>", ...]}}"""
+    out = await llm_json(prompt, max_tokens=1200, stage="choosing the competitive set")
+    return [str(b) for b in (out.get("brands") or []) if b]
+
+
 async def stage_findings(category, metrics, positions, brands, cross_check,
                          conv=None, visual_positions=None):
     pos_lines = "\n".join(
@@ -2392,6 +2427,17 @@ async def check_site(fetcher, url, sem):
 
 @app.post("/api/find")
 async def find_sites(request: Request):
+    """Who this brand competes with, and where those brands live.
+
+    The competitive set comes from openFDA — the brand's established
+    pharmacologic class, and every other branded product in it. Those are
+    facts on a label. The model is asked afterwards only to narrow a real list
+    to the ones a marketing team would actually name in the room, which is
+    judgement rather than recall, and it can only remove, never add.
+
+    Addresses come from the directory first. A brand somebody has already run
+    is instant; a new one is guessed and checked once, then remembered.
+    """
     try:
         body = await request.json()
     except Exception:
@@ -2399,6 +2445,7 @@ async def find_sites(request: Request):
 
     brand = (body.get("brand") or "").strip()[:80]
     hint = (body.get("category") or "").strip()[:160]
+    audience = "hcp" if (body.get("audience") or "").lower() == "hcp" else "patient"
     if len(brand) < 2:
         return JSONResponse({"error": "Enter the name of your brand."}, status_code=400)
 
@@ -2412,46 +2459,109 @@ async def find_sites(request: Request):
         if k[1] != today:
             del _finds[k]
 
-    try:
-        proposed = await stage_find(brand, hint)
-    except Exception as e:
-        return JSONResponse({"error": f"Could not look that up. {e}"}, status_code=502)
-
-    raw = [b for b in (proposed.get("brands") or []) if b.get("name")][:7]
-    sem = asyncio.Semaphore(8)
     async with httpx.AsyncClient() as http:
+        prof = await drugs.profile(http, brand)
+        peers = await drugs.peers(http, prof) if prof else []
+        source = "openFDA" if prof else "model"
+
+        # openFDA is the FDA's register, so it knows US products. Outside that
+        # — or on a misspelling — fall back to asking, and say which happened
+        # rather than letting the reader assume the list was looked up.
+        if not prof:
+            try:
+                proposed = await stage_find(brand, hint)
+            except Exception as e:
+                return JSONResponse({"error": f"Could not look that up. {e}"}, status_code=502)
+            wanted = [{"name": (b.get("name") or "").strip(),
+                       "company": (b.get("company") or "").strip(),
+                       "candidates": (b.get("candidates") or [])[:4]}
+                      for b in (proposed.get("brands") or []) if b.get("name")][:7]
+            category = (proposed.get("category") or hint or "").strip()[:160]
+        else:
+            category = hint or await drugs.category_of(http, prof) or (
+                f"{prof['generic']} and its class" if prof.get("generic") else "")
+            shortlist = peers
+            if len(peers) > 5:
+                # Narrowing a real list, not building one: anything the model
+                # returns that is not already in `peers` is discarded.
+                try:
+                    keep = await stage_shortlist(prof, peers, category)
+                    allowed = {p["brand"].lower() for p in peers}
+                    chosen = [k for k in keep if k.lower() in allowed]
+                    if chosen:
+                        order = {k.lower(): i for i, k in enumerate(chosen)}
+                        shortlist = sorted(
+                            [p for p in peers if p["brand"].lower() in order],
+                            key=lambda p: order[p["brand"].lower()])
+                except Exception:
+                    shortlist = peers[:6]
+            wanted = [{"name": prof["brand"], "company": prof.get("company", ""), "candidates": []}]
+            wanted += [{"name": p["brand"], "company": p.get("company", ""), "candidates": []}
+                       for p in shortlist[:6]]
+
+        # The directory answers for anything already seen.
+        known = await store.brand_sites([w["name"] for w in wanted])
+        sem = asyncio.Semaphore(8)
         fetcher = Fetcher(http)
         try:
-            checks = await asyncio.gather(*[
-                asyncio.gather(*[check_site(fetcher, u, sem) for u in (b.get("candidates") or [])[:4]])
-                for b in raw
-            ])
+            async def resolve(w):
+                cached = known.get(w["name"].strip().lower()) or {}
+                url = cached.get("hcp_url" if audience == "hcp" else "patient_url")
+                ok = cached.get("hcp_ok" if audience == "hcp" else "patient_ok")
+                if url and ok:
+                    return w, [{"url": url, "title": w["name"], "readable": True,
+                                "chars": 0, "status": 200, "audience": audience,
+                                "from_directory": True}], True
+                candidates = w["candidates"] or drugs.candidate_urls(w["name"], audience)
+                found = await asyncio.gather(*[check_site(fetcher, u, sem) for u in candidates[:5]])
+                return w, [s for s in found if s], False
+
+            resolved = await asyncio.gather(*[resolve(w) for w in wanted])
         finally:
             await fetcher.close()
 
-    out = []
-    for b, results in zip(raw, checks):
+    out, learned = [], 0
+    for w, results, from_directory in resolved:
         sites, seen_urls = [], set()
         for s in results:
-            if not s:
-                continue
             tidy = s["url"].rstrip("/")
             if tidy in seen_urls:
                 continue
             seen_urls.add(tidy)
             sites.append(s)
-        # Readable first, then patient before professional — the patient site
-        # carries more of the messaging that actually gets scored.
-        sites.sort(key=lambda s: (not s["readable"], s["audience"] != "patient"))
+        # Readable first, then the audience that was asked for.
+        sites.sort(key=lambda s: (not s["readable"], s["audience"] != audience))
+        best = next((s for s in sites if s["readable"]), None)
+        if best and not from_directory:
+            # Learned once, for everybody, for next time.
+            meta = next((p for p in (peers or []) if p["brand"].lower() == w["name"].lower()), {})
+            try:
+                await store.remember_brand(
+                    w["name"], display_name=w["name"],
+                    generic_name=meta.get("generic") or (prof or {}).get("generic"),
+                    company=w.get("company") or meta.get("company"),
+                    pharm_class=((prof or {}).get("classes") or [None])[0],
+                    **{("hcp_url" if audience == "hcp" else "patient_url"): best["url"],
+                       ("hcp_ok" if audience == "hcp" else "patient_ok"): True})
+                learned += 1
+            except Exception:
+                pass          # a directory write must never fail a lookup
         out.append({
-            "name": b["name"].strip()[:60],
-            "company": (b.get("company") or "").strip()[:60],
+            "name": w["name"][:60],
+            "company": (w.get("company") or "")[:60],
             "sites": sites[:4],
             "any_readable": any(s["readable"] for s in sites),
+            "from_directory": from_directory,
         })
 
     return {
-        "category": (proposed.get("category") or hint or "").strip()[:160],
+        "category": category,
+        "audience": audience,
+        "source": source,
+        "generic": (prof or {}).get("generic", ""),
+        "pharm_class": ((prof or {}).get("classes") or [""])[0],
+        "known": sum(1 for _w, _r, d in resolved if d),
+        "learned": learned,
         "brands": out,
     }
 
