@@ -252,11 +252,31 @@
   }
   .field-row.removable .f-x { visibility: visible; }
   .field-row .f-x:hover { color: var(--coral); }
-  .find-row { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
-  #f-brand { flex: 1 1 200px; }
-  #f-category { flex: 1 1 200px; }
+  .find-row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .combo { position: relative; flex: 1 1 200px; min-width: 0; }
+  .combo input { width: 100%; }
+  .combo-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+    background: var(--paper); border: var(--line); border-top: none;
+    max-height: 320px; overflow-y: auto;
+  }
+  .combo-opt { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--divider); }
+  .combo-opt:last-child { border-bottom: none; }
+  .combo-opt[aria-selected="true"], .combo-opt:hover { background: var(--mint); }
+  .combo-opt .co-name { font-family: var(--sans); font-size: 15px; font-weight: 600; }
+  .combo-opt .co-sub {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--fg-muted); margin-top: 3px;
+  }
+  .combo-opt[aria-selected="true"] .co-sub { color: var(--mint-ink); }
+  .combo-note { padding: 10px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--fg-muted); }
   #f-category-manual { width: 100%; }
   .group-label { margin: 26px 0 6px; }
+  .picked {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em;
+    color: var(--fg-muted); margin: 12px 0 0; padding-left: 12px;
+    border-left: 1.5px solid var(--mint);
+  }
   .aud { display: flex; align-items: center; gap: 14px; margin-top: 22px; flex-wrap: wrap; }
   .aud-lab { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-muted); }
   #f-audience { margin-bottom: 0; }
@@ -767,12 +787,21 @@
 
           <div id="find-mode">
             <div class="find-row">
-              <input id="f-brand" type="text" placeholder="Your brand, e.g. Ozempic" autocomplete="off">
-              <input id="f-category" type="text" placeholder="Therapy area, e.g. type 2 diabetes" autocomplete="off">
+              <div class="combo" data-kind="drug">
+                <input id="f-brand" type="text" placeholder="Your brand, e.g. Ozempic" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="f-brand-list">
+                <div class="combo-list" id="f-brand-list" role="listbox" hidden></div>
+              </div>
+              <div class="combo" data-kind="area">
+                <input id="f-category" type="text" placeholder="Therapy area (optional)" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="f-category-list">
+                <div class="combo-list" id="f-category-list" role="listbox" hidden></div>
+              </div>
             </div>
             <!-- Two different sites saying two different things to two different
                  audiences. Reading a mixture of them produces a report about a
                  conversation nobody is having. -->
+            <p class="picked" id="f-picked" hidden></p>
             <div class="aud">
               <span class="aud-lab">Read the</span>
               <div class="invtoggle" id="f-audience">
@@ -784,7 +813,7 @@
               <button id="find-btn" class="btn btn-mint" type="button">Find competitors</button>
               <a class="mode-link" id="to-manual" href="#">Enter addresses yourself</a>
             </div>
-            <p class="guidance">Both fields are needed. A brand name alone is often ambiguous — plenty of medicines are marketed in more than one indication, and the therapy area is what points the search at the right sites and decides what every brand is measured against.</p>
+            <p class="guidance">Start typing a brand and pick it from the list — the names come from the FDA's register of marketed medicines, so a half-remembered spelling still finds it. Leave the therapy area blank and it is taken from the brand's own label; fill it in when a medicine is marketed in more than one indication and you mean a particular one.</p>
             <div class="find-status" id="find-status" hidden></div>
           </div>
 
@@ -1174,6 +1203,90 @@ $("#add-competitor").addEventListener("click", () => { $("#competitors").appendC
 // A page opened as a file cannot reach the analysis server, and a browser
 // cannot crawl other domains on its own. Say so before the form is filled in,
 // not after the request fails.
+/* ---- the type-ahead ----
+   Two fields, but in practice one: choosing a drug fills the therapy area from
+   its own label, so the second field is a correction rather than a question.
+   Matching is done on the server against the FDA's register of marketed
+   products, so a half-remembered name — "ozempick", "trulicty" — still lands. */
+function attachCombo(input, list, kind, onPick) {
+  let items = [], active = -1, timer = null, seq = 0;
+
+  const close = () => {
+    list.hidden = true; input.setAttribute("aria-expanded", "false"); active = -1;
+  };
+  const draw = () => {
+    if (!items.length) return close();
+    list.innerHTML = items.map((it, i) => `
+      <div class="combo-opt" role="option" id="${list.id}-${i}" aria-selected="${i === active}">
+        <div class="co-name">${esc(it.label)}</div>
+        ${it.generic || it.company
+          ? `<div class="co-sub">${esc([it.generic, it.company].filter(Boolean).join(" · "))}</div>` : ""}
+      </div>`).join("");
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    list.querySelectorAll(".combo-opt").forEach((n, i) =>
+      n.addEventListener("mousedown", e => { e.preventDefault(); choose(i); }));
+  };
+  const choose = i => {
+    const it = items[i];
+    if (!it) return;
+    input.value = it.label;
+    close();
+    if (onPick) onPick(it);
+  };
+  const fetchSoon = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const q = input.value.trim();
+      if (kind === "drug" && q.length < 2) return close();
+      const mine = ++seq;
+      try {
+        const r = await fetch(`/api/suggest?kind=${kind}&q=${encodeURIComponent(q)}`);
+        const body = await r.json();
+        if (mine !== seq) return;        // a slower earlier request must not win
+        items = body.results || [];
+        active = -1;
+        draw();
+      } catch { close(); }
+    }, 140);
+  };
+
+  input.addEventListener("input", fetchSoon);
+  input.addEventListener("focus", () => { if (input.value.trim() || kind === "area") fetchSoon(); });
+  input.addEventListener("blur", () => setTimeout(close, 120));
+  input.addEventListener("keydown", e => {
+    if (list.hidden) {
+      if (e.key === "ArrowDown") { fetchSoon(); e.preventDefault(); }
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      active = (active + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      draw();
+      const el2 = list.querySelector(`#${list.id}-${active}`);
+      if (el2) el2.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && active >= 0) {
+      e.preventDefault(); choose(active);
+    } else if (e.key === "Escape") {
+      close();
+    }
+  });
+}
+
+attachCombo($("#f-brand"), $("#f-brand-list"), "drug", it => {
+  // Deliberately not filled with the pharmacologic class. "Glucagon-Like
+  // Peptide-1 Receptor Agonist" is what the register calls it and not what
+  // anybody would write in this box. Left empty, the finder takes the therapy
+  // area off the brand's own label — so the field is offered, not demanded.
+  const area = $("#f-category");
+  $("#f-picked").textContent = it.generic
+    ? `${it.label} — ${it.generic}${it.company ? ", " + it.company : ""}`
+    : it.label;
+  $("#f-picked").hidden = false;
+  area.focus();
+});
+attachCombo($("#f-category"), $("#f-category-list"), "area");
+
 let AUDIENCE = "patient";
 $("#f-audience").addEventListener("click", e => {
   const b = e.target.closest("[data-aud]");
@@ -1220,11 +1333,9 @@ $("#find-btn").addEventListener("click", async () => {
   const status = $("#find-status");
   if (OFFLINE) { $("#offline-note").style.display = "block"; return; }
   const therapy = $("#f-category").value.trim();
-  if (brand.length < 2 || therapy.length < 3) {
+  if (brand.length < 2) {
     status.hidden = false; status.className = "find-status err";
-    status.textContent = brand.length < 2
-      ? "Enter the name of your brand."
-      : "Enter the therapy area as well — the brand name alone is often ambiguous.";
+    status.textContent = "Enter the name of your brand.";
     return;
   }
   $("#find-btn").disabled = true;

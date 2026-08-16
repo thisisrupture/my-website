@@ -748,3 +748,48 @@ async def test_a_human_correction_survives_the_crawler():
     row = (await st.brand_sites(["ozempic"]))["ozempic"]
     assert row["patient_url"] == "https://correct.example"
     assert row["confirmed_by"] == "human"
+
+
+def test_the_type_ahead_finds_a_half_remembered_name():
+    """Somebody typing a brand they half remember is the normal case."""
+    import drugs
+    idx = [
+        {"brand": "Ozempic", "generic": "Semaglutide", "company": "Novo Nordisk", "cls": "GLP-1", "n": 40},
+        {"brand": "Ozobax", "generic": "Baclofen", "company": "Metacel", "cls": "", "n": 3},
+        {"brand": "Trulicity", "generic": "Dulaglutide", "company": "Eli Lilly", "cls": "GLP-1", "n": 30},
+    ]
+    assert [e["brand"] for e in drugs.search_index(idx, "ozempick")] == ["Ozempic"]
+    assert [e["brand"] for e in drugs.search_index(idx, "trulicty")] == ["Trulicity"]
+    # Two letters: the drug most people are taking, not the shortest name.
+    assert drugs.search_index(idx, "oz")[0]["brand"] == "Ozempic"
+    # The molecule and the company are ways in as well as the brand.
+    assert "Ozempic" in [e["brand"] for e in drugs.search_index(idx, "semaglut")]
+    assert "Trulicity" in [e["brand"] for e in drugs.search_index(idx, "lilly")]
+
+
+def test_the_index_keeps_brands_and_drops_commodities():
+    """Ranked by listing count openFDA offers Oxygen and Sodium Chloride. A
+    promoted brand is one whose name is not merely its own molecule."""
+    import drugs
+    branded = {"brand_name": "Ozempic", "generic_name": "Semaglutide",
+               "marketing_category": "NDA", "pharm_class": ["GLP-1 [EPC]"]}
+    commodity = {"brand_name": "Oxygen", "generic_name": "Oxygen",
+                 "marketing_category": "NDA", "pharm_class": ["x [EPC]"]}
+    coat = {"brand_name": "Semaglutide Injection", "generic_name": "Semaglutide",
+            "marketing_category": "NDA", "pharm_class": ["GLP-1 [EPC]"]}
+    generic = {"brand_name": "Metformin", "generic_name": "Metformin HCl",
+               "marketing_category": "ANDA", "pharm_class": ["x [EPC]"]}
+    assert drugs._is_branded(branded)
+    assert not drugs._is_branded(commodity)
+    assert not drugs._is_branded(coat)
+    assert not drugs._is_branded(generic)
+
+
+def test_therapy_areas_answer_the_words_people_use():
+    """A brand lead says eczema; the register says atopic dermatitis."""
+    import drugs
+    assert drugs.search_areas("eczema")[0] == "Atopic dermatitis"
+    assert drugs.search_areas("t2d")[0] == "Type 2 diabetes"
+    assert "Type 2 diabetes" in drugs.search_areas("diabetis"), "a typo must still land"
+    assert drugs.search_areas("migrane")[0] == "Migraine"
+    assert drugs.search_areas("") , "an empty box offers something to pick"

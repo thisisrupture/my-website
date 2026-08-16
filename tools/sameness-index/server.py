@@ -87,6 +87,9 @@ BROWSER_HEADERS = {
 @asynccontextmanager
 async def lifespan(_app):
     await store.start()
+    # Built in the background: the server must answer requests while roughly
+    # thirty openFDA pages are fetched, not after.
+    asyncio.create_task(_build_index_once())
     yield
     await store.stop()
 
@@ -2563,6 +2566,60 @@ async def find_sites(request: Request):
         "known": sum(1 for _w, _r, d in resolved if d),
         "learned": learned,
         "brands": out,
+    }
+
+
+# ---------------------------------------------------------------------------
+# The type-ahead.
+#
+# The index is ~30 openFDA requests, so it is built once in the background and
+# held in memory. A cold instance answers from a shorter list until the full one
+# arrives rather than making anybody wait for a network round trip between
+# keystrokes.
+# ---------------------------------------------------------------------------
+
+_index = {"rows": [], "built_at": 0.0, "building": False}
+
+
+async def _build_index_once():
+    if _index["building"] or _index["rows"]:
+        return
+    _index["building"] = True
+    try:
+        async with httpx.AsyncClient() as http:
+            rows = await drugs.build_index(http)
+        if rows:
+            _index["rows"] = rows
+            _index["built_at"] = now_seconds()
+    except Exception:
+        pass                      # a failed index is a quiet degradation, not an outage
+    finally:
+        _index["building"] = False
+
+
+@app.get("/api/suggest")
+async def suggest(q: str = "", kind: str = "drug"):
+    """What the person is probably typing. Never blocks on the network."""
+    q = (q or "").strip()[:60]
+    if kind == "area":
+        return {"kind": "area", "results": [{"label": a} for a in drugs.search_areas(q)]}
+
+    if not _index["rows"] and not _index["building"]:
+        # First keystroke of the instance's life starts the build; this request
+        # still answers, from nothing, and the next one will be complete.
+        asyncio.create_task(_build_index_once())
+    if len(q) < 2:
+        return {"kind": "drug", "results": [], "ready": bool(_index["rows"])}
+
+    hits = drugs.search_index(_index["rows"], q)
+    return {
+        "kind": "drug",
+        "ready": bool(_index["rows"]),
+        "results": [
+            {"label": h["brand"], "generic": h.get("generic", ""),
+             "company": h.get("company", ""), "cls": h.get("cls", "")}
+            for h in hits
+        ],
     }
 
 

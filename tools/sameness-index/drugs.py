@@ -247,3 +247,229 @@ def candidate_urls(brand, audience="patient"):
         f"https://www.{slug}.com/patient",
         f"https://www.{slug}.co.uk",
     ]
+
+
+# ---------------------------------------------------------------------------
+# The index behind the type-ahead.
+#
+# Ranking openFDA by how many listings a product has puts Oxygen, Nitrogen and
+# Sodium Chloride at the top, because a commodity has hundreds of pack sizes.
+# The signal for a promoted brand is simpler than a popularity score: a branded
+# product has a brand name that is not merely its generic. Ozempic and
+# Semaglutide differ; Oxygen and Oxygen do not.
+#
+# Built once, cached, and refreshed on a timer — a new brand launch is not an
+# hourly event, and nobody should wait for a network call between keystrokes.
+# ---------------------------------------------------------------------------
+
+INDEX_PAGE = 1000          # openFDA's maximum per request
+INDEX_MAX_PAGES = 40       # ~40k listings, comfortably the whole branded set
+INDEX_TTL_SECONDS = 60 * 60 * 24 * 30
+
+
+def _is_branded(row):
+    """A brand, rather than a commodity sold under its own chemical name."""
+    brand = (row.get("brand_name") or "").strip()
+    generic = (row.get("generic_name") or "").strip()
+    if len(brand) < 3:
+        return False
+    if (row.get("marketing_category") or "").upper() not in BRANDED_CATEGORIES:
+        return False
+    if not (row.get("pharm_class") or []):
+        return False
+    a = re.sub(r"[^a-z]", "", brand.lower())
+    b = re.sub(r"[^a-z]", "", generic.lower())
+    if not a or a == b:
+        return False
+    # "Semaglutide Injection" against generic "Semaglutide" is still the
+    # molecule wearing a coat, not a brand.
+    return not (b and a.startswith(b))
+
+
+async def build_index(http, on_progress=None):
+    """Every branded prescription medicine openFDA knows about.
+
+    Roughly thirty requests, run once. Returns a list ordered by how many
+    listings each brand has, which is a reasonable proxy for how widely it is
+    actually dispensed and therefore how likely somebody is typing it.
+    """
+    found = {}
+    for page in range(INDEX_MAX_PAGES):
+        rows = await _query(http, "ndc", {
+            "search": 'marketing_category:"NDA" OR marketing_category:"BLA"',
+            "limit": INDEX_PAGE,
+            "skip": page * INDEX_PAGE,
+        })
+        if not rows:
+            break
+        for r in rows:
+            if not _is_branded(r):
+                continue
+            name = tidy_brand(_strip_dose_form(r.get("brand_name", "")))
+            if len(name) < 3:
+                continue
+            k = name.lower()
+            if k not in found:
+                cls = next((c for c in (r.get("pharm_class") or []) if c.endswith("[EPC]")), "")
+                found[k] = {
+                    "brand": name,
+                    "generic": tidy_brand((r.get("generic_name") or "").strip()),
+                    "company": (r.get("labeler_name") or "").strip(),
+                    "cls": cls.replace(" [EPC]", ""),
+                    "n": 0,
+                }
+            found[k]["n"] += 1
+        if on_progress:
+            on_progress(len(found), page + 1)
+        if len(rows) < INDEX_PAGE:
+            break
+    out = sorted(found.values(), key=lambda v: -v["n"])
+    return out
+
+
+def score(query, entry):
+    """How well an entry answers what is being typed.
+
+    Prefix first, because that is what somebody typing a name they know is
+    doing. Then the generic, so typing "semaglutide" finds Ozempic. Then a
+    fuzzy pass, so "ozempick" and "trulicty" still land — a person half
+    remembering a brand name is the normal case, not the edge case.
+    """
+    from difflib import SequenceMatcher
+    q = query.strip().lower()
+    if not q:
+        return 0
+    b = entry["brand"].lower()
+    g = (entry.get("generic") or "").lower()
+    # Clean bands, with no length term in them: two prefix matches have to tie
+    # so that the tiebreak below — how widely the drug is dispensed — decides.
+    if b.startswith(q):
+        return 1000
+    if any(w.startswith(q) for w in b.split()):
+        return 900
+    if g.startswith(q):
+        return 700
+    if q in b:
+        return 600
+    if q in g or q in (entry.get("cls") or "").lower():
+        return 400
+    # Somebody who remembers the company but not the brand is still looking for
+    # the brand: "lilly" should offer Trulicity and Mounjaro.
+    c = (entry.get("company") or "").lower()
+    if c.startswith(q) or any(w.startswith(q) for w in c.split()):
+        return 350
+    if len(q) >= 4:
+        r = SequenceMatcher(None, q, b[:len(q) + 3]).ratio()
+        if r >= 0.72:
+            return int(300 * r)
+    return 0
+
+
+def search_index(index, query, limit=8):
+    """Best match first, then the drug more people are actually taking.
+
+    Ranking a tie by name length put Ozobax above Ozempic for "oz", which is
+    not what anybody typing two letters means. Listing count is a rough proxy
+    for how widely a product is dispensed, and a good enough one to break ties.
+    """
+    scored = ((score(query, e), e.get("n", 0), e) for e in index)
+    hits = sorted((s for s in scored if s[0] > 0),
+                  key=lambda s: (-s[0], -s[1], len(s[2]["brand"])))
+    return [e for _s, _n, e in hits[:limit]]
+
+
+# The therapy areas a brand lead would actually name. Pharmacologic class is a
+# controlled vocabulary but it is written for pharmacists — nobody types
+# "Glucagon-Like Peptide-1 Receptor Agonist" into a box. This is the language of
+# the room, and the field fills itself from the drug in most cases anyway.
+THERAPY_AREAS = [
+    "Type 2 diabetes", "Type 1 diabetes", "Obesity and weight management",
+    "Atopic dermatitis", "Plaque psoriasis", "Psoriatic arthritis", "Acne",
+    "Vitiligo", "Alopecia areata", "Hidradenitis suppurativa", "Chronic urticaria",
+    "Rheumatoid arthritis", "Axial spondyloarthritis", "Lupus", "Gout", "Osteoporosis",
+    "Crohn's disease", "Ulcerative colitis", "Coeliac disease", "IBS",
+    "Asthma", "COPD", "Cystic fibrosis", "Idiopathic pulmonary fibrosis",
+    "Multiple sclerosis", "Parkinson's disease", "Alzheimer's disease", "Epilepsy",
+    "Migraine", "Narcolepsy", "ADHD", "Depression", "Schizophrenia", "Bipolar disorder",
+    "Anxiety", "Insomnia",
+    "Breast cancer", "Lung cancer", "Prostate cancer", "Colorectal cancer",
+    "Melanoma", "Multiple myeloma", "Leukaemia", "Lymphoma", "Ovarian cancer",
+    "Bladder cancer", "Renal cell carcinoma", "Pancreatic cancer",
+    "Heart failure", "Hypertension", "Atrial fibrillation", "Hyperlipidaemia",
+    "Pulmonary arterial hypertension", "Chronic kidney disease", "Anaemia",
+    "HIV", "Hepatitis B", "Hepatitis C", "COVID-19", "Influenza", "RSV",
+    "Haemophilia", "Sickle cell disease", "Thalassaemia",
+    "Macular degeneration", "Diabetic macular oedema", "Glaucoma", "Dry eye",
+    "Endometriosis", "Menopause", "Contraception", "Fertility",
+    "Rare disease", "Gene therapy", "Vaccines", "Transplant rejection",
+    "Chronic pain", "Osteoarthritis", "Smoking cessation", "Opioid dependence",
+]
+
+
+# What people type versus what the label calls it. A brand lead says eczema and
+# the register says atopic dermatitis; both should find the same thing.
+AREA_SYNONYMS = {
+    "eczema": "Atopic dermatitis",
+    "psoriasis": "Plaque psoriasis",
+    "ra": "Rheumatoid arthritis",
+    "as": "Axial spondyloarthritis",
+    "ankylosing spondylitis": "Axial spondyloarthritis",
+    "ms": "Multiple sclerosis",
+    "ibd": "Crohn's disease",
+    "inflammatory bowel": "Crohn's disease",
+    "uc": "Ulcerative colitis",
+    "t2d": "Type 2 diabetes",
+    "t1d": "Type 1 diabetes",
+    "diabetes": "Type 2 diabetes",
+    "weight loss": "Obesity and weight management",
+    "obesity": "Obesity and weight management",
+    "hypercholesterolaemia": "Hyperlipidaemia",
+    "cholesterol": "Hyperlipidaemia",
+    "high blood pressure": "Hypertension",
+    "af": "Atrial fibrillation",
+    "ckd": "Chronic kidney disease",
+    "amd": "Macular degeneration",
+    "dme": "Diabetic macular oedema",
+    "dementia": "Alzheimer's disease",
+    "hair loss": "Alopecia areata",
+    "hives": "Chronic urticaria",
+    "pah": "Pulmonary arterial hypertension",
+    "ipf": "Idiopathic pulmonary fibrosis",
+    "spinal muscular atrophy": "Rare disease",
+    "nash": "Rare disease",
+}
+
+
+def search_areas(query, limit=8):
+    from difflib import SequenceMatcher
+    q = query.strip().lower()
+    if not q:
+        return THERAPY_AREAS[:limit]
+    out = []
+    for word, area in AREA_SYNONYMS.items():
+        if word.startswith(q) or q.startswith(word):
+            out.append((1100 - len(area), area))
+    for a in THERAPY_AREAS:
+        low = a.lower()
+        if low.startswith(q):
+            out.append((1000 - len(a), a))
+        elif any(w.startswith(q) for w in low.replace("-", " ").split()):
+            out.append((900 - len(a), a))
+        elif q in low:
+            out.append((700 - len(a), a))
+        elif len(q) >= 4:
+            # Compare word by word as well as whole-string: "diabetis" against
+            # "type 2 diabetes" scores badly as a whole and perfectly against
+            # the word somebody was actually reaching for.
+            best = max([SequenceMatcher(None, q, low).ratio()] +
+                       [SequenceMatcher(None, q, w).ratio()
+                        for w in low.replace("-", " ").replace("'", " ").split() if len(w) > 3])
+            if best >= 0.7:
+                out.append((int(300 * best), a))
+    out.sort(key=lambda x: -x[0])
+    seen, keep = set(), []
+    for _s, a in out:
+        if a not in seen:
+            seen.add(a)
+            keep.append(a)
+    return keep[:limit]
