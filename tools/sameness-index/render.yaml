@@ -13,7 +13,10 @@ services:
   - type: web
     name: rupture-tools
     rootDir: tools/sameness-index
-    runtime: python
+    # Docker, not python: the crawler needs Chromium, and Chromium needs system
+    # libraries a managed runtime will not install. See Dockerfile.
+    # The Dockerfile sits in rootDir, which is where Render looks by default.
+    runtime: docker
     # Standard, not Starter: Starter is 512MB and Chromium needs about a
     # gigabyte to render a page reliably. The free plan is not an option either
     # — it sleeps, which would kill a run in flight.
@@ -23,12 +26,8 @@ services:
     # more concurrency.
     plan: standard
     region: frankfurt      # nearest to the eu-west-2 database
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.4"
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: DATABASE_URL
@@ -38,4 +37,8 @@ services:
       - key: SAMENESS_RUNS_PER_IP
         value: "5"
       - key: SAMENESS_MAX_CONCURRENT
+        value: "2"
+      # Browser pages open at once, across every run on the box. Two runs of
+      # two pages is four Chromium tabs, which 2GB holds; six does not.
+      - key: SAMENESS_BROWSER_PAGES
         value: "2"

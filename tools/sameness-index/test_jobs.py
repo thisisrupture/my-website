@@ -534,6 +534,26 @@ def test_copy_built_in_the_browser_is_still_read():
     assert not any("hero--large" in t for t in got), "class names are not copy"
 
 
+def test_reading_a_page_does_not_destroy_it():
+    """Shipped and dead: visible_text() decomposed the script tags out of the
+    soup, so embedded_prose() called afterwards — which is the order the crawl
+    calls them in — always found nothing. The rescue for a page built in the
+    browser had never once fired in production."""
+    import server as s
+    from bs4 import BeautifulSoup
+    shell = """<html><body><nav>Home</nav>
+    <script id="__NEXT_DATA__" type="application/json">
+    {"props":{"hero":"A once-daily treatment designed around the way people actually live with this."}}
+    </script></body></html>"""
+    soup = BeautifulSoup(shell, "html.parser")
+    s.visible_text(soup)
+    assert any("once-daily" in t for t in s.embedded_prose(soup)), \
+        "reading the page emptied it"
+    assert s.visible_text(soup) == s.visible_text(soup), "twice must give the same answer"
+    # And the words still are not the code.
+    assert "props" not in s.visible_text(BeautifulSoup(shell, "html.parser"))
+
+
 def test_a_long_quote_links_by_its_ends():
     """One long exact string fails on a single changed character. start,end
     finds the opening and closing words and highlights between them."""
@@ -812,3 +832,155 @@ def test_a_therapy_area_that_contradicts_the_drug_is_flagged():
     assert drugs.area_matches("psoriasis", "indicated for moderate-to-severe plaque psoriasis in adults")
     assert drugs.area_matches("diabetes", "indicated to improve glycemic control in diabetic adults")
     assert drugs.short_indication(label) == "insomnia characterized by difficulty with sleep onset"
+
+
+# ---------------------------------------------------------------------------
+# The browser of last resort.
+#
+# Roughly half of the sites that failed in production failed because their copy
+# is assembled in the browser: the fetch succeeds, the parse succeeds, and the
+# brand appears to have nothing to say. These tests fix the rule for when a
+# real browser is worth its gigabyte, and prove the crawl escalates only then.
+# There is no Chromium here — the renderer is stubbed, deliberately, because
+# what is being tested is the decision, not Playwright.
+# ---------------------------------------------------------------------------
+
+SHELL = """<html><body><nav>Home Safety Contact</nav>
+<div id="root"></div><script src="/bundle.js"></script></body></html>"""
+
+# Varied on purpose. visible_text drops a line it has already seen, so twelve
+# identical paragraphs read as one and the page looks thin — which would make
+# this fixture prove the opposite of what it is here to prove.
+FULL = ("<html><body><h1>Living with it, on your terms</h1>"
+        + "".join(
+            f"<p>A once-daily treatment designed around the way people actually "
+            f"live with this condition, rather than the way a clinic imagines "
+            f"they do — point {i} of the argument this brand is making.</p>"
+            for i in range(12))
+        + "</body></html>")
+
+
+class _StubFetcher:
+    """Whatever the crawler asks for, plus a record of what it escalated."""
+
+    def __init__(self, pages, rendered=None):
+        self.pages = pages            # url -> (status, content-type, html)
+        self.rendered = rendered or {}
+        self.renders = []
+
+    async def allowed(self, url):
+        return True
+
+    async def get(self, url, timeout=25):
+        status, ctype, html = self.pages.get(url, (404, "text/html", ""))
+        return server.SimpleResponse(url, status, {"content-type": ctype}, html)
+
+    async def render(self, url, timeout=30):
+        self.renders.append(url)
+        html = self.rendered.get(url)
+        if html is None:
+            return None
+        return server.SimpleResponse(url, 200, {"content-type": "text/html"}, html)
+
+
+def test_the_rule_for_reaching_for_a_browser():
+    """Two cases, and only two: the site would not talk to us, or it talked and
+    said nothing. A 404 is neither — that address is wrong, and rendering it
+    would spend a gigabyte confirming it."""
+    import server as s
+    assert s.needs_browser(403, "text/html", 40000), "bot protection is worth a browser"
+    assert s.needs_browser(429, "text/html", 0)
+    assert s.needs_browser(503, "text/html", 0)
+    assert s.needs_browser(0, "", 0), "a connection that never happened"
+    assert s.needs_browser(200, "text/html; charset=utf-8", 300), "a shell"
+    assert not s.needs_browser(404, "text/html", 0), "a wrong address is not a shy one"
+    assert not s.needs_browser(301, "text/html", 0)
+    assert not s.needs_browser(200, "application/pdf", 0), "a PDF is not a page that failed to render"
+    assert not s.needs_browser(200, "text/html", 40000), "a page that read fine"
+
+
+@pytest.mark.anyio
+async def test_a_page_built_in_the_browser_is_read_in_one():
+    """The failure this whole piece of work exists for: a valid, well-formed,
+    entirely empty document that scores as a brand with nothing to say."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (200, "text/html", SHELL)},
+                     rendered={"https://brand.test/": FULL})
+    corpus, _images, pages, why, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert f.renders == ["https://brand.test/"]
+    assert notes["rendered"] == 1
+    assert "once-daily treatment" in corpus
+    assert pages == 1 and why == ""
+
+
+@pytest.mark.anyio
+async def test_a_page_that_reads_fine_never_costs_a_render():
+    """The browser is the exception. If most pages reached it the service would
+    not fit on the box, and the run would take ten minutes rather than three."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (200, "text/html", FULL)})
+    corpus, _i, _p, _w, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert f.renders == [], "a readable page was escalated anyway"
+    assert notes["rendered"] == 0
+    assert "once-daily treatment" in corpus
+
+
+@pytest.mark.anyio
+async def test_the_page_data_is_looked_in_before_the_browser_is_started():
+    """A shell whose copy is sitting in a JSON blob is already readable. It was
+    readable before Chromium existed here, and it must stay free."""
+    import server as s
+    # Several keys, not one long one: a harvested string has to be sentence
+    # length to count as copy rather than as a serialised blob.
+    blob = json.dumps({"props": {f"block{i}": (
+        "A once-daily treatment designed around the way people actually live "
+        f"with this condition, rather than the way a clinic imagines they do, "
+        f"as this brand puts it in section {i}.") for i in range(8)}})
+    shell = ("<html><body><nav>Home</nav>"
+             '<script id="__NEXT_DATA__" type="application/json">' + blob +
+             "</script></body></html>")
+    f = _StubFetcher({"https://brand.test/": (200, "text/html", shell)},
+                     rendered={"https://brand.test/": FULL})
+    corpus, _i, _p, _w, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert f.renders == [], "the page data was already enough"
+    assert notes["json_pages"] == 1 and notes["rendered"] == 0
+    assert "once-daily treatment" in corpus
+
+
+@pytest.mark.anyio
+async def test_a_door_closed_on_the_client_is_tried_once_with_a_browser():
+    """Bot protection answers 403 to a client it does not like. That is a fact
+    about the client, not about the page."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (403, "text/html", "Access denied")},
+                     rendered={"https://brand.test/": FULL})
+    corpus, _i, pages, why, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert f.renders == ["https://brand.test/"] and notes["rendered"] == 1
+    assert "once-daily treatment" in corpus and pages == 1 and why == ""
+
+
+@pytest.mark.anyio
+async def test_the_browser_failing_is_not_the_run_failing():
+    """No Chromium, a crashed browser, a page that hangs — all of them come
+    back as None, and the crawl keeps whatever plain HTTP gave it. A tool that
+    will not run without a browser is worse than one that reads a site badly."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (200, "text/html", SHELL)})   # render returns None
+    corpus, _i, pages, why, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert f.renders == ["https://brand.test/"] and notes["rendered"] == 0
+    assert pages == 1 and why == "", "the page still counted, thin as it is"
+    assert notes["thin_pages"] == 1
+
+
+@pytest.mark.anyio
+async def test_a_gate_in_front_of_a_rendered_site_is_still_walked_through():
+    """Gate first, browser second. The two fixes have to compose: the common
+    arrangement is an HCP gate in front of a site that renders in the browser,
+    and handling either one alone still reads nothing."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (200, "text/html", GATE_HTML),
+                      "https://brand.test/hcp/home": (200, "text/html", SHELL)},
+                     rendered={"https://brand.test/hcp/home": FULL})
+    corpus, _i, _p, _w, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert notes["gates"] == 1 and notes["rendered"] == 1
+    assert "once-daily treatment" in corpus

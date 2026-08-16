@@ -39,7 +39,9 @@ step), `test_jobs.py`, `migrations/`, `generate_worked_example.py` +
 **Done and pushed:** the two-act report; the landing page rebuilt on the site's
 design system; the convergence score; imagery as a second inventory of
 territories; gate-busting crawl; image discovery; honest highlight links;
-openFDA finder with a brand directory; type-ahead on brand and therapy area.
+openFDA finder with a brand directory; type-ahead on brand and therapy area;
+**a real browser for the sites that need one** (`browser.py`, the `Dockerfile`,
+and the escalation rule `needs_browser()` in `server.py`).
 
 **Outstanding for the user, not the assistant:**
 - Run `migrations/0002_brand_sites.sql` in Supabase (SQL Editor, paste, run).
@@ -50,19 +52,13 @@ openFDA finder with a brand directory; type-ahead on brand and therapy area.
 
 **Agreed and not started — this is the next piece of work:**
 
-1. **Playwright + Chromium.** The crawler is still HTTP-only, so a
-   JavaScript-rendered site comes back as a shell. This is the root cause of
-   roughly 45% of sites failing. Agreed design: install Chromium via a
-   Dockerfile, **one shared browser with a pool of pages** (not one browser per
-   run — 2GB will not hold that), escalated to only when a plain fetch returns
-   thin or blocked, so most pages still cost nothing extra.
-2. **Screenshots as evidence.** While the page is open, capture the quoted
+1. **Screenshots as evidence.** While the page is open, capture the quoted
    sentence highlighted in place and the hero imagery. This kills three problems
    at once: no URL-hunting for lazy-loaded images, no text fragment that
    silently fails, no gate destroying the link. The report then *shows* the
    claim on a competitor's own site on a given date rather than linking to it.
    The user is keen on this specifically.
-3. **A global daily run cap.** Offered and not yet built. `SAMENESS_RUNS_PER_IP`
+2. **A global daily run cap.** Offered and not yet built. `SAMENESS_RUNS_PER_IP`
    is bypassable and there is no global ceiling, so the Anthropic bill is
    currently unbounded. Render has **no spend limit feature** (confirmed with
    their staff), so the protection has to be in the app plus a cap in the
@@ -95,6 +91,15 @@ sales email*.
   discarded.
 
 ## Traps that have already cost time
+
+- **`visible_text()` used to eat the page.** It decomposed the script tags out
+  of the soup it was handed, so any caller that asked `embedded_prose()`
+  afterwards — which is exactly the order the crawl asks in — got nothing.
+  The rescue for a page whose copy sits in a JSON blob had never once fired in
+  production; `json_pages` could only ever be zero. Fixed by making the read
+  non-destructive. The general lesson: a function named for reading must not
+  modify what it reads, and a counter that is always zero is a bug, not a
+  quiet category.
 
 - **This sandbox has no raw outbound network.** `curl` fails; `WebFetch` works
   through a proxy. You cannot run the crawler against real pharma sites. Build
@@ -148,6 +153,24 @@ Qualifiers live behind a click; the headline leads with the sameness and the
 opportunity comes second.
 
 ---
+
+## The browser, in one paragraph
+
+`browser.py` holds one shared Chromium, started on the first page that needs it
+and never at import. Pages come from a bounded pool (`SAMENESS_BROWSER_PAGES`,
+two) so the box is never holding more tabs than 2GB allows, and each render
+gets its own context so one site's consent state never leaks into the next.
+A page reaches it only when `needs_browser()` says so: the site would not talk
+to us (403, 429, 5xx, no connection at all) or it talked and said nothing
+(under `SAMENESS_BROWSER_THIN` readable characters, counted *after* the page
+data has been looked in, so a JSON-blob site stays free). Everything fails
+soft — no Chromium, a crash, a hung page all come back as `None` and the crawl
+keeps whatever plain HTTP gave it. `SAMENESS_BROWSER=off` turns it off
+entirely. `/api/health` reports whether it is there and why not.
+
+**Not yet tested against a real site.** The sandbox has no outbound network, so
+this is proved against fixtures and seven tests, and the first live run is the
+test.
 
 **Start by** reading `server.py`'s module docstring and `index.html`'s structure,
 then say what you understand the state to be before changing anything.

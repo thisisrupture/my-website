@@ -39,10 +39,11 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 from anthropic import AsyncAnthropic
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 
+import browser
 import drugs
 from store import Store
 
@@ -91,6 +92,7 @@ async def lifespan(_app):
     # thirty openFDA pages are fetched, not after.
     asyncio.create_task(_build_index_once())
     yield
+    await browser.renderer.close()
     await store.stop()
 
 
@@ -340,6 +342,35 @@ except Exception:
 IMPERSONATE = os.environ.get("SAMENESS_IMPERSONATE", "chrome")
 
 
+# Below this many readable characters, a page has not been read — whatever the
+# response said. A brand page that renders in the browser returns a valid,
+# well-formed, entirely empty document.
+BROWSER_THIN = int(os.environ.get("SAMENESS_BROWSER_THIN", "1200"))
+
+# Statuses that mean "not today" rather than "not here". Bot protection answers
+# 403 to a client it does not like and 429 to one it has seen too often; a
+# front door under load answers 5xx. All of them are worth one attempt with a
+# real browser. A 404 is not — that address is simply wrong, and rendering it
+# would spend a gigabyte confirming it.
+BLOCKED_STATUSES = {0, 401, 403, 405, 406, 409, 429, 500, 502, 503, 520, 521, 522, 526}
+
+
+def needs_browser(status, content_type, readable_chars):
+    """Whether a plain HTTP read is worth escalating to a real browser.
+
+    Kept apart from the crawling so the rule can be read, argued with and
+    tested on its own. Two cases only: the site would not talk to us, or it
+    talked and said nothing.
+    """
+    if status in BLOCKED_STATUSES:
+        return True
+    if status != 200:
+        return False
+    if "text/html" not in (content_type or "").lower():
+        return False          # a PDF is not a page that failed to render
+    return readable_chars < BROWSER_THIN
+
+
 class Fetcher:
     """One interface over two clients, with robots.txt consulted once per host.
 
@@ -372,6 +403,19 @@ class Fetcher:
                 pass  # fall through to httpx rather than fail the page
         r = await self.http.get(url, headers=BROWSER_HEADERS, follow_redirects=True, timeout=timeout)
         return SimpleResponse(str(r.url), r.status_code, r.headers, r.text)
+
+    async def render(self, url, timeout=30):
+        """The page as a browser sees it, or None.
+
+        Escalation, not the default — see browser.py for when it is reached and
+        why there is only one browser. Permission has already been asked by the
+        time anything gets here; this is only about capability.
+        """
+        page = await browser.renderer.render(url, timeout=timeout, user_agent=UA)
+        if page is None or not page.html:
+            return None
+        return SimpleResponse(page.url or url, page.status,
+                              {"content-type": "text/html; charset=utf-8"}, page.html)
 
     async def allowed(self, url):
         """What robots.txt says. A site with no robots.txt, or one we cannot
@@ -553,10 +597,29 @@ def embedded_prose(soup):
     return keep[:400]
 
 
+# Tags whose text is not text: code, styling, and the alternative content
+# nobody sees. Read as words they produce a page that appears to be about
+# "function", "var" and "px".
+HIDDEN_TAGS = {"script", "style", "noscript", "iframe", "svg"}
+
+
+def _hidden(node):
+    return any(p.name in HIDDEN_TAGS for p in node.parents)
+
+
 def visible_text(soup):
-    for t in soup(["script", "style", "noscript", "iframe", "svg"]):
-        t.decompose()
-    text = soup.get_text(separator="\n")
+    """The words a reader sees.
+
+    Non-destructive, and that is the whole point of the rewrite. It used to
+    decompose the script tags out of the soup it was handed, which meant every
+    caller that asked embedded_prose() afterwards got nothing back — the JSON
+    the copy was sitting in had already been deleted. The crawl asks in exactly
+    that order, so the one rescue for a page built in the browser had been
+    silently dead since it was written: `json_pages` could never be anything
+    but zero. Read a page twice and you get the same answer now.
+    """
+    text = "\n".join(t for t in soup.find_all(string=True)
+                     if type(t) is NavigableString and not _hidden(t))
     lines = [re.sub(r"\s+", " ", ln).strip() for ln in text.splitlines()]
     seen, out = set(), []
     for ln in lines:
@@ -719,18 +782,48 @@ async def crawl_brand(fetcher, brand):
         start = "https://" + start
     root = urlparse(start).netloc.replace("www.", "")
     queue, seen, texts, images = [start], set(), [], []
-    notes = {"gates": 0, "json_pages": 0, "thin_pages": 0}
+    notes = {"gates": 0, "json_pages": 0, "thin_pages": 0, "rendered": 0}
+
+    async def load(url):
+        """One address, read as well as it can be read.
+
+        Plain HTTP first, always. A real browser only if that came back blocked
+        or came back empty — and only after the page data has been looked in,
+        because a shell whose copy is sitting in a JSON blob is already
+        readable and does not need a gigabyte spent on it.
+
+        Returns (soup, landed) or (None, None).
+        """
+        try:
+            r = await fetcher.get(url)
+        except Exception:
+            r = None
+        soup, landed, ctype, readable = None, url, "", 0
+        if r is not None:
+            ctype = r.headers.get("content-type", "")
+            if r.status_code == 200 and "text/html" in ctype:
+                soup = BeautifulSoup(r.text, "html.parser")
+                landed = str(getattr(r, "url", url)) or url
+                readable = len(visible_text(soup))
+                if readable < BROWSER_THIN:
+                    readable += sum(len(t) for t in embedded_prose(soup))
+
+        if needs_browser(r.status_code if r is not None else 0, ctype, readable):
+            rendered = await fetcher.render(url)
+            if rendered is not None:
+                notes["rendered"] += 1
+                soup = BeautifulSoup(rendered.text, "html.parser")
+                landed = str(getattr(rendered, "url", url)) or landed
+        return soup, landed
 
     async def read(url):
         """One page, past whatever is in front of it. Returns (soup, landed) or
         (None, None)."""
         if not await fetcher.allowed(url):
             return None, None, "robots"
-        r = await fetcher.get(url)
-        if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
+        soup, landed = await load(url)
+        if soup is None:
             return None, None, "not-html"
-        soup = BeautifulSoup(r.text, "html.parser")
-        landed = str(getattr(r, "url", url)) or url
 
         # A gate is not a page. Walk through it — once — and take what is
         # behind it instead. Two hops covers region-then-audience, which is the
@@ -746,11 +839,10 @@ async def crawl_brand(fetcher, brand):
             seen.add(nxt)
             if not await fetcher.allowed(nxt):
                 break
-            r2 = await fetcher.get(nxt)
-            if r2.status_code != 200 or "text/html" not in r2.headers.get("content-type", ""):
+            soup2, landed2 = await load(nxt)
+            if soup2 is None:
                 break
-            soup = BeautifulSoup(r2.text, "html.parser")
-            landed = str(getattr(r2, "url", nxt)) or nxt
+            soup, landed = soup2, landed2
         return soup, landed, ""
 
     while queue and len(texts) < MAX_PAGES_PER_BRAND and len(seen) < MAX_PAGES_PER_BRAND * 3:
@@ -1671,6 +1763,8 @@ async def pipeline(brands_in, category_given=""):
                 extra.append(f"{notes['gates']} gate{'s' if notes['gates'] != 1 else ''} stepped through")
             if notes.get("json_pages"):
                 extra.append(f"{notes['json_pages']} page{'s' if notes['json_pages'] != 1 else ''} whose copy is built in the browser, read from the page data")
+            if notes.get("rendered"):
+                extra.append(f"{notes['rendered']} page{'s' if notes['rendered'] != 1 else ''} opened in a browser, because there was nothing to read without one")
             yield ev({"type": "progress", "text": (
                 f"{b['name']}: {n_pages} page{'s' if n_pages != 1 else ''} read"
                 + (" — " + ", ".join(extra) if extra else "")
@@ -2662,7 +2756,8 @@ async def suggest(q: str = "", kind: str = "drug"):
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "persistent": store.persistent, "running": len(_running)}
+    return {"ok": True, "persistent": store.persistent, "running": len(_running),
+            "browser": browser.renderer.status()}
 
 
 # ---------------------------------------------------------------------------

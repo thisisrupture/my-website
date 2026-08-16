@@ -112,9 +112,13 @@ not go in the repository, in Slack, or in a document.
    - Root directory `tools/sameness-index` — **this one matters most.** If it
      is blank, Render will try to build the Astro site as if it were Python and
      fail.
-   - Build command `pip install -r requirements.txt`
-   - Start command `uvicorn server:app --host 0.0.0.0 --port $PORT`
-   - Instance type **Starter**, about $7/month
+   - Runtime **Docker**, building from `Dockerfile`. There is no build or
+     start command to check any more — the image says what to install and what
+     to run. This is because the crawler needs Chromium for the sites that
+     build their copy in the browser, and Chromium needs system libraries a
+     managed Python runtime will not install.
+   - Instance type **Standard**, about $25/month. Not Starter: Starter is
+     512MB and Chromium wants the better part of a gigabyte.
 4. Under **Environment**, add two variables:
    - `ANTHROPIC_API_KEY` — your key from console.anthropic.com
    - `DATABASE_URL` — the string from step 2
@@ -135,6 +139,11 @@ Render gives you an address like `rupture-tools.onrender.com`. Open it.
    `{"ok":true,"persistent":true,...}`. **If `persistent` says `false`, stop** —
    it means `DATABASE_URL` is wrong or missing, and every permalink will break
    the next time the service restarts.
+   The same answer carries a `browser` object. `"enabled":true` means Chromium
+   is in the image. If it says `false`, read `why`: the tool still runs, but it
+   is back to reading only the sites that serve their words in the HTML, which
+   is roughly half of them. `running` stays `false` until the first page that
+   actually needs a browser — it is started on demand, not at boot.
 3. Open `rupture-tools.onrender.com/server.py`. You want **404 Not Found**. If
    it shows you code, stop and tell me — that would be the method published.
 4. Run the index against two brands you know are readable. Watch for the
@@ -166,7 +175,7 @@ about who ran it.
 
 | | |
 |---|---|
-| Render Starter | about $7/month |
+| Render Standard | about $25/month |
 | Supabase | £10/month |
 | Anthropic | per run — about a dozen model calls plus the crawling |
 
@@ -182,9 +191,14 @@ Still works, and still needs no database:
 ```bash
 cd ~/Library/CloudStorage/GoogleDrive-kristian@thisisrupture.com/My\ Drive/Rupture/Rupture\ Assets/my-website/tools/sameness-index
 pip install -r requirements.txt
+playwright install chromium          # once, about 150MB
 export ANTHROPIC_API_KEY=sk-ant-...
 uvicorn server:app --reload
 ```
+
+Skip the `playwright install` line and everything still works, minus the
+browser — the crawl falls back to plain HTTP and says so in the narration. To
+turn the browser off deliberately, `export SAMENESS_BROWSER=off`.
 
 Then open http://127.0.0.1:8000. Without `DATABASE_URL` the runs live in
 memory, so permalinks work until you stop the server.
