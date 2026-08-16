@@ -839,6 +839,7 @@
                will sometimes get wrong. -->
           <div id="found" hidden>
             <div class="group-label mono-label">The set to analyse</div>
+            <p class="notice" id="found-warn" hidden></p>
             <p class="guidance" style="margin-top:0" id="found-intro"></p>
             <div id="found-list"></div>
             <a class="mode-link" id="found-again" href="#">Start again from a different brand</a>
@@ -1346,7 +1347,16 @@ $("#find-btn").addEventListener("click", async () => {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ brand, category: therapy, audience: AUDIENCE }),
     });
-    const body = await r.json();
+    // A server that fails hard returns an HTML error page; parsing that as
+    // JSON produces "Unexpected token" and tells nobody anything.
+    let body;
+    const raw = await r.text();
+    try { body = JSON.parse(raw); }
+    catch {
+      throw new Error(r.status >= 500
+        ? `The lookup failed on the server (${r.status}). It has been logged — try again in a moment.`
+        : "The lookup returned something unreadable.");
+    }
     if (!r.ok) throw new Error(body.error || "Lookup failed.");
     FOUND = body;
     if (body.category) $("#f-category").value = body.category;
@@ -1378,6 +1388,13 @@ function renderFound(data) {
   const directory = data.known
     ? ` ${data.known} of these addresses ${data.known === 1 ? "was" : "were"} already known, so ${data.known === 1 ? "it" : "they"} did not need finding again.`
     : "";
+
+  // A therapy area that contradicts the drug is a category error, not a typo:
+  // every territory is built for the area, so the whole report would be about
+  // the wrong conversation.
+  const warn = $("#found-warn");
+  if (data.mismatch) { warn.hidden = false; warn.textContent = data.mismatch; }
+  else { warn.hidden = true; }
 
   $("#found-intro").textContent =
     `${data.brands.length} brands in ${data.category || "this category"}. ${provenance}${directory} ` +

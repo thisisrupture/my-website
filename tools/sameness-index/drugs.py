@@ -473,3 +473,35 @@ def search_areas(query, limit=8):
             seen.add(a)
             keep.append(a)
     return keep[:limit]
+
+
+def short_indication(text):
+    """The disease out of a paragraph of indications-and-usage."""
+    t = re.sub(r"^.*?indicated\s+(?:for(?:\s+the)?(?:\s+treatment\s+of)?|to|in)\s+", "", text, flags=re.I)
+    t = re.split(r"[.;]", t)[0]
+    return re.sub(r"\s+", " ", t).strip()[:110] or text[:110]
+
+
+def area_matches(typed, label_text, prof=None):
+    """Does the therapy area somebody typed have anything to do with the drug?
+
+    Deliberately generous — it only has to find one meaningful word in common,
+    because a label says "moderate-to-severe plaque psoriasis" where a brand
+    lead types "psoriasis". It is looking for a category error, not a
+    difference of phrasing.
+    """
+    stop = {"the", "and", "for", "with", "adults", "adult", "patients", "patient",
+            "treatment", "moderate", "severe", "chronic", "acute", "years", "age",
+            "older", "type", "disease", "care", "use", "who", "have", "been"}
+    words = {w for w in re.findall(r"[a-z]{4,}", typed.lower()) if w not in stop}
+    if not words:
+        return True
+    hay = (label_text or "").lower()
+    if prof:
+        hay += " " + " ".join(prof.get("classes") or []).lower() + " " + (prof.get("generic") or "").lower()
+    for w in words:
+        # A stem match, so "psoriasis" finds "psoriatic" and "diabetes" finds
+        # "diabetic".
+        if w[:6] in hay:
+            return True
+    return False

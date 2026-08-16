@@ -243,13 +243,18 @@ class Store:
         if self.pool is None:
             async with self._lock:
                 return {k: dict(v) for k, v in self._mem_brands.items() if k in keys}
-        async with self.pool.acquire() as c:
-            rows = await c.fetch(
-                """select brand, display_name, generic_name, company, pharm_class,
-                          patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by
-                     from brand_sites where brand = any($1::text[])""",
-                keys,
-            )
+        try:
+            async with self.pool.acquire() as c:
+                rows = await c.fetch(
+                    """select brand, display_name, generic_name, company, pharm_class,
+                              patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by
+                         from brand_sites where brand = any($1::text[])""",
+                    keys,
+                )
+        except Exception:
+            # Most likely the migration has not been run. The directory only
+            # ever saves work, so its absence costs time and nothing else.
+            return {}
         return {r["brand"]: dict(r) for r in rows}
 
     async def remember_brand(self, brand, *, display_name=None, generic_name=None,
@@ -287,28 +292,31 @@ class Store:
                 merged.update({k: v for k, v in record.items() if v is not None})
                 self._mem_brands[key] = merged
             return
-        async with self.pool.acquire() as c:
-            await c.execute(
-                """insert into brand_sites
+        try:
+            async with self.pool.acquire() as c:
+                await c.execute(
+                    """insert into brand_sites
                      (brand, display_name, generic_name, company, pharm_class,
                       patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by, checked_at)
-                   values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
-                   on conflict (brand) do update set
-                     display_name = coalesce(excluded.display_name, brand_sites.display_name),
-                     generic_name = coalesce(excluded.generic_name, brand_sites.generic_name),
-                     company      = coalesce(excluded.company,      brand_sites.company),
-                     pharm_class  = coalesce(excluded.pharm_class,  brand_sites.pharm_class),
-                     patient_url  = coalesce(excluded.patient_url,  brand_sites.patient_url),
-                     hcp_url      = coalesce(excluded.hcp_url,      brand_sites.hcp_url),
-                     patient_ok   = coalesce(excluded.patient_ok,   brand_sites.patient_ok),
-                     hcp_ok       = coalesce(excluded.hcp_ok,       brand_sites.hcp_ok),
-                     confirmed_by = excluded.confirmed_by,
-                     checked_at   = now(),
-                     updated_at   = now()
-                   where brand_sites.confirmed_by <> 'human' or excluded.confirmed_by = 'human'""",
-                key, record["display_name"], generic_name, company, pharm_class,
-                patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by,
-            )
+                       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
+                       on conflict (brand) do update set
+                         display_name = coalesce(excluded.display_name, brand_sites.display_name),
+                         generic_name = coalesce(excluded.generic_name, brand_sites.generic_name),
+                         company      = coalesce(excluded.company,      brand_sites.company),
+                         pharm_class  = coalesce(excluded.pharm_class,  brand_sites.pharm_class),
+                         patient_url  = coalesce(excluded.patient_url,  brand_sites.patient_url),
+                         hcp_url      = coalesce(excluded.hcp_url,      brand_sites.hcp_url),
+                         patient_ok   = coalesce(excluded.patient_ok,   brand_sites.patient_ok),
+                         hcp_ok       = coalesce(excluded.hcp_ok,       brand_sites.hcp_ok),
+                         confirmed_by = excluded.confirmed_by,
+                         checked_at   = now(),
+                         updated_at   = now()
+                       where brand_sites.confirmed_by <> 'human' or excluded.confirmed_by = 'human'""",
+                    key, record["display_name"], generic_name, company, pharm_class,
+                    patient_url, hcp_url, patient_ok, hcp_ok, confirmed_by,
+                )
+        except Exception:
+            return          # remembering is a nicety; never fail a lookup for it
 
     async def runs_since(self, client_ip, seconds):
         """How many runs this address has started recently. The cost control:

@@ -793,3 +793,22 @@ def test_therapy_areas_answer_the_words_people_use():
     assert "Type 2 diabetes" in drugs.search_areas("diabetis"), "a typo must still land"
     assert drugs.search_areas("migrane")[0] == "Migraine"
     assert drugs.search_areas("") , "an empty box offers something to pick"
+
+
+def test_a_therapy_area_that_contradicts_the_drug_is_flagged():
+    """Observed in production: Rozerem, an insomnia drug, entered with a therapy
+    area of "Acne". Every territory is built for the therapy area, so the whole
+    report would have been about a conversation nobody is having."""
+    import drugs
+    label = ("ROZEREM is indicated for the treatment of insomnia characterized by "
+             "difficulty with sleep onset.")
+    prof = {"classes": ["Melatonin Receptor Agonist [EPC]"], "generic": "ramelteon"}
+    assert not drugs.area_matches("Acne", label, prof)
+    assert drugs.area_matches("insomnia", label, prof)
+    assert drugs.area_matches("sleep", label, prof)
+    assert drugs.area_matches("", label, prof), "a blank area is not a contradiction"
+    # Generous on purpose: a label says "moderate-to-severe plaque psoriasis"
+    # where a brand lead types "psoriasis".
+    assert drugs.area_matches("psoriasis", "indicated for moderate-to-severe plaque psoriasis in adults")
+    assert drugs.area_matches("diabetes", "indicated to improve glycemic control in diabetic adults")
+    assert drugs.short_indication(label) == "insomnia characterized by difficulty with sleep onset"

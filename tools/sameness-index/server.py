@@ -96,6 +96,23 @@ async def lifespan(_app):
 
 app = FastAPI(lifespan=lifespan)
 
+
+@app.exception_handler(Exception)
+async def any_error(_request, exc):
+    """Whatever breaks, the client gets JSON.
+
+    Starlette's default is an HTML error page. The front end asks for JSON,
+    tries to parse the HTML, and reports "Unexpected token 'I'" — which tells
+    the person nothing and tells us nothing either. This says what happened.
+    """
+    import traceback
+    traceback.print_exc()          # the detail goes to the Render log
+    return JSONResponse(
+        {"error": f"Something failed on our side: {type(exc).__name__}. "
+                  "It has been logged. Try again, or get in touch if it keeps happening."},
+        status_code=500,
+    )
+
 _client = None
 
 
@@ -2480,9 +2497,24 @@ async def find_sites(request: Request):
                        "candidates": (b.get("candidates") or [])[:4]}
                       for b in (proposed.get("brands") or []) if b.get("name")][:7]
             category = (proposed.get("category") or hint or "").strip()[:160]
+            mismatch = ""
         else:
-            category = hint or await drugs.category_of(http, prof) or (
+            label_says = await drugs.category_of(http, prof)
+            category = hint or label_says or (
                 f"{prof['generic']} and its class" if prof.get("generic") else "")
+            # The therapy area frames the entire analysis — every territory is
+            # built for it. Somebody who types an area that has nothing to do
+            # with the drug they picked gets a report about a conversation
+            # nobody is having, and would rather be told now.
+            if hint and label_says and not drugs.area_matches(hint, label_says, prof):
+                mismatch = (
+                    f"{prof['brand']} is labelled for "
+                    f"{drugs.short_indication(label_says)}, which does not look like "
+                    f"\u201c{hint}\u201d. Every territory is built for the therapy area, "
+                    "so check it before running \u2014 or clear it and the label decides."
+                )
+            else:
+                mismatch = ""
             shortlist = peers
             if len(peers) > 5:
                 # Narrowing a real list, not building one: anything the model
@@ -2502,8 +2534,12 @@ async def find_sites(request: Request):
             wanted += [{"name": p["brand"], "company": p.get("company", ""), "candidates": []}
                        for p in shortlist[:6]]
 
-        # The directory answers for anything already seen.
-        known = await store.brand_sites([w["name"] for w in wanted])
+        # The directory answers for anything already seen. It only ever saves
+        # work, so if it is unavailable the lookup carries on without it.
+        try:
+            known = await store.brand_sites([w["name"] for w in wanted])
+        except Exception:
+            known = {}
         sem = asyncio.Semaphore(8)
         fetcher = Fetcher(http)
         try:
@@ -2563,6 +2599,7 @@ async def find_sites(request: Request):
         "source": source,
         "generic": (prof or {}).get("generic", ""),
         "pharm_class": ((prof or {}).get("classes") or [""])[0],
+        "mismatch": mismatch,
         "known": sum(1 for _w, _r, d in resolved if d),
         "learned": learned,
         "brands": out,
