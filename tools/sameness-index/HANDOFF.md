@@ -41,7 +41,9 @@ design system; the convergence score; imagery as a second inventory of
 territories; gate-busting crawl; image discovery; honest highlight links;
 openFDA finder with a brand directory; type-ahead on brand and therapy area;
 **a real browser for the sites that need one** (`browser.py`, the `Dockerfile`,
-and the escalation rule `needs_browser()` in `server.py`).
+and the escalation rule `needs_browser()` in `server.py`); **a therapy area
+field driven by the brand** (`drugs.areas_for()`, `GET /api/areas`, and the
+`preferred` hook in the type-ahead).
 
 **Outstanding for the user, not the assistant:**
 - Run `migrations/0002_brand_sites.sql` in Supabase (SQL Editor, paste, run).
@@ -122,6 +124,19 @@ sales email*.
 - **A text fragment must be an exact substring of the rendered page.** The fix
   is not to refuse to highlight — it is to build the fragment from the *page's
   own wording* found by fuzzy match, never from the model's paraphrase.
+- **The therapy area box used to suggest the wrong thing to everyone.** Two
+  causes, both worth remembering. It opened on `THERAPY_AREAS[:8]` in the order
+  the list happens to be written, so whatever the brand, the first offer was
+  type 2 diabetes. And one character prefix-matched the two-letter synonyms —
+  "a" hit "as" and put axial spondyloarthritis at the top. Now: a chosen brand
+  is asked about once (`GET /api/areas`, cached per brand), its label's areas
+  are what the dropdown offers, and a single unambiguous match fills the field.
+  Anything less is offered, never filled — every territory in the report is
+  built for whatever that field says, so a wrong value is worse than an empty
+  one. A user who has already typed is never overwritten (`dataset.touched`).
+- **A label's own sentence does not belong on screen.** "as an adjunct to diet
+  and exercise to improve glycemic control in adults with" — no clipping of it
+  reads like English. Show what it points at, not what it says.
 - **Panels share edges.** A global `section { margin: 76px 0 }` opens gaps
   between report panels; both screens override it.
 - **`.git/index.lock`** gets left behind by assistant git calls through the

@@ -1209,15 +1209,16 @@ $("#add-competitor").addEventListener("click", () => { $("#competitors").appendC
    its own label, so the second field is a correction rather than a question.
    Matching is done on the server against the FDA's register of marketed
    products, so a half-remembered name — "ozempick", "trulicty" — still lands. */
-function attachCombo(input, list, kind, onPick) {
-  let items = [], active = -1, timer = null, seq = 0;
+function attachCombo(input, list, kind, onPick, preferred) {
+  let items = [], active = -1, timer = null, seq = 0, note = "";
 
   const close = () => {
     list.hidden = true; input.setAttribute("aria-expanded", "false"); active = -1;
   };
   const draw = () => {
     if (!items.length) return close();
-    list.innerHTML = items.map((it, i) => `
+    list.innerHTML = (note ? `<div class="combo-note">${esc(note)}</div>` : "")
+      + items.map((it, i) => `
       <div class="combo-opt" role="option" id="${list.id}-${i}" aria-selected="${i === active}">
         <div class="co-name">${esc(it.label)}</div>
         ${it.generic || it.company
@@ -1240,12 +1241,22 @@ function attachCombo(input, list, kind, onPick) {
     timer = setTimeout(async () => {
       const q = input.value.trim();
       if (kind === "drug" && q.length < 2) return close();
+      // Nothing typed, and something better than a list in alphabetical order
+      // to offer: the areas the chosen brand's own label points at.
+      if (!q && preferred) {
+        const pref = preferred();
+        if (pref && pref.items && pref.items.length) {
+          seq++; items = pref.items; note = pref.note || ""; active = -1;
+          return draw();
+        }
+      }
       const mine = ++seq;
       try {
         const r = await fetch(`/api/suggest?kind=${kind}&q=${encodeURIComponent(q)}`);
         const body = await r.json();
         if (mine !== seq) return;        // a slower earlier request must not win
         items = body.results || [];
+        note = body.note || "";
         active = -1;
         draw();
       } catch { close(); }
@@ -1274,19 +1285,55 @@ function attachCombo(input, list, kind, onPick) {
   });
 }
 
-attachCombo($("#f-brand"), $("#f-brand-list"), "drug", it => {
+/* The therapy areas the chosen brand's label points at. Held here so the
+   second field can offer them the moment it is focused, rather than opening on
+   a hand-written list whose first entry was type 2 diabetes whatever the brand
+   was. Empty until a brand is chosen, and empty again if it is changed. */
+let BRAND_AREAS = [], BRAND_AREAS_FOR = "";
+
+attachCombo($("#f-brand"), $("#f-brand-list"), "drug", async it => {
   // Deliberately not filled with the pharmacologic class. "Glucagon-Like
   // Peptide-1 Receptor Agonist" is what the register calls it and not what
-  // anybody would write in this box. Left empty, the finder takes the therapy
-  // area off the brand's own label — so the field is offered, not demanded.
+  // anybody would write in this box.
   const area = $("#f-category");
+  BRAND_AREAS = []; BRAND_AREAS_FOR = it.label;
+  if (!area.dataset.touched) area.value = "";
   $("#f-picked").textContent = it.generic
     ? `${it.label} — ${it.generic}${it.company ? ", " + it.company : ""}`
     : it.label;
   $("#f-picked").hidden = false;
   area.focus();
+
+  let body = {};
+  try {
+    const r = await fetch(`/api/areas?brand=${encodeURIComponent(it.label)}`);
+    body = await r.json();
+  } catch { return; }
+  if (BRAND_AREAS_FOR !== it.label) return;      // brand changed while we asked
+  // The raw indication is not put on screen. A label's own sentence is written
+  // for a regulator — "as an adjunct to diet and exercise to improve glycemic
+  // control in adults with" — and no clipping of it reads like English. What
+  // helps is the list it points at, which is what the dropdown now offers.
+  BRAND_AREAS = body.areas || [];
+  // One unambiguous answer is worth filling in; anything less is worth
+  // offering. A field filled with the wrong disease is worse than an empty one,
+  // because every territory in the report is built for whatever it says.
+  const sure = BRAND_AREAS.filter(a => a.sure);
+  if (sure.length === 1 && !area.value.trim() && !area.dataset.touched) {
+    area.value = sure[0].label;
+  } else if (BRAND_AREAS.length && document.activeElement === area) {
+    area.dispatchEvent(new Event("focus"));
+  }
 });
-attachCombo($("#f-category"), $("#f-category-list"), "area");
+
+const areaInput = $("#f-category");
+areaInput.addEventListener("input", () => { areaInput.dataset.touched = "1"; });
+attachCombo(areaInput, $("#f-category-list"), "area", null, () => (
+  BRAND_AREAS.length
+    ? { items: BRAND_AREAS,
+        note: `What ${BRAND_AREAS_FOR}'s label says it treats — or type your own` }
+    : null
+));
 
 let AUDIENCE = "patient";
 $("#f-audience").addEventListener("click", e => {

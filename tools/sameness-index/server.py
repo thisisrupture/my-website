@@ -2754,6 +2754,39 @@ async def suggest(q: str = "", kind: str = "drug"):
     }
 
 
+@app.get("/api/areas")
+async def areas(brand: str = ""):
+    """The therapy areas this brand's own label points at.
+
+    Asked once, when a brand is chosen — not on every keystroke. The type-ahead
+    is deliberately network-free and stays that way; this is a separate,
+    deliberate lookup whose answer the page then holds. openFDA is cached per
+    brand, so choosing the same brand twice costs one request in total.
+
+    A brand openFDA has never heard of is answered with an empty list and
+    `known: false`, and the field falls back to the starter list. That is the
+    honest answer for a brand marketed outside the US.
+    """
+    brand = (brand or "").strip()[:80]
+    if not brand:
+        return {"brand": "", "known": False, "areas": [], "indication": ""}
+    try:
+        async with httpx.AsyncClient(timeout=12) as http:
+            prof = await drugs.profile(http, brand)
+            if not prof:
+                return {"brand": brand, "known": False, "areas": [], "indication": ""}
+            label_text = await drugs.category_of(http, prof)
+    except Exception:
+        # A slow register is not worth an error on a field that is optional.
+        return {"brand": brand, "known": True, "areas": [], "indication": ""}
+    return {
+        "brand": prof.get("brand") or brand,
+        "known": True,
+        "indication": drugs.short_indication(label_text) if label_text else "",
+        "areas": drugs.areas_for(label_text, prof),
+    }
+
+
 @app.get("/api/health")
 async def health():
     return {"ok": True, "persistent": store.persistent, "running": len(_running),

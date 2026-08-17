@@ -815,6 +815,100 @@ def test_therapy_areas_answer_the_words_people_use():
     assert drugs.search_areas("") , "an empty box offers something to pick"
 
 
+def test_the_therapy_area_offered_comes_from_the_brand_s_own_label():
+    """The field used to open on a hand-written list in a fixed order, so
+    whatever the brand, the first thing offered was type 2 diabetes. The brand
+    has already been chosen by then and its label says what it treats."""
+    import drugs
+    ozempic = drugs.areas_for(
+        "indicated as an adjunct to diet and exercise to improve glycemic "
+        "control in adults with type 2 diabetes mellitus",
+        {"classes": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"],
+         "generic": "semaglutide"})
+    assert ozempic[0]["label"] == "Type 2 diabetes"
+    assert ozempic[0]["sure"], "the label names it outright"
+
+    dupixent = drugs.areas_for(
+        "indicated for the treatment of adult and pediatric patients aged 6 "
+        "months and older with moderate-to-severe atopic dermatitis",
+        {"classes": ["Interleukin-4 Receptor Antagonist [EPC]"], "generic": "dupilumab"})
+    assert dupixent[0]["label"] == "Atopic dermatitis"
+
+    # A label using the word people use, not the register's word.
+    assert drugs.areas_for("indicated for the treatment of moderate to severe eczema "
+                           "in adults")[0]["label"] == "Atopic dermatitis"
+
+    # A breast cancer label must not surface every cancer in the list as though
+    # they were all candidates.
+    breast = drugs.areas_for("indicated for the treatment of adult patients with "
+                             "HR-positive, HER2-negative advanced or metastatic breast cancer")
+    assert breast[0]["label"] == "Breast cancer"
+    assert not any(a["label"] in ("Lung cancer", "Prostate cancer", "Ovarian cancer")
+                   for a in breast), "one cancer in the label is not every cancer"
+
+    # Nothing to go on is answered with nothing, not with a guess.
+    assert drugs.areas_for("") == []
+    assert drugs.areas_for("indicated", None) == []
+
+
+@pytest.mark.anyio
+async def test_the_areas_endpoint_answers_from_the_register(client, monkeypatch):
+    """Asked once, when a brand is chosen. A brand openFDA has never heard of —
+    anything marketed only in Europe — is answered honestly rather than with a
+    guess, and the field falls back to the starter list."""
+    import server as s
+
+    async def profile(http, brand):
+        if brand.lower() != "ozempic":
+            return None
+        return {"brand": "Ozempic", "generic": "semaglutide",
+                "classes": ["Glucagon-Like Peptide-1 Receptor Agonist [EPC]"]}
+
+    async def category_of(http, prof):
+        return ("indicated as an adjunct to diet and exercise to improve glycemic "
+                "control in adults with type 2 diabetes mellitus")
+
+    monkeypatch.setattr(s.drugs, "profile", profile)
+    monkeypatch.setattr(s.drugs, "category_of", category_of)
+
+    body = (await client.get("/api/areas?brand=Ozempic")).json()
+    assert body["known"] is True
+    assert body["areas"][0] == {"label": "Type 2 diabetes", "sure": True}
+
+    body = (await client.get("/api/areas?brand=Wegovy%20Europe")).json()
+    assert body["known"] is False and body["areas"] == []
+
+    body = (await client.get("/api/areas")).json()
+    assert body["areas"] == []
+
+
+def test_a_label_is_never_clipped_mid_word():
+    """"whose disease i" reads like a bug, because it is one."""
+    import drugs
+    long = ("indicated for the treatment of adult patients with moderate-to-severe "
+            "atopic dermatitis whose disease is not adequately controlled with "
+            "topical prescription therapies")
+    got = drugs.short_indication(long)
+    assert len(got) <= 111
+    assert got.endswith("\u2026")
+    assert not got[:-1].endswith(" ")
+    assert " ".join(got[:-1].split()) in " ".join(long.split()), "the clip must be the label's own words"
+
+
+def test_one_character_is_not_a_query():
+    """Typing "a" prefix-matched the synonym "as" and put axial
+    spondyloarthritis at the top of the list — which is how a field ends up
+    suggesting the wrong thing to everybody who touches it."""
+    import drugs
+    assert drugs.search_areas("a") == drugs.search_areas(""), "one character offers the starter list"
+    assert drugs.search_areas("as")[0] == "Axial spondyloarthritis", "typed in full it still works"
+    assert drugs.search_areas("ms")[0] == "Multiple sclerosis"
+    assert "Multiple sclerosis" not in drugs.search_areas("m")[:3]
+    # And the useful matching is untouched.
+    assert drugs.search_areas("ecz")[0] == "Atopic dermatitis"
+    assert drugs.search_areas("diabetis")[0].startswith("Type")
+
+
 def test_a_therapy_area_that_contradicts_the_drug_is_flagged():
     """Observed in production: Rozerem, an insomnia drug, entered with a therapy
     area of "Acne". Every territory is built for the therapy area, so the whole

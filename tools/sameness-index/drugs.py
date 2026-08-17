@@ -441,12 +441,25 @@ AREA_SYNONYMS = {
 
 
 def search_areas(query, limit=8):
+    """The areas somebody might be typing, best first.
+
+    One character is not a query. "a" used to prefix-match the synonym "as" and
+    put Axial spondyloarthritis at the top of the list, which is how a field
+    ends up suggesting the wrong thing to everyone who touches it. Below two
+    characters this offers the starter list and waits.
+    """
     from difflib import SequenceMatcher
     q = query.strip().lower()
-    if not q:
+    if len(q) < 2:
         return THERAPY_AREAS[:limit]
     out = []
     for word, area in AREA_SYNONYMS.items():
+        # An abbreviation has to be typed in full. "ms" is multiple sclerosis;
+        # "m" is not, and neither is every word beginning with it.
+        if len(word) <= 3:
+            if q == word:
+                out.append((1200 - len(area), area))
+            continue
         if word.startswith(q) or q.startswith(word):
             out.append((1100 - len(area), area))
     for a in THERAPY_AREAS:
@@ -475,11 +488,96 @@ def search_areas(query, limit=8):
     return keep[:limit]
 
 
+# Words in an area name that identify nothing on their own. "Cancer" appears in
+# every oncology label; "disease" appears in most of everything.
+_AREA_STOP = {"and", "the", "of", "disease", "management", "chronic"}
+_AREA_WEAK = {"cancer", "arthritis", "carcinoma", "syndrome", "deficiency",
+              "dermatitis", "sclerosis", "failure", "fibrosis", "therapy",
+              "rare", "pain", "cell"}
+
+
+def _area_terms(area):
+    return [w for w in re.findall(r"[a-z]+", area.lower())
+            if w not in _AREA_STOP and len(w) > 2]
+
+
+def _area_score(area, hay):
+    """How much this area looks like what the label is talking about.
+
+    Ordered by how much of the area's name the label actually contains. The
+    phrase outright beats every word of it separately, which is what keeps
+    "Type 2 diabetes" above "Type 1 diabetes" for a drug whose label says
+    which one it is — the two are identical once the digit is dropped.
+    """
+    low = area.lower()
+    if low in hay:
+        return 1000 - len(area)
+    terms = _area_terms(area)
+    if not terms:
+        return 0
+    hit = [t for t in terms if t[:6] in hay]
+    if len(hit) == len(terms):
+        return 800 - len(area) if len(terms) > 1 else 600 - len(area)
+    # Some of the words, which only counts if one of them is distinctive:
+    # a breast cancer label should not surface every cancer in the list.
+    if hit and any(t not in _AREA_WEAK for t in hit):
+        return 400 - len(area)
+    return 0
+
+
+def areas_for(indication_text, prof=None, limit=6):
+    """The therapy areas a brand's own label points at, best first.
+
+    The therapy area box used to open on a hand-written list in a fixed order,
+    so whatever the brand, the first thing offered was type 2 diabetes. The
+    brand has already been chosen by then and its label says what it treats;
+    this reads that and offers it instead. Returns [] when there is nothing to
+    go on, and the caller falls back to the starter list rather than guessing.
+
+    Each result carries `sure`: the label named the area outright, rather than
+    sharing some words with it. Only a sure single answer is worth filling a
+    field in on somebody's behalf.
+    """
+    hay = " ".join([
+        (indication_text or ""),
+        " ".join((prof or {}).get("classes") or []),
+        (prof or {}).get("generic") or "",
+    ]).lower()
+    hay = re.sub(r"\s+", " ", hay)
+    if len(hay.strip()) < 8:
+        return []
+
+    scored = {}
+    for a in THERAPY_AREAS:
+        sc = _area_score(a, hay)
+        if sc:
+            scored[a] = max(scored.get(a, 0), sc)
+    # The label's own vocabulary, mapped back: a label that says eczema is
+    # talking about atopic dermatitis whether it uses the register's words or
+    # not. Abbreviations are left out — two letters match too much prose.
+    for word, area in AREA_SYNONYMS.items():
+        if len(word) > 3 and word in hay:
+            scored[area] = max(scored.get(area, 0), 900 - len(area))
+
+    best = sorted(scored.items(), key=lambda kv: -kv[1])[:limit]
+    return [{"label": a, "sure": sc >= 900 - len(a)} for a, sc in best]
+
+
+def _clip(t, n=110):
+    """Cut at a word, not through one. A label truncated mid-word — "whose
+    disease i" — reads like a bug, because it is one."""
+    t = t.strip()
+    if len(t) <= n:
+        return t
+    cut = t[:n].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return (cut or t[:n]) + "\u2026"
+
+
 def short_indication(text):
     """The disease out of a paragraph of indications-and-usage."""
     t = re.sub(r"^.*?indicated\s+(?:for(?:\s+the)?(?:\s+treatment\s+of)?|to|in)\s+", "", text, flags=re.I)
     t = re.split(r"[.;]", t)[0]
-    return re.sub(r"\s+", " ", t).strip()[:110] or text[:110]
+    return _clip(re.sub(r"\s+", " ", t)) or _clip(text)
 
 
 def area_matches(typed, label_text, prof=None):
