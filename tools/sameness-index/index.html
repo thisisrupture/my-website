@@ -727,6 +727,14 @@
   .r-see:hover { color: var(--green); border-bottom-color: var(--green); }
   .r-note { display: block; margin-top: 5px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; line-height: 1.6; color: var(--fg-faint); }
   .r-shot { display: block; width: 100%; margin-top: 8px; border: 1px solid var(--divider); }
+  /* A photograph of a competitor's page is a document, so it is framed like
+     one: the page's own paper behind it, a hairline round it, and no rounding
+     or shadow that would make it read as a Rupture graphic rather than as
+     evidence. Clickable, because the first thing anyone does is look closer. */
+  .r-shotlink { display: block; margin-top: 10px; background: var(--paper); }
+  .r-shotlink:hover .r-shot { border-color: var(--coral); }
+  .r-shotlink .r-shot { margin-top: 0; max-height: 340px; object-fit: cover;
+                        object-position: top center; }
   .ti { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--fg-faint); cursor: pointer; align-items: baseline; }
   .ti:hover { color: var(--green); }
   .ti .lb { flex: 1; font-size: 15px; line-height: 1.35; }
@@ -2407,8 +2415,24 @@ function detail(id) {
     claimers.forEach(b => {
       const q = (t.receipts || {})[b] || "";
       const link = (t.receipt_links || {})[b];
+      // The photograph, where there is one. Built outside the link, because the
+      // two can exist apart: the browser reads the rendered page and can find a
+      // sentence the HTTP crawl could not locate to link to. A picture with no
+      // link is still evidence; a link with no picture is what this always was.
+      const shot = t.visual ? "" : (t.receipt_shots || {})[b];
+      const shotHow = (t.receipt_shot_how || {})[b] || "sentence";
+      const pic = shot
+        ? `<a class="r-shotlink" href="${esc(shot)}" target="_blank" rel="noopener">
+             <img class="r-shot" src="${esc(shot)}" loading="lazy"
+                  alt="${esc(b)}'s own site with this wording highlighted">
+           </a>
+           <span class="r-note">${shotHow === "sentence"
+             ? "The sentence, highlighted where it sits on their page"
+             : "The paragraph this sentence sits in, highlighted on their page"} · ${esc(DATA.meta.captured)}</span>`
+        : "";
       body += `<div class="receipt"><div class="r-brand">${esc(b)}</div>` +
         `<div class="r-quote${t.visual ? "" : " said"}">${t.visual ? esc(q) : "“" + esc(q) + "”"}</div>` +
+        pic +
         (link ? (t.visual
           ? `<img class="r-shot" src="${esc(link)}" alt="${esc(b)} — the image this was coded from" loading="lazy">
              <a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the image →</a>`
@@ -2418,11 +2442,13 @@ function detail(id) {
           // the quoted one is the same mistake in the other direction.
           : (() => {
               const how = (t.receipt_match || {})[b] || "exact";
-              if (how === "near") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, nearest wording highlighted →</a>
+              // The link, underneath the picture. A picture nobody can check is
+              // a poster, so the live page is always one click away.
+              if (how === "near") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the live page, nearest wording highlighted →</a>
                 <span class="r-note">the quote was tidied on its way here, so the highlight lands on the page's own version of it</span>`;
-              if (how === "page") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page →</a>
+              if (how === "page") return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the live page →</a>
                 <span class="r-note">this wording could not be located again to highlight it</span>`;
-              return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the page, highlighted →</a>`;
+              return `<a class="r-see" href="${esc(link)}" target="_blank" rel="noopener">Open the live page, highlighted →</a>`;
             })()) : "") +
         `</div>`;
     });

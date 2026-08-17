@@ -42,3 +42,18 @@ services:
       # two pages is four Chromium tabs, which 2GB holds; six does not.
       - key: SAMENESS_BROWSER_PAGES
         value: "2"
+      # Where the evidence photographs live. The service key never leaves the
+      # server; the bucket is public, because the report is meant to be
+      # forwarded. Without these two the tool runs exactly as before and links
+      # to every quote instead of showing it. See DEPLOY.md.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SAMENESS_SHOT_BUCKET
+        value: sameness-evidence
+      # Photographs per brand. Each one is a page load; four is the evidence for
+      # the four most widely shared territories, which is where a reader doubts
+      # the number.
+      - key: SAMENESS_SHOTS_PER_BRAND
+        value: "4"

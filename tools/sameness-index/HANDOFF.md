@@ -54,13 +54,7 @@ field driven by the brand** (`drugs.areas_for()`, `GET /api/areas`, and the
 
 **Agreed and not started — this is the next piece of work:**
 
-1. **Screenshots as evidence.** While the page is open, capture the quoted
-   sentence highlighted in place and the hero imagery. This kills three problems
-   at once: no URL-hunting for lazy-loaded images, no text fragment that
-   silently fails, no gate destroying the link. The report then *shows* the
-   claim on a competitor's own site on a given date rather than linking to it.
-   The user is keen on this specifically.
-2. **A global daily run cap.** Offered and not yet built. `SAMENESS_RUNS_PER_IP`
+1. **A global daily run cap.** Offered and not yet built. `SAMENESS_RUNS_PER_IP`
    is bypassable and there is no global ceiling, so the Anthropic bill is
    currently unbounded. Render has **no spend limit feature** (confirmed with
    their staff), so the protection has to be in the app plus a cap in the
@@ -168,6 +162,61 @@ Qualifiers live behind a click; the headline leads with the sameness and the
 opportunity comes second.
 
 ---
+
+## Photographing the evidence
+
+`shots.py` puts images in a Supabase Storage bucket (`sameness-evidence`,
+public, because the report is meant to be forwarded and a signed URL expires).
+`capture_evidence()` in `server.py` runs *after* the coding, not during the
+crawl: at crawl time nobody knows which sentences will turn out to be the
+evidence, so photographing everything would mean twenty images per brand to use
+four. It visits the pages carrying the chosen quotes, highlights each sentence in
+place, and photographs a band of the page around it. The quotes chosen are the
+evidence for the most widely shared territories — the sameness is the report's
+spine and that is the number a reader doubts — capped by
+`SAMENESS_SHOTS_PER_BRAND`, four.
+
+`browser.py`'s `MARK_JS` finds the sentence and draws round it. Two outcomes,
+and the report says which: **sentence** where the exact run of text sits in one
+text node, **block** where it runs across a `<strong>` or a `<br>` and the
+paragraph containing it is highlighted instead. Framing: a sentence in the top
+470px is photographed from y=0 so the site's own header comes with it, which is
+what makes the picture self-evidently theirs.
+
+The picture is rendered independently of the evidence link, because the two can
+exist apart — the browser reads the rendered page and can find a sentence the
+HTTP crawl could not locate to link to. Building the picture inside the link
+branch meant a territory with no link showed no picture, which was wrong and was
+caught by opening the drawer and looking at it.
+
+Everything degrades. No bucket, no browser, a page that will not open — the
+report falls back to the links it has always had, and `meta.evidence_shots_note`
+tells the reader why rather than leaving a gap.
+
+## Getting in
+
+Permission first, capability second — unchanged, and not up for renegotiation:
+robots.txt is honoured without exception. What changed is capability.
+
+- **Stealth.** `browser.py`'s `STEALTH` init script removes the handful of
+  properties a page can read to tell it is being automated
+  (`navigator.webdriver`, a missing `window.chrome`, an empty plugin list), plus
+  the `AutomationControlled` launch flag. None of it is a secret and none of it
+  is a defence; it is the difference between being served the page and being
+  served a wall, on sites whose own robots.txt invites crawlers.
+- **The front door is clicked, not guessed.** `_through_the_front_door()` finds
+  the control a visitor would press and presses it, most specific phrase first
+  (`GATE_ACCEPT` is passed in from `server.py`). Better than following the link
+  behind it, which often took the wrong one, and it leaves the page on the
+  address the words are actually served from — which is what keeps the evidence
+  link and the screenshot pointing at the same place.
+- **Per-host memory.** `crawl_hints` (migration 0003) records that a host needs
+  a browser, so the next run opens one on the first request rather than the
+  second. Additive on purpose: being wrong costs one wasted render, guessing the
+  other way costs a brand.
+- **Not done, deliberately:** no CAPTCHA solving, no login, no residential
+  proxies. The first two are not defensible to the people this tool is sold to;
+  the third was offered and left out.
 
 ## The browser, in one paragraph
 

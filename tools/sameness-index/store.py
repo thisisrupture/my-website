@@ -56,6 +56,7 @@ class Store:
         self.pool = None
         self._mem = {}
         self._mem_brands = {}
+        self._mem_hints = {}
         self._lock = asyncio.Lock()
 
     @property
@@ -317,6 +318,83 @@ class Store:
                 )
         except Exception:
             return          # remembering is a nicety; never fail a lookup for it
+
+    # -- what it takes to read a given host ---------------------------------
+    #
+    # Working out that a host serves a shell, or that its front door opens on
+    # "I am a US healthcare professional", costs a wasted request and sometimes a
+    # wasted browser render. The answer is the same for everybody and it is the
+    # same next week, so it is written down. See migrations/0003_crawl_hints.sql.
+
+    async def crawl_hints(self, hosts):
+        """What is known about these hosts. Missing ones are simply absent."""
+        keys = [h.strip().lower().replace("www.", "") for h in hosts if h and h.strip()]
+        if not keys:
+            return {}
+        if self.pool is None:
+            async with self._lock:
+                return {k: dict(v) for k, v in self._mem_hints.items() if k in keys}
+        try:
+            async with self.pool.acquire() as c:
+                rows = await c.fetch(
+                    """select host, needs_browser, gate_text, gate_hops,
+                              last_chars, last_status, fail_count
+                         from crawl_hints where host = any($1::text[])""",
+                    keys,
+                )
+        except Exception:
+            # Most likely the migration has not been run. A hint only ever saves
+            # work, so its absence costs a page load and nothing else.
+            return {}
+        return {r["host"]: dict(r) for r in rows}
+
+    async def remember_hint(self, host, *, needs_browser=None, gate_text=None,
+                            gate_hops=None, chars=None, status=None, ok=True):
+        """Write down what worked.
+
+        Deliberately additive: a host that needed a browser once is assumed to
+        need one again, because the cost of being wrong is one wasted render and
+        the cost of guessing the other way is a brand missing from the report.
+        """
+        host = (host or "").strip().lower().replace("www.", "")
+        if not host:
+            return
+        row = {"host": host, "needs_browser": bool(needs_browser),
+               "gate_text": gate_text or None,
+               "gate_hops": int(gate_hops or 0),
+               "last_chars": int(chars or 0), "last_status": int(status or 0),
+               "fail_count": 0 if ok else 1}
+        if self.pool is None:
+            async with self._lock:
+                old = self._mem_hints.get(host, {})
+                row["needs_browser"] = bool(needs_browser) or bool(old.get("needs_browser"))
+                row["gate_text"] = row["gate_text"] or old.get("gate_text")
+                row["fail_count"] = 0 if ok else int(old.get("fail_count", 0)) + 1
+                self._mem_hints[host] = row
+            return
+        try:
+            async with self.pool.acquire() as c:
+                await c.execute(
+                    """insert into crawl_hints
+                         (host, needs_browser, gate_text, gate_hops,
+                          last_chars, last_status, fail_count, ok_at)
+                       values ($1, $2, $3, $4, $5, $6, $7,
+                               case when $8 then now() else null end)
+                       on conflict (host) do update set
+                         needs_browser = crawl_hints.needs_browser or excluded.needs_browser,
+                         gate_text     = coalesce(excluded.gate_text, crawl_hints.gate_text),
+                         gate_hops     = greatest(crawl_hints.gate_hops, excluded.gate_hops),
+                         last_chars    = excluded.last_chars,
+                         last_status   = excluded.last_status,
+                         fail_count    = case when $8 then 0
+                                              else crawl_hints.fail_count + 1 end,
+                         ok_at         = case when $8 then now() else crawl_hints.ok_at end,
+                         updated_at    = now()""",
+                    host, row["needs_browser"], row["gate_text"], row["gate_hops"],
+                    row["last_chars"], row["last_status"], row["fail_count"], bool(ok),
+                )
+        except Exception:
+            return
 
     async def runs_since(self, client_ip, seconds):
         """How many runs this address has started recently. The cost control:

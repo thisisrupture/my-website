@@ -27,7 +27,7 @@ STUB_RESULT = {
 }
 
 
-async def fake_pipeline(brands, category=""):
+async def fake_pipeline(brands, category="", run_id=""):
     yield {"type": "progress", "text": "Reading the first site."}
     await asyncio.sleep(0.05)
     yield {"type": "progress", "text": "Reading the second site."}
@@ -35,12 +35,12 @@ async def fake_pipeline(brands, category=""):
     yield {"type": "result", "data": STUB_RESULT}
 
 
-async def failing_pipeline(brands, category=""):
+async def failing_pipeline(brands, category="", run_id=""):
     yield {"type": "progress", "text": "Reading the first site."}
     yield {"type": "error", "text": "Could not read enough of that site."}
 
 
-async def exploding_pipeline(brands, category=""):
+async def exploding_pipeline(brands, category="", run_id=""):
     yield {"type": "progress", "text": "Starting."}
     raise RuntimeError("something unforeseen")
 
@@ -165,7 +165,7 @@ async def test_stale_run_is_failed_on_read(client, monkeypatch):
     import store as store_mod
     monkeypatch.setattr(store_mod, "STALE_AFTER_SECONDS", 0)
 
-    async def hanging_pipeline(brands, category=""):
+    async def hanging_pipeline(brands, category="", run_id=""):
         yield {"type": "progress", "text": "Working."}
         await asyncio.sleep(60)
 
@@ -189,7 +189,7 @@ async def test_category_is_passed_through(client, monkeypatch):
     against that."""
     seen = {}
 
-    async def capture(brands, category=""):
+    async def capture(brands, category="", run_id=""):
         seen["category"] = category
         yield {"type": "result", "data": STUB_RESULT}
 
@@ -216,7 +216,7 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
     """One site behind bot protection must not throw away the whole run —
     but the result has to say the brand is missing."""
     import server as s
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         if brand["name"] == "Blocked":
             return "", [], 0, "", {}              # nothing readable came back
         return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, "", {}
@@ -246,7 +246,7 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
 @pytest.mark.anyio
 async def test_own_brand_unreadable_stops_the_run(monkeypatch):
     import server as s
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         return ("", [], 0, "", {}) if brand["name"] == "Mine" else ("[PAGE https://x/]\n" + "copy. " * 200, [], 1, "", {})
     monkeypatch.setattr(s.httpx, "AsyncClient", lambda *a, **k: _NoHTTP())
     monkeypatch.setattr(s, "crawl_brand", crawl)
@@ -319,7 +319,7 @@ async def test_robots_is_honoured_and_named_as_such(monkeypatch):
     is why — not that the site was unreadable."""
     import server as s
 
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         if brand["name"] == "Private":
             return "", [], 0, "robots", {}
         return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), [], 1, "", {}
@@ -391,7 +391,7 @@ async def test_a_brand_with_no_messaging_leaves_the_figures(monkeypatch):
     """
     import server as s
 
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, "", {}
 
     async def layers(b, c):
@@ -430,7 +430,7 @@ async def test_one_readable_brand_fails_the_run_rather_than_scoring_it(monkeypat
     """One brand is not a comparison, whatever the pages weighed."""
     import server as s
 
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         return "[PAGE https://x.test/]\n" + ("words on a page. " * 60), [], 1, "", {}
 
     async def layers(b, c):
@@ -611,7 +611,7 @@ def test_one_brand_s_imagery_is_described_rather_than_discarded():
     brand cannot be scored against nobody, but it can be described."""
     import server as s
 
-    async def crawl(fetcher, brand):
+    async def crawl(fetcher, brand, hint=None):
         return "[PAGE https://x.test/]\n" + ("copy about the category. " * 60), ["https://x.test/hero.jpg"], 1, "", {}
 
     async def images(http, urls, want=4):
@@ -1078,3 +1078,148 @@ async def test_a_gate_in_front_of_a_rendered_site_is_still_walked_through():
     corpus, _i, _p, _w, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
     assert notes["gates"] == 1 and notes["rendered"] == 1
     assert "once-daily treatment" in corpus
+
+
+# ---------------------------------------------------------------------------
+# Photographing the evidence, and getting in the door.
+#
+# There is no Chromium in these tests — the renderer is stubbed, because what is
+# being tested is which pages get visited, what gets uploaded, and what the
+# report says when none of it is available. The pictures themselves are proved
+# by looking at them, which is a different job.
+# ---------------------------------------------------------------------------
+
+
+class _StubRenderer:
+    """A browser that returns what it is told to, and records what it was asked."""
+
+    def __init__(self, pages=None, enabled=True):
+        self.pages = pages or {}
+        self.enabled = enabled
+        self.visits = []
+
+    def status(self):
+        return {"enabled": self.enabled, "running": False, "pages": 2,
+                "rendered": 0, "captured": 0, "failed": 0, "why": ""}
+
+    async def visit(self, url, *, quotes=(), want_hero=False, **kw):
+        self.visits.append({"url": url, "quotes": list(quotes), "hero": want_hero})
+        spec = self.pages.get(url)
+        if spec is None:
+            return None
+        import browser as bmod
+        shots = {i: {"png": b"jpeg-" + str(i).encode(), "how": spec.get("how", "sentence")}
+                 for i, q in enumerate(quotes) if q in spec.get("finds", [])}
+        return bmod.Rendered(url, 200, "<html></html>", gates=spec.get("gates", 0),
+                             hero=(b"jpeg-hero" if want_hero else None), shots=shots)
+
+    async def close(self):
+        return None
+
+
+@pytest.mark.anyio
+async def test_the_evidence_is_photographed_where_it_sits(monkeypatch):
+    """The report's promise is that every number is one click from the sentence
+    that produced it. A photograph of that sentence on the brand's own page is
+    the strong version of the promise; the link is the weak one."""
+    import server as s
+    quote_a = "A once-daily treatment designed around how people actually live."
+    quote_b = "Ask your doctor whether this is right for you."
+    stub = _StubRenderer({
+        "https://a.test/why": {"finds": [quote_a], "how": "sentence"},
+        "https://a.test/": {"finds": []},
+    })
+    monkeypatch.setattr(s.browser, "renderer", stub)
+    monkeypatch.setattr(s.shots, "configured", lambda: True)
+
+    put = []
+
+    async def fake_put(http, path, data, content_type="image/jpeg"):
+        put.append((path, data))
+        return "https://cdn.test/" + path
+
+    monkeypatch.setattr(s.shots, "put", fake_put)
+
+    got, heroes, stats = await s.capture_evidence(
+        "run123", None,
+        {"A": {"https://a.test/why": [("P01", quote_a), ("P02", quote_b)]}},
+        {"A": "https://a.test/"})
+
+    assert got[("A", "P01")]["url"] == "https://cdn.test/run123/a-quote-0.jpg"
+    assert got[("A", "P01")]["how"] == "sentence"
+    assert ("A", "P02") not in got, "a sentence not found on the page is not invented"
+    assert stats == {"pages": 2, "sentence": 1, "block": 0, "heroes": 1, "missed": 1}
+    assert heroes["A"] == "https://cdn.test/run123/a-hero.jpg"
+    # The hero comes off the brand's own front page, and that page is visited
+    # even though no evidence sits on it.
+    assert {v["url"] for v in stub.visits} == {"https://a.test/why", "https://a.test/"}
+    assert [v["hero"] for v in stub.visits if v["url"] == "https://a.test/"] == [True]
+
+
+@pytest.mark.anyio
+async def test_no_bucket_means_no_pictures_and_no_pretending(monkeypatch):
+    """A missing picture must never cost somebody their analysis, and it must
+    never be silent either."""
+    import server as s
+    monkeypatch.setattr(s.browser, "renderer", _StubRenderer({}, enabled=True))
+    monkeypatch.setattr(s.shots, "configured", lambda: False)
+    monkeypatch.setattr(s.shots, "why_not", lambda: "not configured: SUPABASE_URL")
+    assert not s.shots_available()
+    assert "SUPABASE_URL" in s.what_stops_the_pictures()
+    got, heroes, stats = await s.capture_evidence("r", None, {"A": {"u": [("P01", "q")]}}, {})
+    assert (got, heroes) == ({}, {})
+    assert stats["pages"] == 0, "nothing is opened if there is nowhere to put the result"
+
+    monkeypatch.setattr(s.browser, "renderer", _StubRenderer({}, enabled=False))
+    monkeypatch.setattr(s.shots, "configured", lambda: True)
+    assert s.what_stops_the_pictures() == "no browser available"
+
+
+@pytest.mark.anyio
+async def test_a_host_known_to_need_a_browser_gets_one_first():
+    """Working out that a host serves a shell costs a wasted request every run,
+    for the same hosts, forever. It is worked out once and remembered."""
+    import server as s
+    f = _StubFetcher({}, rendered={"https://brand.test/": FULL})
+    corpus, _i, _p, _w, notes = await s.crawl_brand(
+        f, {"name": "B", "url": "https://brand.test/"},
+        hint={"needs_browser": True})
+    assert notes["browser_first"] is True
+    assert f.renders == ["https://brand.test/"]
+    assert "once-daily treatment" in corpus
+    # And plain HTTP was never tried, which is the whole saving.
+    assert f.pages == {}
+
+
+def test_the_stealth_patch_covers_what_a_page_actually_checks():
+    """Not a defence and not a secret — a handful of properties a real Chrome
+    has and an automated one, by default, does not. Sites whose robots.txt
+    invites crawlers still turn away a client without them."""
+    import browser as b
+    for probe in ("navigator.webdriver", "window.chrome", "navigator.plugins",
+                  "navigator.languages", "permissions.query"):
+        assert probe.split(".")[-1] in b.STEALTH
+    assert "--disable-blink-features=AutomationControlled" in b.LAUNCH_ARGS
+    assert "--no-sandbox" in b.LAUNCH_ARGS and "--disable-dev-shm-usage" in b.LAUNCH_ARGS
+
+
+def test_a_stored_object_has_a_predictable_safe_name():
+    import shots
+    assert shots.path_for("abc123", "Ozempic", "hero") == "abc123/ozempic-hero.jpg"
+    assert shots.path_for("abc123", "Mounjaro (tirzepatide)", "quote", 3) == \
+        "abc123/mounjaro--tirzepatide-quote-3.jpg"
+
+
+@pytest.mark.anyio
+async def test_a_hint_is_remembered_without_the_migration(monkeypatch):
+    """The table only ever saves work. If the migration has not been run, a run
+    must be exactly as fast and exactly as correct as it was before."""
+    from store import Store
+    st = Store(dsn="")
+    await st.remember_hint("brand.test", needs_browser=True, chars=9000)
+    assert (await st.crawl_hints(["brand.test"]))["brand.test"]["needs_browser"]
+    # Additive: one run that managed without a browser does not erase the
+    # knowledge that another one needed it.
+    await st.remember_hint("brand.test", needs_browser=False, chars=9000)
+    assert (await st.crawl_hints(["www.brand.test"]))["brand.test"]["needs_browser"]
+    assert await st.crawl_hints(["nobody.test"]) == {}

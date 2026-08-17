@@ -104,6 +104,32 @@ that without running the database out of them.
 Keep this string somewhere safe for the next step. It is a password — it does
 not go in the repository, in Slack, or in a document.
 
+## Step 2b — A bucket for the evidence photographs
+
+The report shows the quoted sentence highlighted on the competitor's own page,
+rather than only linking to it. Those images have to outlive the next deploy, so
+they go in Supabase Storage rather than on the Render disk.
+
+1. In Supabase, open **Storage → New bucket**.
+2. Name it `sameness-evidence`. Turn **Public bucket** on.
+   Public because the report is meant to be forwarded: a private bucket means
+   every image needs a signed URL, a signed URL expires, and the permalink then
+   breaks a few weeks after somebody sends it to their boss. Nothing in the
+   bucket is confidential — they are photographs of public web pages.
+3. **Project Settings → API**, copy two values:
+   - the **Project URL** (`https://<ref>.supabase.co`) → `SUPABASE_URL`
+   - the **service_role** key → `SUPABASE_SERVICE_KEY`
+
+   The service_role key can write to your database. It goes in Render's
+   environment and nowhere else — never in the repository, never in the browser.
+4. While you are in Supabase, open the **SQL Editor** and run
+   `migrations/0003_crawl_hints.sql`. That is the table that remembers which
+   hosts need a browser, so the second run of a category is faster than the
+   first. Without it every host is worked out from scratch, exactly as before.
+
+Without the two variables the tool runs as it always has and links to every
+quote instead of showing it. `/api/health` says which state it is in.
+
 ## Step 3 — Create the Render service
 
 1. Sign up at render.com and connect your GitHub account.
@@ -119,9 +145,10 @@ not go in the repository, in Slack, or in a document.
      managed Python runtime will not install.
    - Instance type **Standard**, about $25/month. Not Starter: Starter is
      512MB and Chromium wants the better part of a gigabyte.
-4. Under **Environment**, add two variables:
+4. Under **Environment**, add four variables:
    - `ANTHROPIC_API_KEY` — your key from console.anthropic.com
    - `DATABASE_URL` — the string from step 2
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` — from step 2b
 5. Deploy. It takes a few minutes.
 
 **Do not choose the free instance type.** Free instances go to sleep when
@@ -144,6 +171,9 @@ Render gives you an address like `rupture-tools.onrender.com`. Open it.
    is back to reading only the sites that serve their words in the HTML, which
    is roughly half of them. `running` stays `false` until the first page that
    actually needs a browser — it is started on demand, not at boot.
+   Alongside it, `evidence_shots.ready` says whether the report can photograph
+   its own evidence. If that is `false`, `why` names what is missing — almost
+   always one of the two Supabase variables from step 2b.
 3. Open `rupture-tools.onrender.com/server.py`. You want **404 Not Found**. If
    it shows you code, stop and tell me — that would be the method published.
 4. Run the index against two brands you know are readable. Watch for the

@@ -45,6 +45,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 import browser
 import drugs
+import shots
 from store import Store
 
 MODEL = os.environ.get("SAMENESS_MODEL", "claude-sonnet-5")
@@ -62,6 +63,12 @@ MAX_BRANDS_PER_RUN = 7
 # the page weighed. Set low: a thin brand site is a finding, an empty one is a
 # wrong address.
 MIN_ELECTIVES = 5
+# Photographs of the evidence, per brand. The report shows the claim on the
+# competitor's own page rather than linking to it — but every picture is a page
+# load and a couple of hundred kilobytes, so the ones taken are the evidence for
+# the most widely shared territories: the sameness is the report's spine, and
+# that is where a reader doubts the number.
+MAX_SHOTS_PER_BRAND = int(os.environ.get("SAMENESS_SHOTS_PER_BRAND", "4"))
 # Rupture palette. Mint is reserved as a highlight, not a brand accent —
 # it lacks contrast against the paper at label sizes.
 ACCENTS = ["#FF686B", "#1F5B4A", "#303030", "#727270", "#51D4B2", "#ABAAA8", "#D7D6D2"]
@@ -411,11 +418,15 @@ class Fetcher:
         why there is only one browser. Permission has already been asked by the
         time anything gets here; this is only about capability.
         """
-        page = await browser.renderer.render(url, timeout=timeout, user_agent=UA)
+        page = await browser.renderer.render(
+            url, timeout=timeout, user_agent=UA,
+            accept_texts=GATE_ACCEPT, gate_ceiling=GATE_TEXT_CEILING)
         if page is None or not page.html:
             return None
-        return SimpleResponse(page.url or url, page.status,
-                              {"content-type": "text/html; charset=utf-8"}, page.html)
+        r = SimpleResponse(page.url or url, page.status,
+                           {"content-type": "text/html; charset=utf-8"}, page.html)
+        r.gates = page.gates
+        return r
 
     async def allowed(self, url):
         """What robots.txt says. A site with no robots.txt, or one we cannot
@@ -435,11 +446,12 @@ class Fetcher:
 
 
 class SimpleResponse:
-    __slots__ = ("url", "status_code", "headers", "text")
+    __slots__ = ("url", "status_code", "headers", "text", "gates")
 
     def __init__(self, url, status_code, headers, text):
         self.url, self.status_code, self.text = url, status_code, text
         self.headers = {k.lower(): v for k, v in dict(headers).items()}
+        self.gates = 0      # front doors the browser clicked through, if any
 
 
 PRIORITY_HINTS = [
@@ -771,7 +783,7 @@ def image_size(data):
     return None
 
 
-async def crawl_brand(fetcher, brand):
+async def crawl_brand(fetcher, brand, hint=None):
     """Fetch the given URL plus a handful of same-site pages, within whatever
     robots.txt permits. Returns (pages_text, image_candidates, pages_fetched,
     reason, notes) where reason explains an empty result and notes records what
@@ -782,7 +794,13 @@ async def crawl_brand(fetcher, brand):
         start = "https://" + start
     root = urlparse(start).netloc.replace("www.", "")
     queue, seen, texts, images = [start], set(), [], []
-    notes = {"gates": 0, "json_pages": 0, "thin_pages": 0, "rendered": 0}
+    notes = {"gates": 0, "json_pages": 0, "thin_pages": 0, "rendered": 0,
+             "browser_first": False}
+    # What this host took last time. A host known to serve a shell gets a
+    # browser on the first request rather than the second, which is a page load
+    # and several seconds saved for every brand on it.
+    browser_first = bool((hint or {}).get("needs_browser"))
+    notes["browser_first"] = browser_first
 
     async def load(url):
         """One address, read as well as it can be read.
@@ -794,11 +812,13 @@ async def crawl_brand(fetcher, brand):
 
         Returns (soup, landed) or (None, None).
         """
-        try:
-            r = await fetcher.get(url)
-        except Exception:
-            r = None
+        r = None
         soup, landed, ctype, readable = None, url, "", 0
+        if not browser_first:
+            try:
+                r = await fetcher.get(url)
+            except Exception:
+                r = None
         if r is not None:
             ctype = r.headers.get("content-type", "")
             if r.status_code == 200 and "text/html" in ctype:
@@ -808,10 +828,12 @@ async def crawl_brand(fetcher, brand):
                 if readable < BROWSER_THIN:
                     readable += sum(len(t) for t in embedded_prose(soup))
 
-        if needs_browser(r.status_code if r is not None else 0, ctype, readable):
+        if browser_first or needs_browser(
+                r.status_code if r is not None else 0, ctype, readable):
             rendered = await fetcher.render(url)
             if rendered is not None:
                 notes["rendered"] += 1
+                notes["gates"] += getattr(rendered, "gates", 0) or 0
                 soup = BeautifulSoup(rendered.text, "html.parser")
                 landed = str(getattr(rendered, "url", url)) or landed
         return soup, landed
@@ -1223,6 +1245,93 @@ async def llm_json(prompt, max_tokens=4000, images=None, stage="this step"):
 # ---------------------------------------------------------------------------
 # Pipeline stages
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Photographing the evidence
+#
+# The report has always linked to the sentence behind every number. A link is a
+# weak version of that promise: the site may have changed, a gate may eat the
+# text fragment, and Firefox ignores it entirely. A picture of the sentence,
+# highlighted where it sits on the competitor's own page, on a stated date, is
+# the strong version — and the link stays alongside it, so the reader can go and
+# check that the picture is true.
+#
+# Taken after the coding, not during the crawl. At crawl time nobody knows which
+# sentences will turn out to be the evidence, so photographing everything would
+# mean twenty images per brand to use four. A second, targeted visit to the
+# pages that matter is cheaper and the pictures are of the right things.
+# ---------------------------------------------------------------------------
+
+
+async def capture_evidence(run_id, http, wanted, first_pages):
+    """Visit each page that carries evidence and photograph it.
+
+    `wanted` is {brand: {page url: [(position id, quote), ...]}} and
+    `first_pages` is {brand: url} for the hero shot.
+
+    Returns (shots, heroes, stats). Every part of it degrades: no bucket
+    configured, no browser, a page that will not open — the report falls back to
+    the links it has always had, and says so rather than showing a gap.
+    """
+    # Named `taken`, not `shots`: `shots` is the storage module, and shadowing it
+    # here means the second upload calls a dict.
+    taken, heroes = {}, {}
+    stats = {"pages": 0, "sentence": 0, "block": 0, "heroes": 0, "missed": 0}
+    if not shots_available():
+        return taken, heroes, stats
+
+    for brand, pages in wanted.items():
+        hero_url = first_pages.get(brand)
+        if hero_url and hero_url not in pages:
+            pages = dict(pages)
+            pages[hero_url] = []          # visited for the hero alone
+        for url, items in pages.items():
+            quotes = [q for _pid, q in items]
+            page = await browser.renderer.visit(
+                url, user_agent=UA, accept_texts=GATE_ACCEPT,
+                gate_ceiling=GATE_TEXT_CEILING,
+                quotes=quotes, want_hero=(url == hero_url),
+            )
+            if page is None:
+                stats["missed"] += len(items)
+                continue
+            stats["pages"] += 1
+            if page.hero and brand not in heroes:
+                got = await shots.put(http, shots.path_for(run_id, brand, "hero"),
+                                      page.hero)
+                if got:
+                    heroes[brand] = got
+                    stats["heroes"] += 1
+            for i, (pid, _q) in enumerate(items):
+                shot = page.shots.get(i)
+                if not shot:
+                    stats["missed"] += 1
+                    continue
+                got = await shots.put(
+                    http, shots.path_for(run_id, brand, "quote", len(taken)),
+                    shot["png"])
+                if not got:
+                    stats["missed"] += 1
+                    continue
+                taken[(brand, pid)] = {"url": got, "how": shot["how"],
+                                       "page": page.url}
+                stats["sentence" if shot["how"] == "sentence" else "block"] += 1
+    return taken, heroes, stats
+
+
+def shots_available():
+    """Both halves have to be there: something to take the picture with, and
+    somewhere for it to live that outlasts the next deploy."""
+    return browser.renderer.status()["enabled"] and shots.configured()
+
+
+def what_stops_the_pictures():
+    if not browser.renderer.status()["enabled"]:
+        return "no browser available"
+    if not shots.configured():
+        return shots.why_not()
+    return ""
+
 
 async def stage_layers(brand, corpus):
     prompt = f"""You are separating a pharmaceutical brand website into layers before
@@ -1699,7 +1808,7 @@ def ev(obj):
     return obj
 
 
-async def pipeline(brands_in, category_given=""):
+async def pipeline(brands_in, category_given="", run_id=""):
     brands = [b["name"].strip() for b in brands_in]
     yourn = brands[0]
     category_given = (category_given or "").strip()
@@ -1718,10 +1827,26 @@ async def pipeline(brands_in, category_given=""):
         # user's own brand is the frame for the entire report, and fewer than
         # two brands is not a comparison.
         corpora, image_cands, unreadable = {}, {}, []
+        # What these hosts took last time. Absent for a host nobody has read, and
+        # absent entirely if the migration has not been run — in which case every
+        # host is worked out from scratch, exactly as it was before.
+        hosts = {}
+        for b in brands_in:
+            u = b["url"] if b["url"].startswith("http") else "https://" + b["url"]
+            hosts[b["name"]] = (urlparse(u).netloc or "").replace("www.", "")
+        hints = await store.crawl_hints(list(hosts.values()))
+        if hints:
+            known = sum(1 for h in hints.values() if h.get("needs_browser"))
+            if known:
+                yield ev({"type": "progress", "text": (
+                    f"{known} of these sites {'is' if known == 1 else 'are'} already known to "
+                    "build their copy in the browser. Opening those in one straight away.")})
+        first_pages = {}
         for b in brands_in:
             host = urlparse(b["url"] if b["url"].startswith("http") else "https://" + b["url"]).netloc or b["url"]
             yield ev({"type": "progress", "text": f"Reading {host} — the public website, as a patient or prescriber would find it."})
-            corpus, images, n_pages, why, notes = await crawl_brand(fetcher, b)
+            corpus, images, n_pages, why, notes = await crawl_brand(
+                fetcher, b, hint=hints.get(hosts.get(b["name"], "")))
             if why == "robots":
                 # Not a failure. The site has asked crawlers not to read it,
                 # and that is the end of the matter — there is no version of
@@ -1758,6 +1883,18 @@ async def pipeline(brands_in, category_given=""):
                 continue
             corpora[b["name"]] = corpus
             image_cands[b["name"]] = images
+            pages_read = split_pages(corpus)
+            if pages_read:
+                first_pages[b["name"]] = pages_read[0][0]
+            # Written down for next time: whether plain HTTP was enough, and how
+            # much came back. Additive — a host that needed a browser once is
+            # assumed to need one again, because being wrong costs one render and
+            # guessing the other way costs a brand.
+            await store.remember_hint(
+                hosts.get(b["name"], ""),
+                needs_browser=bool(notes.get("rendered")) or notes.get("browser_first"),
+                gate_hops=notes.get("gates", 0),
+                chars=len(corpus), status=200, ok=True)
             extra = []
             if notes.get("gates"):
                 extra.append(f"{notes['gates']} gate{'s' if notes['gates'] != 1 else ''} stepped through")
@@ -1931,6 +2068,57 @@ async def pipeline(brands_in, category_given=""):
             if lost:
                 bits.append(f"{lost} could not be found again")
             yield ev({"type": "progress", "text": "; ".join(bits) + "."})
+
+        # 4b — photograph the evidence
+        #
+        # Chosen by how widely a territory is shared, because the sameness is the
+        # report's spine and that is the number a reader doubts. Capped per brand:
+        # every picture is a page load.
+        blocked = what_stops_the_pictures()
+        if blocked:
+            yield ev({"type": "progress", "text": (
+                "Not photographing the evidence this run — " + blocked +
+                ". The report links to every quote as usual.")})
+            shot_stats, heroes = {}, {}
+        else:
+            wanted = {}
+            for p in sorted(positions, key=lambda x: -x.get("n", 0)):
+                for b, link in (p.get("receipt_links") or {}).items():
+                    per = wanted.setdefault(b, {})
+                    if sum(len(v) for v in per.values()) >= MAX_SHOTS_PER_BRAND:
+                        continue
+                    per.setdefault(link.split("#")[0], []).append(
+                        (p["id"], p["receipts"][b]))
+            n_want = sum(len(v) for per in wanted.values() for v in per.values())
+            yield ev({"type": "progress", "text": (
+                f"Opening the pages the evidence sits on and photographing "
+                f"{n_want} quote{'s' if n_want != 1 else ''} where they stand, so the report "
+                "shows the claim on the competitor's own site rather than linking to it.")})
+            evidence_shots, heroes, shot_stats = await capture_evidence(
+                run_id, http, wanted, first_pages)
+            captured_shots = evidence_shots
+            for p in positions:
+                got, how = {}, {}
+                for b in p.get("claimers", []):
+                    shot = evidence_shots.get((b, p["id"]))
+                    if shot:
+                        got[b] = shot["url"]
+                        how[b] = shot["how"]
+                if got:
+                    p["receipt_shots"] = got
+                    p["receipt_shot_how"] = how
+            if shot_stats.get("sentence") or shot_stats.get("block"):
+                bits = []
+                if shot_stats.get("sentence"):
+                    bits.append(f"{shot_stats['sentence']} with the sentence itself highlighted")
+                if shot_stats.get("block"):
+                    bits.append(f"{shot_stats['block']} with the paragraph it sits in highlighted")
+                if shot_stats.get("heroes"):
+                    bits.append(f"{shot_stats['heroes']} front page{'s' if shot_stats['heroes'] != 1 else ''}")
+                yield ev({"type": "progress", "text": "Photographed: " + ", ".join(bits) + "."})
+            else:
+                yield ev({"type": "progress", "text": (
+                    "No usable photographs this run; the report links to every quote as usual.")})
 
         # 5 — the visual layer
         #
@@ -2302,10 +2490,25 @@ async def pipeline(brands_in, category_given=""):
                 "captured": date.today().strftime("%-d %B %Y"),
                 "audience_note": "Public websites only, as served at capture.",
                 "brands": [
-                    {"name": b["name"], "url": b["url"], "accent": ACCENTS[i % len(ACCENTS)]}
+                    {"name": b["name"], "url": b["url"], "accent": ACCENTS[i % len(ACCENTS)],
+                     "hero": heroes.get(b["name"], "")}
                     for i, b in enumerate(brands_in)
                 ],
                 "unreadable": unreadable,
+                # What was photographed, and what was not. The reader is told,
+                # because a report that shows four pictures and links to twenty
+                # quotes should say why rather than let it look arbitrary.
+                "evidence_shots": shot_stats,
+                "evidence_shots_note": (
+                    "Screenshots are taken on the date shown, from the page the quote "
+                    "was read from, with the sentence highlighted where it sits. Where "
+                    "the sentence runs across several elements the paragraph containing "
+                    "it is highlighted instead, and the picture says so. The link beside "
+                    "every picture goes to the live page, so you can check it."
+                ) if shot_stats.get("sentence") or shot_stats.get("block") else (
+                    "No screenshots this run" + (f" — {blocked}" if blocked else "") +
+                    ". Every quote still links to the page it came from."
+                ),
             },
             "headline": headline,
             "standfirst": standfirst,
@@ -2385,7 +2588,7 @@ async def execute_run(run_id, brands, category=""):
     """Consume the pipeline, recording everything it says and produces."""
     _running.add(run_id)
     try:
-        async for event in pipeline(brands, category):
+        async for event in pipeline(brands, category, run_id=run_id):
             if event.get("type") == "result":
                 await store.finish(run_id, event["data"])
                 return
@@ -2790,7 +2993,13 @@ async def areas(brand: str = ""):
 @app.get("/api/health")
 async def health():
     return {"ok": True, "persistent": store.persistent, "running": len(_running),
-            "browser": browser.renderer.status()}
+            "browser": browser.renderer.status(),
+            # Both halves have to be there for the report to show evidence
+            # rather than link to it: a browser to take the picture, and a
+            # bucket for it to live in that outlasts the next deploy.
+            "evidence_shots": {"ready": shots_available(),
+                               "bucket": shots.BUCKET,
+                               "why": what_stops_the_pictures()}}
 
 
 # ---------------------------------------------------------------------------
