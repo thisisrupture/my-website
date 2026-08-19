@@ -116,7 +116,7 @@ import Footer from '../components/Footer.astro';
   .fam-root .fam-head {
     position: absolute; z-index: 2;
     top: clamp(18px, 3vw, 40px); left: clamp(18px, 3vw, 44px);
-    max-width: 46ch;
+    max-width: 40ch;
   }
 
   .fam-root .fam-title {
@@ -132,7 +132,7 @@ import Footer from '../components/Footer.astro';
   .fam-root .fam-lede {
     font-family: var(--font-serif); font-weight: 400;
     font-size: clamp(1.02rem, 1.4vw, 1.18rem); line-height: 1.45;
-    max-width: 44ch; margin: 0;
+    max-width: 38ch; margin: 0;
   }
 
   /* ---- Figure frame ---- */
@@ -361,9 +361,12 @@ import Footer from '../components/Footer.astro';
   const DESKTOP = {
     viewBox: "0 0 1120 630",
     base: [60, 540, 1060, 540], axis: [60, 596], axisFs: 13,
-    nodes: [[150, 540], [360, 480], [565, 390], [770, 275], [955, 140]],
+    nodes: [[150, 540], [380, 540], [575, 388], [770, 268], [958, 140]],
     r: 22, numFs: 16, labels: true, labelGap: 60, labelFs: 14, labelLead: 17,
-    climb: "M 150 540 C 220 540 290.8 505 360 480 C 429.2 455 496.7 424.2 565 390 C 633.3 355.8 705 316.7 770 275 C 835 233.3 910 174.5 955 140 C 1000 105.5 1020 84 1032 74",
+    // 01 and 02 sit flat on the baseline; the climb begins where the market
+    // advantage is discovered (03) and runs smoothly up to 05. Control points
+    // are C1-continuous through 03·04·05 so the curve has no kinks.
+    climb: "M 150 540 L 380 540 C 445 540 510 433.3 575 388 C 640 342.7 706.2 309.3 770 268 C 833.8 226.7 899.7 178 958 140 C 1016.3 102 1028 92 1035 84",
     loop: { d: "M 972 127 A 45 45 0 1 1 938 153", arrow: "938,153 939.1,165.5 928.1,160.7", t: [979, 245, 261], anchor: "middle", fs: 12 },
     day: { line: [1058, 102, 1058, 540], arrow: "1058,88 1052.5,102 1063.5,102", tx: 1066, ty: 318, fs: 13 }
   };
