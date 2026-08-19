@@ -361,12 +361,13 @@ import Footer from '../components/Footer.astro';
   const DESKTOP = {
     viewBox: "0 0 1120 630",
     base: [60, 540, 1060, 540], axis: [60, 596], axisFs: 13,
-    nodes: [[150, 540], [380, 540], [575, 388], [770, 268], [958, 140]],
+    nodes: [[150, 540], [380, 540], [575, 476], [770, 333], [955, 140]],
     r: 22, numFs: 16, labels: true, labelGap: 60, labelFs: 14, labelLead: 17,
     // 01 and 02 sit flat on the baseline; the climb begins where the market
-    // advantage is discovered (03) and runs smoothly up to 05. Control points
-    // are C1-continuous through 03·04·05 so the curve has no kinks.
-    climb: "M 150 540 L 380 540 C 445 540 510 433.3 575 388 C 640 342.7 706.2 309.3 770 268 C 833.8 226.7 899.7 178 958 140 C 1016.3 102 1028 92 1035 84",
+    // advantage is discovered (03). Both the node heights and the path are
+    // sampled from one convex power curve, so the gradient only ever increases
+    // — gentle at 03, steeper at 04, steepest into 05 — with no kinks or wobble.
+    climb: "M 150 540 L 380 540 C 416.7 540.0 453.3 529.6 490.0 516.0 C 530.0 501.1 570.0 480.7 610.0 455.8 C 650.0 430.8 690.0 401.4 730.0 368.0 C 770.0 334.6 810.0 297.2 850.0 256.1 C 885.0 220.1 920.0 181.4 955.0 140.0 L 1030.0 51.3",
     loop: { d: "M 972 127 A 45 45 0 1 1 938 153", arrow: "938,153 939.1,165.5 928.1,160.7", t: [979, 245, 261], anchor: "middle", fs: 12 },
     day: { line: [1058, 102, 1058, 540], arrow: "1058,88 1052.5,102 1063.5,102", tx: 1066, ty: 318, fs: 13 }
   };
