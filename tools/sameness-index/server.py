@@ -43,6 +43,7 @@ from bs4 import BeautifulSoup, NavigableString
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 
+import access
 import browser
 import drugs
 import shots
@@ -796,6 +797,10 @@ async def crawl_brand(fetcher, brand, hint=None):
     queue, seen, texts, images = [start], set(), [], []
     notes = {"gates": 0, "json_pages": 0, "thin_pages": 0, "rendered": 0,
              "browser_first": False}
+    # What the very first request produced, kept so a failure can be explained
+    # rather than shrugged at. Status, who answered, and enough of the body to
+    # recognise a bot wall or a country wall. See access.py.
+    probe = {"status": 0, "headers": {}, "body": "", "rendered": False}
     # What this host took last time. A host known to serve a shell gets a
     # browser on the first request rather than the second, which is a page load
     # and several seconds saved for every brand on it.
@@ -812,6 +817,7 @@ async def crawl_brand(fetcher, brand, hint=None):
 
         Returns (soup, landed) or (None, None).
         """
+        first = url == start
         r = None
         soup, landed, ctype, readable = None, url, "", 0
         if not browser_first:
@@ -819,6 +825,10 @@ async def crawl_brand(fetcher, brand, hint=None):
                 r = await fetcher.get(url)
             except Exception:
                 r = None
+        if first and r is not None:
+            probe["status"] = r.status_code
+            probe["headers"] = dict(r.headers)
+            probe["body"] = (r.text or "")[:6000]
         if r is not None:
             ctype = r.headers.get("content-type", "")
             if r.status_code == 200 and "text/html" in ctype:
@@ -836,6 +846,13 @@ async def crawl_brand(fetcher, brand, hint=None):
                 notes["gates"] += getattr(rendered, "gates", 0) or 0
                 soup = BeautifulSoup(rendered.text, "html.parser")
                 landed = str(getattr(rendered, "url", url)) or landed
+                if first:
+                    # The browser's view replaces the plain one for diagnosis:
+                    # a wall served to a plain client and a wall served to a
+                    # browser are different findings.
+                    probe["rendered"] = True
+                    probe["status"] = rendered.status_code
+                    probe["body"] = (rendered.text or "")[:6000]
         return soup, landed
 
     async def read(url):
@@ -932,6 +949,21 @@ async def crawl_brand(fetcher, brand, hint=None):
         if k not in seen_i:
             seen_i.add(k)
             cands.append(u)
+    # Why it failed, in terms that point at a fix. Only computed when there is
+    # a failure to explain — a successful read needs no diagnosis.
+    if len(corpus) < 400:
+        code, sentence = access.classify(
+            probe["status"], probe["headers"], probe["body"],
+            chars_read=len(corpus), rendered=probe["rendered"])
+        notes["diagnosis"] = {
+            "code": code, "why": sentence,
+            "status": probe["status"],
+            "server": (probe["headers"].get("server") or "")[:40],
+            "rendered": probe["rendered"],
+            "chars": len(corpus),
+            "action": access.FIXABLE.get(code, ""),
+        }
+
     # Pages actually read, not addresses tried — a redirect puts two addresses
     # in `seen` for one page, and the reader is told this number.
     return corpus, cands[:40], len(texts), "", notes
@@ -1827,6 +1859,10 @@ async def pipeline(brands_in, category_given="", run_id=""):
         # user's own brand is the frame for the entire report, and fewer than
         # two brands is not a comparison.
         corpora, image_cands, unreadable = {}, {}, []
+        # Every failure, with its cause, for the operator rather than the reader.
+        # It travels in the result and is printed to the log, so one run answers
+        # what a month of guessing did not.
+        access_log = []
         # What these hosts took last time. Absent for a host nobody has read, and
         # absent entirely if the migration has not been run — in which case every
         # host is worked out from scratch, exactly as it was before.
@@ -1859,26 +1895,54 @@ async def pipeline(brands_in, category_given="", run_id=""):
                         "permit it."
                     )})
                     return
-                unreadable.append({"name": b["name"], "url": b["url"], "reason": "asked not to be read"})
+                unreadable.append({"name": b["name"], "url": b["url"],
+                                   "reason": "asked not to be read", "code": "robots"})
+                access_log.append({"brand": b["name"], "host": hosts.get(b["name"], ""),
+                                   "code": "robots", "status": 0,
+                                   "action": access.FIXABLE["robots"]})
                 yield ev({"type": "progress", "text": (
                     f"{b['name']}'s site asks automated readers not to read it, in its robots.txt. "
                     "Leaving it out; the report will say so."
                 )})
                 continue
 
+            diag = notes.get("diagnosis") or {}
             if len(corpus) < 400:
+                # Recorded for us, whatever happens to the run. This is the
+                # table that turns "so many sites cannot be read" from an
+                # argument into a fact.
+                access_log.append({
+                    "brand": b["name"], "host": hosts.get(b["name"], ""),
+                    "url": b["url"],
+                    "code": diag.get("code", "unknown"),
+                    "status": diag.get("status", 0),
+                    "server": diag.get("server", ""),
+                    "rendered": diag.get("rendered", False),
+                    "action": diag.get("action", ""),
+                })
+                print("SAMENESS-ACCESS " + json.dumps(access_log[-1]), flush=True)
+                await store.remember_hint(
+                    hosts.get(b["name"], ""), needs_browser=True,
+                    chars=len(corpus), status=diag.get("status", 0), ok=False)
                 if b["name"] == yourn:
                     yield ev({"type": "error", "text": (
-                        f"Could not read enough of {b['name']}'s site ({b['url']}). The report is built around your own "
-                        "brand, so there is nothing to compare against without it. The site may block automated readers "
-                        "or render entirely in JavaScript. Try the patient site if you entered the HCP one, or the other "
-                        "way round."
+                        f"Could not read {b['name']}'s site ({b['url']}). "
+                        + (diag.get("why") or "")
+                        + " The report is built around your own brand, so there is nothing to "
+                        "compare against without it. Try the patient site if you entered the "
+                        "professional one, or the other way round."
                     )})
                     return
-                unreadable.append({"name": b["name"], "url": b["url"]})
+                unreadable.append({
+                    "name": b["name"], "url": b["url"],
+                    "code": diag.get("code", "unknown"),
+                    "reason": access.READER_LABELS.get(diag.get("code", ""), "could not be read"),
+                })
                 yield ev({"type": "progress", "text": (
-                    f"{b['name']}'s site could not be read — it blocks automated readers or renders entirely in "
-                    "JavaScript. Continuing without it; the report will say so."
+                    f"{b['name']}: "
+                    + access.READER_LABELS.get(diag.get("code", ""), "could not be read")
+                    + ". " + (diag.get("why") or "")
+                    + " Continuing without it; the report will say so."
                 )})
                 continue
             corpora[b["name"]] = corpus
@@ -2495,6 +2559,10 @@ async def pipeline(brands_in, category_given="", run_id=""):
                     for i, b in enumerate(brands_in)
                 ],
                 "unreadable": unreadable,
+                # For us, not for the reader: every site that failed, why, and
+                # what would fix it. Read it from the run JSON or from the
+                # Render log, where each line is prefixed SAMENESS-ACCESS.
+                "access_log": access_log,
                 # What was photographed, and what was not. The reader is told,
                 # because a report that shows four pictures and links to twenty
                 # quotes should say why rather than let it look arbitrary.

@@ -372,13 +372,18 @@
   footer.site a:hover { color: var(--ink); }
   footer.site .tag { color: var(--fg-faint); }
 
-  /* ---------------------------------------------------------- progress */
-  #screen-progress {
-    min-height: 100vh; display: none; flex-direction: column; padding-top: 12px;
+  /* ---------------------------------------------------------- the run
+     In the hero, where the form was. Nothing about the page changes except
+     that the controls give way to the machine's account of itself. */
+  #run-set { display: flex; flex-wrap: wrap; gap: 7px; margin: 2px 0 22px; }
+  #run-set .rs {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; padding: 5px 9px;
+    border: 1px solid var(--divider); color: var(--fg-muted);
   }
-  #screen-progress .progress-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-  .progress-wrap { width: 100%; max-width: 600px; margin: 0 auto; padding: 60px 28px; }
-  #progress-log { margin-top: 30px; }
+  /* A fixed height, so the block does not grow as lines arrive and shove the
+     figure beside it down the page. */
+  #progress-log { margin-top: 4px; min-height: 232px; }
   #progress-log p { margin: 0 0 13px; color: var(--label); font-size: 17px; animation: fadein .45s ease both; }
   #progress-log p:last-child { color: var(--ink); }
   #progress-log p:last-child::after {
@@ -389,6 +394,16 @@
   #progress-log p.perror::after { display: none; }
   @keyframes fadein { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none;} }
   @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
+  /* The figure, working. A shade change of two thirds of a second reads as
+     deliberate rather than as a flicker, and the whole grid breathes very
+     slightly so it is alive even between changes. */
+  #hero-grid rect { transition: fill .66s ease; }
+  #hero-grid.working { animation: breathe 3.4s ease-in-out infinite; }
+  @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:.86} }
+  @media (prefers-reduced-motion: reduce) {
+    #hero-grid rect { transition: none; }
+    #hero-grid.working { animation: none; }
+  }
 
   /* ---------------------------------------------------------- result
      The report is a document with interactive parts, not a dashboard of
@@ -863,6 +878,19 @@
             <div class="input-error" id="input-error"></div>
           </div>
 
+          <!-- The run, in the place the form was. The page does not change:
+               the reader stays where they started, the figure to the right
+               starts moving, and the feed appears where the button was. A
+               screen swap at the moment of commitment reads as a page load,
+               and a page load reads as something having gone wrong. -->
+          <div id="run-feed" hidden>
+            <div class="group-label mono-label">Running the index</div>
+            <div id="run-set"></div>
+            <div id="progress-log"></div>
+            <p class="guidance run-note">Two to five minutes. The address in your bar is already
+              the permanent link to this result — close the tab and come back to it whenever.</p>
+          </div>
+
           <div class="offline-note" id="offline-note">
             <strong>This page is open as a file, so live runs are not available.</strong>
             Reading competitor websites needs the analysis server — a browser cannot fetch other people's
@@ -891,7 +919,7 @@
             <g id="hero-grid"></g>
           </svg>
         </div>
-        <p class="hero-fig-cap">Every territory in the category, shaded by how many brands are standing in it. The one nobody is standing in is the point.</p>
+        <p class="hero-fig-cap" id="hero-cap">Every territory in the category, shaded by how many brands are standing in it. The one nobody is standing in is the point.</p>
         <div class="cta-row">
           <a class="btn btn-line" id="load-example-2" href="#">See a worked example →</a>
         </div>
@@ -990,25 +1018,6 @@
       <div class="tag">Different beats better every time</div>
     </footer>
 
-  </div>
-</div>
-
-<!-- ============================================ PROGRESS -->
-<div id="screen-progress">
-  <!-- The bar stays put for the two to five minutes this takes. A wait with no
-       chrome on it reads as a page that has broken. -->
-  <div class="wrap" style="gap:0">
-    <header class="site">
-      <a href="https://thisisrupture.com" class="mark">This is Rupture<span class="r-dot"></span></a>
-      <nav><a href="https://thisisrupture.com/#contact" class="cta">Find your daylight</a></nav>
-    </header>
-  </div>
-  <div class="progress-wrap">
-    <div class="eyebrow">Running the index</div>
-    <div class="wait-pair">
-      <div class="stage" id="stage"></div>
-      <div id="progress-log"></div>
-    </div>
   </div>
 </div>
 
@@ -1453,7 +1462,7 @@ function renderFound(data) {
 
   $("#found-intro").textContent =
     `${data.brands.length} brands in ${data.category || "this category"}. ${provenance}${directory} ` +
-    `Tick the ones to include and choose which site to read for each.` +
+    `Tick the ones to include and choose which site to read for each. Anything the finder missed, add at the bottom.` +
     (blocked.length
       ? ` ${blocked.join(" and ")} could not be read: ${blocked.length === 1 ? "that site turns" : "those sites turn"} away automated readers. ` +
         `You can still run without ${blocked.length === 1 ? "it" : "them"}, and the report will say so.`
@@ -1487,6 +1496,48 @@ function renderFound(data) {
     list.appendChild(row);
   });
 
+  // Adding one by hand, here, rather than in a mode of its own. The finder is
+  // right most of the time and wrong in two ways that matter: a brand it could
+  // not read, and a brand openFDA has never heard of because it is marketed
+  // only in Europe. Both are recoverable in ten seconds if the box is on the
+  // same screen as the mistake.
+  const add = el("div", "fb fb-add");
+  add.innerHTML = `
+    <div class="fb-head"><span class="fb-name">Add one yourself</span></div>
+    <div class="field-row">
+      <input class="add-name" type="text" placeholder="Brand name" autocomplete="off">
+      <input class="add-url" type="url" placeholder="https://www.brand.com" autocomplete="off">
+      <button type="button" class="add-go">Add</button>
+    </div>
+    <p class="fb-none" style="margin-top:6px">Use this for a brand the finder missed, or one marketed
+      outside the US — the register it looks in is the FDA's.</p>`;
+  list.appendChild(add);
+  const go = () => {
+    const name = add.querySelector(".add-name").value.trim();
+    let url = add.querySelector(".add-url").value.trim();
+    if (!name || !url) return;
+    if (!/^https?:/i.test(url)) url = "https://" + url;
+    const row = el("div", "fb");
+    row.dataset.name = name;
+    row.dataset.manual = url;
+    row.innerHTML = `
+      <div class="fb-head">
+        <label class="fb-site" style="gap:9px">
+          <input type="checkbox" class="fb-use" checked>
+          <span class="fb-name">${esc(name)}</span>
+        </label>
+        <span class="fb-co">added by hand</span>
+      </div>
+      <div class="fb-sites"><label class="fb-site"><span><span class="fb-url">${esc(url)}</span></span></label></div>`;
+    list.insertBefore(row, add);
+    add.querySelector(".add-name").value = "";
+    add.querySelector(".add-url").value = "";
+    add.querySelector(".add-name").focus();
+  };
+  add.querySelector(".add-go").addEventListener("click", go);
+  add.querySelectorAll("input").forEach(n =>
+    n.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); go(); } }));
+
   $("#found").hidden = false;
   if (!usable) {
     $("#found-intro").textContent =
@@ -1498,7 +1549,9 @@ function renderFound(data) {
 function brandsFromFound() {
   const out = [];
   $("#found-list").querySelectorAll(".fb").forEach(row => {
-    if (!row.querySelector(".fb-use").checked) return;
+    const use = row.querySelector(".fb-use");
+    if (!use || !use.checked) return;
+    if (row.dataset.manual) { out.push({ name: row.dataset.name, url: row.dataset.manual }); return; }
     const picked = row.querySelector("input[type=radio]:checked");
     if (picked) out.push({ name: row.dataset.name, url: picked.value });
   });
@@ -1561,6 +1614,7 @@ async function loadWorkedExample(e) {
 /* The hero figure is the tool's own output at thumbnail size: a category where
    every territory is taken but one. Drawn rather than drafted as markup so the
    shading is a single readable rule. */
+let GRID = null;
 (function heroGrid() {
   const g = $("#hero-grid");
   if (!g) return;
@@ -1586,95 +1640,78 @@ async function loadWorkedExample(e) {
     }
   }
   g.innerHTML = out;
+
+  /* While a run is going, the figure works. Cells change shade as the machine
+     reads and codes, and the empty one stays empty — because that is the thing
+     the whole tool is looking for and it should not flicker away. It is not
+     wired to real counts: the run does not know how many territories there are
+     until most of the way through, and a progress bar that lies is worse than
+     one that is honestly abstract. */
+  const cells = Array.from(g.querySelectorAll("rect"));
+  const held = shade.map((n, i) => (n === 0 ? i : -1)).filter(i => i >= 0);
+  let timer = null;
+  GRID = {
+    start() {
+      if (timer) return;
+      g.classList.add("working");
+      timer = setInterval(() => {
+        for (let k = 0; k < 5; k++) {
+          const i = Math.floor(Math.random() * cells.length);
+          if (held.includes(i)) continue;
+          cells[i].setAttribute("fill", fill(2 + Math.floor(Math.random() * 3)));
+        }
+      }, 620);
+    },
+    stop() {
+      clearInterval(timer); timer = null;
+      g.classList.remove("working");
+      cells.forEach((c, i) => c.setAttribute("fill", fill(shade[i])));
+    },
+  };
 })();
 
 /* ---------------------------------------------------- run */
 function showScreen(id) {
-  ["screen-input", "screen-progress", "screen-result"].forEach(s => document.getElementById(s).style.display = "none");
-  const scr = document.getElementById(id);
-  scr.style.display = id === "screen-progress" ? "flex" : "block";
+  ["screen-input", "screen-result"].forEach(s => document.getElementById(s).style.display = "none");
+  document.getElementById(id).style.display = "block";
   window.scrollTo(0, 0);
-  if (id === "screen-progress") startWaiting(); else stopWaiting();
 }
+
+/* Running is a state of the first screen, not a screen of its own. The setup
+   blocks give way to the feed, the figure starts working, and everything else —
+   the header, the headline, the standfirst — stays exactly where it was. */
+const SETUP_BLOCKS = ["#find-mode", "#manual-mode", "#found", "#post"];
+function enterRunning(brands) {
+  showScreen("screen-input");
+  SETUP_BLOCKS.forEach(sel => { const n = $(sel); if (n) n.hidden = true; });
+  $("#run-feed").hidden = false;
+  $("#progress-log").innerHTML = "";
+  $("#run-set").innerHTML = (brands || []).map(b =>
+    `<span class="rs">${esc(b.name)}</span>`).join("");
+  $("#hero-cap").textContent =
+    "Every territory in the category, filling as the machine reads. The one that stays empty is the point.";
+  // Nothing else to click while it works. The worked example is a different
+  // report, and opening it over a run in progress loses the run.
+  const eg = $("#load-example-2");
+  if (eg) eg.style.display = "none";
+  if (GRID) GRID.start();
+}
+function leaveRunning() { if (GRID) GRID.stop(); }
 function logProgress(text, isError) {
   const log = $("#progress-log");
   log.appendChild(el("p", isError ? "perror" : "", esc(text)));
-  if (log.children.length > 14) log.removeChild(log.firstChild);
+  // Six, not fourteen, and nothing is scrolled into view. The feed now sits in
+  // the hero beside the figure: a column that grows past the fold pushes the
+  // reader down, and scrolling the newest line into view took them away from
+  // the one thing on the page that was moving. The block holds its height, the
+  // oldest line drops off the top, and the page does not move at all.
+  while (log.children.length > 6) log.removeChild(log.firstChild);
 }
-/* ---------------------------------------------------- the wait
-   Three to eight minutes is a long time to watch a log scroll. Each drawing is
-   of something the index is genuinely doing — brands drifting toward the same
-   position, the regulatory layers being peeled away, the territory grid filling
-   with most cells claimed and a few never touched. The lines underneath are
-   dry rather than jokey: this is a report a brand lead may forward to their
-   boss, and a tool that mugs about is harder to believe afterwards. */
-const SCENES = [
-  // Four brands converging on one line.
-  `<svg viewBox="0 0 300 120" role="img" aria-label="Four brands drifting toward the same position">
-     <line x1="0" y1="60" x2="300" y2="60" stroke="var(--divider)" stroke-width="1"/>
-     <path class="ln cv1" style="--to:22px" d="M10 26 C 90 26, 180 30, 292 34" stroke="var(--coral)"/>
-     <path class="ln cv2" style="--to:12px" d="M10 44 C 90 44, 180 46, 292 48" stroke="var(--green)"/>
-     <path class="ln cv3" style="--to:-14px" d="M10 92 C 90 92, 180 84, 292 76" stroke="var(--ink)"/>
-     <path class="ln cv2" style="--to:-6px" d="M10 74 C 90 74, 180 70, 292 66" stroke="var(--label)"/>
-   </svg>`,
-  // The three layers, with the top two lifting off.
-  `<svg viewBox="0 0 300 120" role="img" aria-label="Regulatory and label-determined content being set aside">
-     <rect class="pl1" x="8" y="10" width="284" height="26" fill="var(--hairline)" opacity=".5"/>
-     <rect class="pl2" x="8" y="44" width="284" height="26" fill="var(--label)" opacity=".45"/>
-     <rect x="8" y="78" width="284" height="30" fill="none" stroke="var(--green)" stroke-width="1.5"/>
-     <text x="16" y="98" font-family="var(--mono)" font-size="11" fill="var(--green)" letter-spacing="1.4">WHAT THEY CHOSE</text>
-   </svg>`,
-  // The territory grid: most cells claimed, a few never touched.
-  `<svg viewBox="0 0 300 120" role="img" aria-label="The territory grid filling, with some cells left empty">
-     ${Array.from({ length: 24 }, (_, i) => {
-       const x = 8 + (i % 8) * 36, y = 14 + Math.floor(i / 8) * 34;
-       const empty = [3, 9, 14, 20, 22].includes(i);
-       return empty
-         ? `<rect x="${x}" y="${y}" width="30" height="26" fill="none" stroke="var(--coral)" stroke-width="1.2"/>`
-         : `<rect class="sq" style="animation-delay:${(i % 9) * .18}s" x="${x}" y="${y}" width="30" height="26" fill="var(--green)"/>`;
-     }).join("")}
-     <line class="sweepln" x1="8" y1="118" x2="292" y2="118" stroke="var(--ink)" stroke-width="1.2"/>
-   </svg>`,
-];
-
-const ASIDES = [
-  ["Reading what four brands decided to say.", "The regulator wrote the rest."],
-  ["Counting how many of them put the patient at the centre.", "So far, all of them."],
-  ["Setting aside every sentence the label made compulsory.", "Nobody chose a word of it."],
-  ["Looking for a claim only one brand could make.", "This is usually the short list."],
-  ["Declining to score the cookie banner.", "Or the actor portrayal disclaimer."],
-  ["Measuring the distance between reimagine and redefine.", "It is not far."],
-  ["Working out who else is having the conversation you are having.", "Usually more people than you would like."],
-  ["Ignoring the stock photograph of somebody laughing at a salad.", "Commissioned imagery only."],
-  ["Checking whether a new era in care means anything.", "Three brands have declared one."],
-  ["Finding the arguments nobody in this category has made yet.", "There are always more than people expect."],
-  ["Reading the published evidence on what patients actually struggle with.", "Then checking who mentions it."],
-  ["Separating the molecule from the marketing.", "Only one of them was a decision."],
-  ["Quietly noting every use of the word journey.", "Not scored. Simply noted."],
-  ["Asking what your competitors would have to stop saying.", "For you to be the only one saying it."],
-];
-
-let sceneTimer = null;
-function startWaiting() {
-  // Shuffle so a second run does not read like a repeat of the first.
-  const order = ASIDES.map((_, n) => n).sort(() => Math.random() - .5);
-  let i = 0, s = 0;
-  $("#stage").innerHTML = SCENES[0];
-  const tick = () => {
-    s++;
-    $("#stage").innerHTML = SCENES[s % SCENES.length];
-    // The aside goes into the log rather than above it, so there is one column
-    // of copy and the reader's eye stays in one place.
-    const [line, sub] = ASIDES[order[i++ % order.length]];
-    const p = el("p", "aside", `${esc(line)}<span class="sub">${esc(sub)}</span>`);
-    const log = $("#progress-log");
-    log.appendChild(p);
-    while (log.children.length > 14) log.removeChild(log.firstChild);
-  };
-  clearInterval(sceneTimer);
-  sceneTimer = setInterval(tick, 7000);
-}
-function stopWaiting() { clearInterval(sceneTimer); sceneTimer = null; }
+/* No rotating commentary. The feed is the machine's own account of what it is
+   doing, in the order it does it — every line is a fact about this run. The
+   asides that used to sit between them were written to fill the wait, and a
+   report a brand lead forwards to their boss is not helped by a tool that has
+   been making jokes on the way to producing it. */
 
 // A run takes two to five minutes, so the server does not answer the request
 // that starts it. It hands back an id, gets on with the work, and this page
@@ -1684,9 +1721,8 @@ function stopWaiting() { clearInterval(sceneTimer); sceneTimer = null; }
 const POLL_MS = 2000;
 
 async function runIndex(brands, category) {
-  showScreen("screen-progress");
-  $("#progress-log").innerHTML = "";
-  logProgress("Starting the run — " + brands.map(b => b.name).join(", ") + ".");
+  enterRunning(brands);
+  logProgress("Reading " + brands.length + " public brand websites.");
   let id;
   try {
     const resp = await fetch("/api/run", {
@@ -1723,7 +1759,7 @@ async function pollRun(id) {
     }
     (state.progress || []).forEach(p => logProgress(p.text, p.type === "error"));
     seen = state.progress_total || seen;
-    if (state.status === "complete" && state.result) return render(state.result);
+    if (state.status === "complete" && state.result) { leaveRunning(); return render(state.result); }
     if (state.status === "failed") return runFailed(state.error || "The run failed.");
     await new Promise(r => setTimeout(r, POLL_MS));
   }
@@ -1731,7 +1767,8 @@ async function pollRun(id) {
 
 function runFailed(msg) {
   msg = msg || "Something went wrong.";
-  showScreen("screen-progress");
+  if ($("#run-feed").hidden) enterRunning([]);
+  leaveRunning();
   logProgress(msg, true);
   if (/failed to fetch|networkerror|load failed/i.test(msg)) {
     logProgress("The page could not reach the analysis server at " + location.origin + ".", true);
@@ -1747,8 +1784,8 @@ function runFailed(msg) {
 // Both are the same thing: ask the server what that run has done.
 const PERMALINK = (location.pathname.match(/^\/r\/([a-z0-9]{6,32})$/i) || [])[1];
 if (PERMALINK && !OFFLINE) {
-  showScreen("screen-progress");
-  logProgress("Opening this result…");
+  enterRunning([]);
+  logProgress("Opening this result.");
   pollRun(PERMALINK);
 }
 
@@ -1854,10 +1891,24 @@ function render(data) {
   const note = $("#r-missing");
   if (missed.length) {
     note.hidden = false;
+    // Why, specifically. "Could not be read" covered four different things —
+    // a site that asked not to be, a country wall, bot protection, and a page
+    // with nothing on it — and a reader who is told which one can judge how
+    // much the gap matters. A brand blocked by bot protection is a brand whose
+    // messaging exists and is missing; a brand with no site is not.
+    const WHY = {
+      robots:    "asks automated readers not to read it, and the index honours that",
+      geo:       "is not served to the location this index reads from",
+      challenge: "is behind bot protection that refused the connection",
+      blocked:   "is behind bot protection that refused the connection",
+      gone:      "had no working website at the address found for it",
+      shell:     "served a page with no readable words on it",
+      server:    "was unavailable while this ran",
+      network:   "did not respond",
+      login:     "is behind a login, and the index reads public pages only",
+    };
     const lines = missed.map(m => m.note ? esc(m.note) :
-      m.reason === "asked not to be read"
-        ? `${esc(m.name)}'s site asks automated readers not to read it, and the index honours that. It is left out of every figure here.`
-        : `${esc(m.name)}'s site could not be read — it turns away automated readers or builds its pages in the browser. It is left out of every figure here.`);
+      `${esc(m.name)}'s site ${WHY[m.code] || "could not be read"}. It is left out of every figure here.`);
     note.innerHTML = lines.join("<br><br>") +
       `<br><br>${missed.length === 1 ? "It is" : "They are"} competing in this category regardless, so a territory shown ` +
       `here as used by nobody may well be used by ${missed.length === 1 ? "it" : "one of them"}.`;

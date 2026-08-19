@@ -238,7 +238,7 @@ async def test_unreadable_competitor_does_not_kill_the_run(monkeypatch):
 
     assert result is not None, "run produced no result"
     assert [b["name"] for b in result["meta"]["brands"]] == ["Mine", "Other"]
-    assert result["meta"]["unreadable"] == [{"name": "Blocked", "url": "https://b.test"}]
+    assert [u["name"] for u in result["meta"]["unreadable"]] == ["Blocked"]
     assert any("could not be read" in n for n in notes)
     assert any("Blocked" in x for x in result["limitations"])
 
@@ -342,7 +342,8 @@ async def test_robots_is_honoured_and_named_as_such(monkeypatch):
 
     assert result is not None
     assert result["meta"]["unreadable"] == [
-        {"name": "Private", "url": "https://b.test", "reason": "asked not to be read"}]
+        {"name": "Private", "url": "https://b.test", "reason": "asked not to be read",
+         "code": "robots"}]
     assert any("asks automated readers not to read it" in n for n in notes)
 
 
@@ -1223,3 +1224,97 @@ async def test_a_hint_is_remembered_without_the_migration(monkeypatch):
     await st.remember_hint("brand.test", needs_browser=False, chars=9000)
     assert (await st.crawl_hints(["www.brand.test"]))["brand.test"]["needs_browser"]
     assert await st.crawl_hints(["nobody.test"]) == {}
+
+
+# ---------------------------------------------------------------------------
+# Why a site could not be read.
+#
+# "So many websites cannot be read" was true for months and unactionable for
+# all of them, because the crawl recorded a name and an address and nothing
+# else. These fix the four causes that used to look identical in the report.
+# ---------------------------------------------------------------------------
+
+
+def test_a_country_wall_is_not_a_gate():
+    """The one we did to ourselves. The service reads from Frankfurt and these
+    are US brands, so some sites refuse before showing anything — and a wall
+    offers no button to click, which is what makes it different from a gate."""
+    import access
+    code, why = access.classify(200, {}, (
+        "<html><body><h1>Please note</h1><p>This site is intended for residents "
+        "of the United States only. Please visit the website for your country.</p>"
+        "</body></html>"), chars_read=180)
+    assert code == "geo"
+    assert "US region" in access.FIXABLE[code]
+
+
+def test_bot_management_is_named_by_vendor():
+    """Which vendor matters: it says whether the problem is worth another
+    attempt or is a judgement about our address that will not change."""
+    import access
+    code, why = access.classify(403, {"cf-ray": "8a1b"}, (
+        "just a moment... enable javascript and cookies to continue"), chars_read=40)
+    assert code == "challenge" and "Cloudflare" in why
+
+    code, why = access.classify(403, {}, (
+        "<html><title>Access Denied</title>You don't have permission to access "
+        "this resource. Reference&#32;#18.abcd errors.edgesuite.net"), chars_read=60)
+    assert code == "challenge" and "Akamai" in why
+
+    code, why = access.classify(403, {"x-iinfo": "9-1"}, "incapsula incident id 0123", chars_read=20)
+    assert code == "challenge" and "Imperva" in why
+
+    # Refused, but nothing says by what.
+    code, why = access.classify(429, {}, "too many requests", chars_read=10)
+    assert code == "blocked"
+    assert "residential" in access.FIXABLE[code]
+
+
+def test_a_cdn_header_alone_does_not_convict():
+    """Cloudflare fronts half the web and most of it serves us fine. A header
+    is only a finding next to a refusal."""
+    import access
+    body = "<html><body>" + ("Real brand copy about the medicine. " * 200) + "</body></html>"
+    code, _why = access.classify(200, {"cf-ray": "8a1b", "server": "cloudflare"},
+                                 body, chars_read=7000)
+    assert code == "ok"
+
+
+def test_the_four_causes_stay_apart():
+    """They used to look identical in the report — "could not be read" — and
+    they need four different answers."""
+    import access
+    assert access.classify(404, {}, "not found", chars_read=0)[0] == "gone"
+    assert access.classify(0, {}, "", chars_read=0)[0] == "network"
+    assert access.classify(503, {}, "service unavailable", chars_read=0)[0] == "server"
+    assert access.classify(200, {}, "<html><body><div id=root></div></body></html>",
+                           chars_read=80, rendered=True)[0] == "shell"
+    # A shell that was never rendered is a different finding from one that was:
+    # the first is our browser failing to fire, the second is a real empty page.
+    ours = access.classify(200, {}, "<html><body><div id=root></div></body></html>",
+                           chars_read=80, rendered=False)
+    assert ours[0] == "shell" and "browser should have" in ours[1]
+    assert "Ours to fix" in access.FIXABLE["shell"]
+
+
+def test_every_reason_has_a_next_step_and_a_reader_label():
+    """A diagnosis nobody can act on is a shrug with better vocabulary."""
+    import access
+    for code in access.FIXABLE:
+        assert access.FIXABLE[code].strip()
+        if code != "ok":
+            assert code in access.READER_LABELS, code
+
+
+@pytest.mark.anyio
+async def test_a_failed_site_is_diagnosed_not_shrugged_at():
+    """The whole point: the run records what came back, so one run answers what
+    a month of theorising did not."""
+    import server as s
+    f = _StubFetcher({"https://brand.test/": (403, "text/html", "just a moment... cf-chl-bypass")})
+    corpus, _i, _p, _w, notes = await s.crawl_brand(f, {"name": "B", "url": "https://brand.test/"})
+    assert corpus == ""
+    d = notes["diagnosis"]
+    assert d["code"] == "challenge" and d["status"] == 403
+    assert "Cloudflare" in d["why"]
+    assert d["action"] and d["rendered"] is False
